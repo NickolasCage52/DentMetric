@@ -97,6 +97,11 @@
           -webkit-box-shadow: 0 0 0 30px #151F2E inset !important;
           -webkit-text-fill-color: white !important;
       }
+      
+      /* Select placeholder styling */
+      select:invalid {
+        color: #718096; /* metric-gray */
+      }
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
@@ -126,13 +131,15 @@
             
             <div class="text-center relative z-10">
                 <div class="text-[11px] uppercase font-bold text-metric-silver tracking-widest mb-1">Итоговая оценка</div>
-                <div class="text-5xl font-black text-metric-green drop-shadow-[0_0_15px_rgba(136,229,35,0.3)]">
-                    {{ formatCurrency(totalPrice) }} ₽
+                <div class="text-5xl font-black transition-all duration-300"
+                     :class="totalPrice > 0 ? 'text-metric-green drop-shadow-[0_0_15px_rgba(136,229,35,0.3)]' : 'text-gray-600'">
+                    {{ totalPrice > 0 ? formatCurrency(totalPrice) : '---' }} <span v-if="totalPrice > 0" class="text-2xl align-top">₽</span>
                 </div>
             </div>
             
             <!-- Bottom green glow reflection -->
-            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-4 bg-metric-green/10 blur-xl"></div>
+            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-4 blur-xl transition-all duration-300"
+                 :class="totalPrice > 0 ? 'bg-metric-green/10' : 'bg-transparent'"></div>
         </div>
 
         <!-- Mode Toggle -->
@@ -193,7 +200,8 @@
                 <div class="mb-2">
                     <label class="block text-[10px] font-bold text-metric-silver uppercase mb-2 tracking-widest">Размер</label>
                     <div class="relative group">
-                        <select v-model="form.sizeCode" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <select v-model="form.sizeCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                            <option :value="null" disabled selected>Выберите размер</option>
                             <option v-for="size in currentSizeList" :value="size.code">
                                 {{ size.name }}
                             </option>
@@ -209,7 +217,8 @@
             <div class="bg-metric-panel rounded-2xl p-5 shadow-panel border border-white/5">
                 <div class="text-[10px] font-bold text-metric-silver uppercase mb-2 tracking-widest">Технология</div>
                 <div class="relative">
-                    <select v-model="form.repairCode" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                    <select v-model="form.repairCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <option :value="null" disabled selected>Выберите технологию</option>
                         <option v-for="r in DATA.repairTypes" :value="r.code">
                             {{ r.name }} (x{{ r.mult }})
                         </option>
@@ -228,7 +237,8 @@
                 <div class="text-[10px] font-bold text-metric-silver uppercase mb-2 tracking-widest">Специалист</div>
                 <div class="flex gap-3">
                     <div class="relative flex-1">
-                        <select v-model="form.masterIndex" @change="updateRateFromMaster" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <select v-model="form.masterIndex" required @change="updateRateFromMaster" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                            <option :value="null" disabled selected>Выберите специалиста</option>
                             <option v-for="(m, idx) in DATA.masters" :value="idx">{{ m.name }}</option>
                         </select>
                         <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
@@ -236,7 +246,9 @@
                         </div>
                     </div>
                     <div class="flex items-center bg-[#0f1623] border border-white/10 rounded-xl px-4 min-w-[100px] justify-center shadow-inset">
-                         <span class="text-sm font-bold text-metric-green">{{ formatCurrency(userSettings.hourlyRate) }}</span>
+                         <span class="text-sm font-bold" :class="userSettings.hourlyRate > 0 ? 'text-metric-green' : 'text-gray-600'">
+                             {{ userSettings.hourlyRate > 0 ? formatCurrency(userSettings.hourlyRate) : '---' }}
+                         </span>
                     </div>
                 </div>
             </div>
@@ -245,7 +257,8 @@
             <div class="bg-metric-panel rounded-2xl p-5 shadow-panel border border-white/5">
                 <div class="text-[10px] font-bold text-metric-silver uppercase mb-2 tracking-widest">Технология</div>
                 <div class="relative">
-                    <select v-model="form.repairCode" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                    <select v-model="form.repairCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <option :value="null" disabled selected>Выберите технологию</option>
                         <option v-for="r in DATA.repairTypes" :value="r.code">
                             {{ r.name }} (x{{ r.mult }})
                         </option>
@@ -263,13 +276,14 @@
                     type="number" 
                     v-model.number="form.hours" 
                     min="0" step="0.5" 
+                    placeholder="Введите часы"
                     inputmode="decimal"
                     class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-xl font-bold shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors placeholder-gray-600"
                 >
             </div>
         </div>
 
-        <!-- Conditions Card -->
+        <!-- Conditions Card (Complexity / Material / Class) -->
         <div class="bg-metric-panel rounded-2xl p-5 shadow-panel border border-white/5 space-y-4">
             <div class="text-[10px] font-bold text-metric-silver uppercase tracking-widest mb-1">Условия</div>
             
@@ -277,7 +291,8 @@
             <div>
                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
                 <div class="relative">
-                    <select v-model="form.riskCode" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                    <select v-model="form.riskCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <option :value="null" disabled selected>Выберите сложность</option>
                         <option v-for="risk in DATA.risks" :value="risk.code">
                             {{ risk.name }} 
                         </option>
@@ -292,9 +307,26 @@
             <div>
                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
                 <div class="relative">
-                    <select v-model="form.materialCode" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                    <select v-model="form.materialCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <option :value="null" disabled selected>Выберите материал</option>
                         <option v-for="m in DATA.materials" :value="m.code">
                             {{ m.name }} (x{{ m.mult }})
+                        </option>
+                    </select>
+                     <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Car Class (NEW) -->
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
+                <div class="relative">
+                    <select v-model="form.carClassCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                        <option :value="null" disabled selected>Выберите класс авто</option>
+                        <option v-for="c in DATA.carClasses" :value="c.code">
+                            {{ c.name }} (x{{ c.mult }})
                         </option>
                     </select>
                      <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
@@ -309,7 +341,8 @@
             <div class="text-[10px] font-bold text-metric-silver uppercase mb-2 tracking-widest">Дополнительно</div>
             <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
             <div class="relative">
-                <select v-model="form.disassemblyCode" class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                <select v-model="form.disassemblyCode" required class="w-full bg-[#0f1623] border border-white/10 rounded-xl px-4 py-3 text-white text-base font-medium shadow-inset focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                    <option :value="null" disabled selected>Выберите арматурные работы</option>
                     <option v-for="d in DATA.disassembly" :value="d.code">
                         {{ d.name }} (+{{ d.price }}₽)
                     </option>
@@ -319,6 +352,15 @@
                 </div>
             </div>
         </div>
+
+        <!-- RESET BUTTON -->
+        <button 
+            @click="resetForm" 
+            class="w-full py-4 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center space-x-2 opacity-80 hover:opacity-100"
+        >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <span>Сбросить параметры</span>
+        </button>
     </div>
 
     <!-- ===========================
@@ -417,7 +459,7 @@
                     <li>Выберите режим расчета (сверху).</li>
                     <li>Укажите тип повреждения (Круг/Овал или Полоса).</li>
                     <li>Выберите размер (S2-S11 или LS1-LS8). Это база цены.</li>
-                    <li>Настройте коэффициенты (Сложность, Материал, Разборка).</li>
+                    <li>Настройте коэффициенты (Сложность, Материал, Класс, Разборка).</li>
                     <li>Итоговая цена обновится автоматически.</li>
                 </ol>
             </div>
@@ -440,19 +482,15 @@
                 <div>
                     <span class="font-bold block text-xs uppercase text-metric-green mb-1">Сложность (K)</span>
                     <ul class="space-y-1">
-                        <li><span class="text-white">K1:</span> Лёгкая (x0.95)</li>
-                        <li><span class="text-white">K2:</span> Средняя (x1.0)</li>
-                        <li><span class="text-white">K3:</span> Сложная (x1.15) — заломы, плохой доступ.</li>
-                        <li><span class="text-white">K4:</span> Экстра (x1.3) — острые складки, ребра.</li>
+                        <li><span class="text-white">K1:</span> Лёгкая</li>
+                        <li><span class="text-white">K2:</span> Средняя</li>
+                        <li><span class="text-white">K3:</span> Сложная — заломы, плохой доступ.</li>
+                        <li><span class="text-white">K4:</span> Экстра — острые складки, ребра.</li>
                     </ul>
                 </div>
                 <div>
-                    <span class="font-bold block text-xs uppercase text-metric-green mb-1">Материал (M)</span>
-                    <p>M1 (Сталь), M2 (Алюминий x1.3).</p>
-                </div>
-                <div>
-                    <span class="font-bold block text-xs uppercase text-metric-green mb-1">Разборка (Z)</span>
-                    <p>Фиксированная доплата за арматурные работы.</p>
+                    <span class="font-bold block text-xs uppercase text-metric-green mb-1">Класс авто</span>
+                    <p>Стандарт (x1.0), Премиум/Новый (x1.2).</p>
                 </div>
             </div>
         </details>
@@ -515,6 +553,10 @@
         { code: 'M1', name: 'Сталь', mult: 1.0 },
         { code: 'M2', name: 'Алюминий', mult: 1.3 }
       ],
+      carClasses: [
+        { code: 'CLASS_STD', name: 'Стандарт', mult: 1.0 },
+        { code: 'CLASS_PREM', name: 'Премиум / Новый', mult: 1.2 }
+      ],
       // UI Selection for Complexity
       risks: [
         { code: 'RK1', name: 'Низкий', matrixKey: 'K1' },
@@ -535,11 +577,11 @@
       ],
       circleSizes: [
         { code: 'S2', name: 'с монету', basePrice: 2000 },
-        { code: 'S4', name: 'с куриное яйцо', basePrice: 4000 },
-        { code: 'S6', name: 'с апельсин', basePrice: 7500 },
-        { code: 'S8', name: 'с ладонь', basePrice: 11000 },
-        { code: 'S10', name: 'с футбольный мяч', basePrice: 11000 },
-        { code: 'S11', name: 'два мяча', basePrice: 18000 }
+        { code: 'S4', name: 'с куриное яйцо', basePrice: 3000 },
+        { code: 'S6', name: 'с апельсин', basePrice: 5000 },
+        { code: 'S8', name: 'с ладонь', basePrice: 7000 },
+        { code: 'S10', name: 'с футбольный мяч', basePrice: 12000 },
+        { code: 'S11', name: 'два мяча', basePrice: 15000 }
       ],
       stripSizes: [
         { code: 'LS1', name: 'с спич. коробок', basePrice: 4000 },
@@ -552,12 +594,12 @@
         { code: 'LS8', name: 'весь элемент', basePrice: 42000 }
       ],
       complexityMatrix: {
-        'S2':  { K1: 0.95, K2: 1.15, K3: 3.0,  K4: 1.3 },
-        'S4':  { K1: 0.95, K2: 1.0,  K3: 1.3,  K4: 1.3 },
-        'S6':  { K1: 0.95, K2: 1.0,  K3: 1.15, K4: 1.3 },
-        'S8':  { K1: 0.95, K2: 1.0,  K3: 1.4,  K4: 1.3 },
-        'S10': { K1: 0.95, K2: 1.15, K3: 1.15, K4: 1.3 },
-        'S11': { K1: 0.95, K2: 1.0,  K3: 1.15, K4: 1.3 },
+        'S2':  { K1: 1.00, K2: 1.15, K3: 2.30, K4: 4.00 },
+        'S4':  { K1: 1.00, K2: 1.60, K3: 2.30, K4: 4.00 },
+        'S6':  { K1: 1.00, K2: 1.40, K3: 2.00, K4: 3.00 },
+        'S8':  { K1: 1.00, K2: 1.40, K3: 1.80, K4: 3.00 },
+        'S10': { K1: 1.00, K2: 1.30, K3: 1.60, K4: 2.20 },
+        'S11': { K1: 1.00, K2: 1.20, K3: 1.90, K4: 2.70 },
         'STRIP_DEFAULT': { K1: 0.95, K2: 1.0, K3: 1.15, K4: 1.3 }
       },
       defaultHourlyRate: 6000
@@ -569,15 +611,17 @@
             const currentTab = ref('calc');
             const calcMode = ref('standard');
             
+            // Initial form state with nulls to force selection
             const form = reactive({
                 shape: 'circle',
-                sizeCode: 'S2',
-                repairCode: 'R1',
-                riskCode: 'RK2', // Medium default
-                materialCode: 'M1',
-                disassemblyCode: 'Z0',
-                hours: 1.0,
-                masterIndex: 0
+                sizeCode: null,
+                repairCode: null,
+                riskCode: null,
+                materialCode: null,
+                carClassCode: null,
+                disassemblyCode: null,
+                hours: null,
+                masterIndex: null
             });
 
             // Initialize User Settings (Prices) from Data
@@ -589,7 +633,7 @@
             };
 
             const userSettings = reactive({
-                hourlyRate: initialData.masters[0].rate,
+                hourlyRate: 0, // Will be set when master is selected
                 prices: buildDefaultPrices()
             });
 
@@ -606,6 +650,19 @@
 
             // --- MAIN CALCULATION LOGIC ---
             const totalPrice = computed(() => {
+                // Return 0 if mandatory fields are missing
+                if (calcMode.value === 'standard') {
+                     if (!form.sizeCode || !form.repairCode || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) {
+                         return 0;
+                     }
+                } else {
+                     // Time mode requirements (Car class also applies here? Usually yes for labor rate but let's assume labor rate is fixed by master. However, risk usually applies. Let's apply Car Class to labor too as "premium car needs more care")
+                     // For simplicity and consistency with previous logic, assuming mandatory fields.
+                     if (form.masterIndex === null || !form.repairCode || !form.hours || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) {
+                         return 0;
+                     }
+                }
+
                 // 1. Base Price from Size (lookup in userSettings for overrides)
                 const sizeBase = userSettings.prices[form.sizeCode] || 0;
 
@@ -631,10 +688,7 @@
                     const laborCost = (form.hours || 0) * userSettings.hourlyRate;
                     calculationBase = laborCost;
 
-                    // In Time Mode, since "Size" is hidden, we can't use size-specific complexity.
-                    // Use a default/safe matrix row (STRIP_DEFAULT) or just 1.0?
-                    // Usually time-based work still has "difficulty" factors. 
-                    // Let's use STRIP_DEFAULT which is a balanced set [0.95, 1.0, 1.15, 1.3]
+                    // Use standard complexity multipliers for time mode (or strip default)
                     const matrixRow = initialData.complexityMatrix['STRIP_DEFAULT'];
                     complexityMult = matrixRow ? matrixRow[kKey] : 1.0;
                 }
@@ -649,18 +703,23 @@
                 const material = initialData.materials.find(m => m.code === form.materialCode);
                 const materialMult = material ? material.mult : 1.0;
 
+                // 3.3 Car Class
+                const carClass = initialData.carClasses.find(c => c.code === form.carClassCode);
+                const carClassMult = carClass ? carClass.mult : 1.0;
+
                 // 4. Add-on (Disassembly)
                 const disassembly = initialData.disassembly.find(d => d.code === form.disassemblyCode);
                 const disassemblyCost = disassembly ? disassembly.price : 0;
 
-                // Formula: (Base * Repair * Material * Complexity) + Disassembly
-                const total = (calculationBase * repairMult * materialMult * complexityMult) + disassemblyCost;
+                // Formula: (Base * Repair * Material * Complexity * CarClass) + Disassembly
+                const total = (calculationBase * repairMult * materialMult * complexityMult * carClassMult) + disassemblyCost;
 
-                return Math.round(total);
+                return Math.round(total / 500) * 500;
             });
 
             // Methods
             const updateRateFromMaster = () => {
+                if (form.masterIndex === null) return;
                 const master = initialData.masters[form.masterIndex];
                 if (master) {
                     userSettings.hourlyRate = master.rate;
@@ -669,18 +728,31 @@
 
             const setMode = (mode) => {
                 calcMode.value = mode;
-                haptic('selection');
+                resetForm(); // Reset when switching modes for clarity
             };
 
             const setShape = (shape) => {
                 form.shape = shape;
-                // Reset size key to valid default
-                form.sizeCode = shape === 'circle' ? 'S2' : 'LS1';
+                // Reset size when shape changes because options change
+                form.sizeCode = null; 
                 haptic('selection');
             };
 
             const switchTab = (tab) => {
                 currentTab.value = tab;
+                haptic('selection');
+            };
+
+            const resetForm = () => {
+                form.sizeCode = null;
+                form.repairCode = null;
+                form.riskCode = null;
+                form.materialCode = null;
+                form.carClassCode = null;
+                form.disassemblyCode = null;
+                form.hours = null;
+                form.masterIndex = null;
+                userSettings.hourlyRate = 0;
                 haptic('selection');
             };
 
@@ -779,8 +851,12 @@
             watch(totalPrice, (val) => {
                 if (window.Telegram?.WebApp?.MainButton) {
                     const btn = window.Telegram.WebApp.MainButton;
-                    btn.setText(`ИТОГО: ${formatCurrency(val)} ₽`);
-                    btn.show();
+                    if (val > 0) {
+                        btn.setText(`ИТОГО: ${formatCurrency(val)} ₽`);
+                        btn.show();
+                    } else {
+                        btn.hide();
+                    }
                 }
             }, { immediate: true });
 
@@ -788,7 +864,7 @@
                 currentTab, calcMode, form, userSettings, tabs,
                 DATA: initialData, currentSizeList, totalPrice,
                 setMode, setShape, switchTab, saveSettings, resetDefaults, 
-                formatCurrency, updateRateFromMaster
+                formatCurrency, updateRateFromMaster, resetForm
             };
         }
     });
