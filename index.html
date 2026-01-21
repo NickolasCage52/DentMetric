@@ -797,13 +797,14 @@
             const resetDefaults = () => {
                 const runReset = () => {
                     const defaultPrices = buildDefaultPrices();
-                    const defaultMasters = JSON.parse(JSON.stringify(initialData.defaultMasters));
+                    // We do NOT reset masters anymore based on user request.
+                    // const defaultMasters = JSON.parse(JSON.stringify(initialData.defaultMasters));
                     
-                    // Update in place
+                    // Update prices in place
                     Object.keys(userSettings.prices).forEach(key => delete userSettings.prices[key]);
                     Object.assign(userSettings.prices, defaultPrices);
                     
-                    userSettings.masters.splice(0, userSettings.masters.length, ...defaultMasters);
+                    // userSettings.masters.splice(0, userSettings.masters.length, ...defaultMasters);
                     
                     // Save silently
                     const dataToSave = {
@@ -815,20 +816,20 @@
                     // Notify
                     const tg = window.Telegram?.WebApp;
                     if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-                        tg.showPopup({ title: 'Сброс', message: 'Возвращено к стандартным', buttons: [{type:'ok'}] });
+                        tg.showPopup({ title: 'Сброс', message: 'Цены сброшены к стандартным', buttons: [{type:'ok'}] });
                     } else {
-                        alert('Сброшено');
+                        alert('Цены сброшены');
                     }
                     haptic('success');
                 };
 
                 const tg = window.Telegram?.WebApp;
                 if (tg && tg.showConfirm && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-                    tg.showConfirm("Сбросить все настройки?", (ok) => { 
+                    tg.showConfirm("Сбросить цены к стандартным?", (ok) => { 
                         if (ok) runReset(); 
                     });
                 } else {
-                    if (confirm("Сбросить все настройки?")) runReset();
+                    if (confirm("Сбросить цены к стандартным?")) runReset();
                 }
             };
 
