@@ -4,391 +4,445 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DentMetric Calculator</title>
-    
-    <!-- Telegram Web App -->
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Vue 3 -->
+
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    
-    <!-- Tailwind CSS -->
+
+    <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Tailwind Config -->
+
     <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              metric: {
-                green: '#88E523', // Neon Green
-                black: '#000000', // Pure Black
-                dark: '#0a0a0a',  // Very dark gray
-                silver: '#A0AEC0',
-              }
-            },
-            fontFamily: {
-              sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-            },
-            boxShadow: {
-              'neon': '0 0 10px rgba(136, 229, 35, 0.3), inset 0 0 5px rgba(136, 229, 35, 0.1)',
-              'metal': 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.8)',
-            },
-            backgroundImage: {
-               // Dark Metallic Gradient for Cards
-              'metal-gradient': 'linear-gradient(180deg, #2a2a2a 0%, #151515 100%)',
-              'metal-gradient-active': 'linear-gradient(180deg, #333333 0%, #1a1a1a 100%)',
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        metric: {
+                            green: '#88E523', // Neon Green
+                            black: '#000000', // Pure Black
+                            dark: '#0a0a0a',  // Very dark gray
+                            silver: '#A0AEC0',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon': '0 0 10px rgba(136, 229, 35, 0.3), inset 0 0 5px rgba(136, 229, 35, 0.1)',
+                        'metal': 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.8)',
+                    },
+                    backgroundImage: {
+                        'metal-gradient': 'linear-gradient(180deg, #2a2a2a 0%, #151515 100%)',
+                        'metal-gradient-active': 'linear-gradient(180deg, #333333 0%, #1a1a1a 100%)',
+                    }
+                }
             }
-          }
         }
-      }
     </script>
 
     <style>
-      /* Global Styles */
-      body {
-        background-color: #000000; /* Requirement: Black Background */
-        color: #FFFFFF;
-        overscroll-behavior-y: none;
-        -webkit-tap-highlight-color: transparent;
-      }
-      
-      /* Hide scrollbar */
-      ::-webkit-scrollbar {
-        width: 0px;
-        background: transparent;
-      }
+        /* Global Styles */
+        body {
+            background-color: #000000;
+            color: #FFFFFF;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-      /* Custom animations */
-      details > summary {
-        list-style: none;
-      }
-      details > summary::-webkit-details-marker {
-        display: none;
-      }
-      details[open] summary ~ * {
-        animation: slideDown 0.2s ease-in-out;
-      }
-      @keyframes slideDown {
-        0% { opacity: 0; transform: translateY(-5px); }
-        100% { opacity: 1; transform: translateY(0); }
-      }
+        /* Hide scrollbar */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
 
-      /* Input autofill fix for dark mode */
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover, 
-      input:-webkit-autofill:focus, 
-      input:-webkit-autofill:active{
-          -webkit-box-shadow: 0 0 0 30px #151515 inset !important;
-          -webkit-text-fill-color: white !important;
-      }
-      
-      /* Select placeholder styling */
-      select:invalid {
-        color: #718096;
-      }
+        /* Details Animation */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] summary ~ * { animation: slideDown 0.2s ease-in-out; }
+        @keyframes slideDown {
+            0% { opacity: 0; transform: translateY(-5px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
 
-      /* Metallic Card Class */
-      .card-metallic {
-          background: linear-gradient(180deg, #2b2b2b 0%, #121212 100%);
-          border: 1px solid #333;
-          border-top-color: #404040; /* Highlight top edge */
-          box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      }
+        /* Input autofill fix for dark mode */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #151515 inset !important;
+            -webkit-text-fill-color: white !important;
+        }
+
+        select:invalid { color: #718096; }
+
+        /* Metallic Card Class */
+        .card-metallic {
+            background: linear-gradient(180deg, #2b2b2b 0%, #121212 100%);
+            border: 1px solid #333;
+            border-top-color: #404040;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* Konva Background Grid */
+        .konva-bg {
+            background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 25px 25px;
+        }
+
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="pb-24 select-none font-sans antialiased min-h-screen bg-metric-black">
 
-<div id="app" class="max-w-md mx-auto relative">
-    
-    <!-- ===========================
-         TAB 1: CALCULATOR
-         =========================== -->
-    <div v-if="currentTab === 'calc'" class="p-4 space-y-4">
-        
-        <!-- Branding Logo (Image) -->
-        <div class="flex justify-center pt-8 pb-4 px-4">
-            <img src="logo.png" alt="DentMetric" class="w-full max-w-[320px] h-auto object-contain drop-shadow-2xl">
-        </div>
+<div id="app" class="max-w-md mx-auto relative h-screen flex flex-col">
 
-        <!-- Price Display Card -->
-        <div class="card-metallic rounded-2xl p-6 relative overflow-hidden">
-            <!-- Top glow line -->
-            <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-            
-            <div class="text-center relative z-10">
+    <div v-if="currentTab === 'calc'" class="flex flex-col h-full">
+
+        <div class="p-4 space-y-4 shrink-0 z-20 bg-metric-black">
+            <div class="flex justify-center pt-2 pb-2">
+                <img src="logo.png" alt="DentMetric" class="w-full max-w-[320px] h-auto object-contain drop-shadow-2xl">
+            </div>
+
+            <div class="card-metallic rounded-2xl p-4 relative overflow-hidden text-center">
+                <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                 <div class="text-[11px] uppercase font-bold text-gray-400 tracking-widest mb-1">Итоговая оценка</div>
                 <div class="text-5xl font-black transition-all duration-300"
                      :class="totalPrice > 0 ? 'text-metric-green drop-shadow-[0_0_15px_rgba(136,229,35,0.3)]' : 'text-gray-600'">
                     {{ totalPrice > 0 ? formatCurrency(totalPrice) : '---' }} <span v-if="totalPrice > 0" class="text-2xl align-top">₽</span>
                 </div>
+                <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-4 blur-xl transition-all duration-300"
+                     :class="totalPrice > 0 ? 'bg-metric-green/10' : 'bg-transparent'"></div>
             </div>
-            
-            <!-- Bottom green glow reflection -->
-            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-4 blur-xl transition-all duration-300"
-                 :class="totalPrice > 0 ? 'bg-metric-green/10' : 'bg-transparent'"></div>
+
+            <div class="flex space-x-1 bg-[#151515] p-1 rounded-xl border border-[#333]">
+                <button @click="setMode('standard')" class="flex-1 py-3 text-xs font-bold rounded-lg transition-all uppercase tracking-wide"
+                        :class="calcMode === 'standard' ? 'bg-metric-green text-black shadow-neon' : 'text-gray-400 hover:text-white'">
+                    Стандарт
+                </button>
+                <button @click="setMode('time')" class="flex-1 py-3 text-xs font-bold rounded-lg transition-all uppercase tracking-wide"
+                        :class="calcMode === 'time' ? 'bg-metric-green text-black shadow-neon' : 'text-gray-400 hover:text-white'">
+                    Время
+                </button>
+                <button @click="setMode('graphics')" class="flex-1 py-3 text-xs font-bold rounded-lg transition-all uppercase tracking-wide"
+                        :class="calcMode === 'graphics' ? 'bg-metric-green text-black shadow-neon' : 'text-gray-400 hover:text-white'">
+                    Графика
+                </button>
+            </div>
         </div>
 
-        <!-- Mode Toggle -->
-        <div class="flex space-x-2">
-            <button 
-                @click="setMode('standard')"
-                class="flex-1 py-3 text-sm font-bold rounded-xl border transition-all duration-200 uppercase tracking-wide"
-                :class="calcMode === 'standard' ? 'bg-metal-gradient-active border-metric-green text-metric-green shadow-neon' : 'card-metallic text-gray-400 hover:text-white border-transparent'"
-            >
-                Стандарт
-            </button>
-            <button 
-                @click="setMode('time')"
-                class="flex-1 py-3 text-sm font-bold rounded-xl border transition-all duration-200 uppercase tracking-wide"
-                :class="calcMode === 'time' ? 'bg-metal-gradient-active border-metric-green text-metric-green shadow-neon' : 'card-metallic text-gray-400 hover:text-white border-transparent'"
-            >
-                По времени
-            </button>
-        </div>
+        <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24">
 
-        <!-- Standard Mode Inputs -->
-        <div v-if="calcMode === 'standard'" class="space-y-4">
-            
-            <!-- Main Inputs Container -->
-            <div class="card-metallic rounded-2xl p-5">
-                
-                <!-- Shape Selection Section -->
-                <div class="mb-5">
-                    <div class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Тип повреждения</div>
-                    <div class="flex space-x-3">
-                        <div 
-                            @click="setShape('circle')"
-                            class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
-                            :class="form.shape === 'circle' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'"
-                        >
-                            <!-- Circle Icon -->
-                            <div class="w-4 h-4 rounded-full border-2 mb-2 shadow-[0_0_5px_currentColor]"
-                                 :class="form.shape === 'circle' ? 'border-metric-green bg-metric-green' : 'border-gray-500'">
+            <div v-if="calcMode === 'standard'" class="space-y-4">
+
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="mb-5">
+                        <div class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Тип повреждения</div>
+                        <div class="flex space-x-3">
+                            <div @click="setShape('circle')" class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
+                                 :class="form.shape === 'circle' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'">
+                                <div class="w-4 h-4 rounded-full border-2 mb-2 shadow-[0_0_5px_currentColor]"
+                                     :class="form.shape === 'circle' ? 'border-metric-green bg-metric-green' : 'border-gray-500'"></div>
+                                <span class="text-xs font-bold uppercase" :class="form.shape === 'circle' ? 'text-white' : 'text-gray-400'">Круг/Овал</span>
                             </div>
-                            <span class="text-xs font-bold uppercase" :class="form.shape === 'circle' ? 'text-white' : 'text-gray-400'">Круг/Овал</span>
+                            <div @click="setShape('strip')" class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
+                                 :class="form.shape === 'strip' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'">
+                                <div class="w-6 h-2 rounded-sm mb-3 shadow-[0_0_5px_currentColor]"
+                                     :class="form.shape === 'strip' ? 'bg-metric-green' : 'bg-gray-500'"></div>
+                                <span class="text-xs font-bold uppercase" :class="form.shape === 'strip' ? 'text-white' : 'text-gray-400'">Полоса</span>
+                            </div>
                         </div>
-
-                        <div 
-                            @click="setShape('strip')"
-                            class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
-                            :class="form.shape === 'strip' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'"
-                        >
-                            <!-- Strip Icon -->
-                            <div class="w-6 h-2 rounded-sm mb-3 shadow-[0_0_5px_currentColor]"
-                                 :class="form.shape === 'strip' ? 'bg-metric-green' : 'bg-gray-500'">
+                    </div>
+                    <div v-if="showSizeMenu" class="absolute inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm animate-fade-in" @click.self="showSizeMenu = false">
+                        <div class="bg-[#151F2E] w-full rounded-t-2xl p-5 border-t border-white/10 shadow-2xl space-y-4 pb-8">
+                            <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                                <h3 class="text-white font-bold text-lg pl-1">
+                                    Выберите размер ({{ activeToolType === 'circle' ? 'Круг/Овал' : 'Полоса' }})
+                                </h3>
+                                <button @click="showSizeMenu = false" class="text-gray-400 p-2 text-xl">✕</button>
                             </div>
-                            <span class="text-xs font-bold uppercase" :class="form.shape === 'strip' ? 'text-white' : 'text-gray-400'">Полоса</span>
+
+                            <div class="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
+                                <button v-for="s in (activeToolType === 'circle' ? DATA.circleSizes : DATA.stripSizes)"
+                                        :key="s.code"
+                                        @click="confirmAddShape(s.code)"
+                                        class="card-metallic p-3 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all hover:border-metric-green/50">
+                                    <span class="text-metric-green font-bold text-base">{{ s.code }}</span>
+                                    <span class="text-gray-400 text-xs text-center leading-tight">{{ s.name }}</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Size Dropdown -->
-                <div class="mb-2">
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Размер</label>
-                    <div class="relative group">
-                        <select v-model="form.sizeCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                            <option :value="null" disabled selected>Выберите размер</option>
-                            <option v-for="size in currentSizeList" :value="size.code">
-                                {{ size.name }}
-                            </option>
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Технология</div>
+                    <div class="relative">
+                        <select v-model="form.repairCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                            <option :value="null" disabled selected>Выберите технологию</option>
+                            <option v-for="r in DATA.repairTypes" :value="r.code">{{ r.name }}</option>
                         </select>
                         <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
                             <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Technology Card -->
-            <div class="card-metallic rounded-2xl p-5">
-                <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Технология</div>
-                <div class="relative">
-                    <select v-model="form.repairCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                        <option :value="null" disabled selected>Выберите технологию</option>
-                        <option v-for="r in DATA.repairTypes" :value="r.code">
-                            {{ r.name }} <!-- HIDDEN COEFFICIENT -->
-                        </option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                <div class="card-metallic rounded-2xl p-5 space-y-4">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Условия</div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
+                        <div class="relative">
+                            <select v-model="form.riskCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите сложность</option>
+                                <option v-for="risk in DATA.risks" :value="risk.code">{{ risk.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
+                        <div class="relative">
+                            <select v-model="form.materialCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите материал</option>
+                                <option v-for="m in DATA.materials" :value="m.code">{{ m.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
+                        <div class="relative">
+                            <select v-model="form.carClassCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите класс авто</option>
+                                <option v-for="c in DATA.carClasses" :value="c.code">{{ c.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Time Mode Inputs -->
-        <div v-else class="space-y-4">
-             <!-- Master Selection -->
-             <div class="card-metallic rounded-2xl p-5">
-                <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Специалист</div>
-                <div class="flex gap-3">
-                    <div class="relative flex-1">
-                        <select v-model="form.masterIndex" required @change="updateRateFromMaster" class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                            <option :value="null" disabled selected>Выберите специалиста</option>
-                            <option v-for="(m, idx) in userSettings.masters" :value="idx">{{ m.name }}</option>
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Дополнительно</div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
+                    <div class="relative">
+                        <select v-model="form.disassemblyCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                            <option :value="null" disabled selected>Выберите арматурные работы</option>
+                            <option v-for="d in DATA.disassembly" :value="d.code">{{ d.name }}</option>
                         </select>
                         <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
                             <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </div>
-                    <div class="flex items-center bg-[#151515] border border-[#333] rounded-xl px-4 min-w-[100px] justify-center shadow-inner">
-                         <span class="text-sm font-bold" :class="userSettings.hourlyRate > 0 ? 'text-metric-green' : 'text-gray-600'">
-                             {{ userSettings.hourlyRate > 0 ? formatCurrency(userSettings.hourlyRate) : '---' }}
-                         </span>
+                </div>
+
+                <button @click="resetForm" class="w-full py-4 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center space-x-2 opacity-80 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <span>Сбросить параметры</span>
+                </button>
+            </div>
+
+            <div v-if="calcMode === 'time'" class="space-y-4">
+
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Специалист</div>
+                    <div class="flex gap-3">
+                        <div class="relative flex-1">
+                            <select v-model="form.masterIndex" required @change="updateRateFromMaster" class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите специалиста</option>
+                                <option v-for="(m, idx) in userSettings.masters" :value="idx">{{ m.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                                <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                        <div class="flex items-center bg-[#151515] border border-[#333] rounded-xl px-4 min-w-[100px] justify-center shadow-inner">
+                             <span class="text-sm font-bold" :class="userSettings.hourlyRate > 0 ? 'text-metric-green' : 'text-gray-600'">
+                                 {{ userSettings.hourlyRate > 0 ? formatCurrency(userSettings.hourlyRate) : '---' }}
+                             </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Технология</div>
+                    <div class="relative">
+                        <select v-model="form.repairCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                            <option :value="null" disabled selected>Выберите технологию</option>
+                            <option v-for="r in DATA.repairTypes" :value="r.code">{{ r.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                            <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Трудозатраты (Часы)</div>
+                    <input type="number" v-model.number="form.hours" min="0" step="0.5" placeholder="Введите часы" inputmode="decimal" class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-xl font-bold shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors placeholder-gray-600">
+                </div>
+
+                <div class="card-metallic rounded-2xl p-5 space-y-4">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Условия</div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
+                        <div class="relative">
+                            <select v-model="form.riskCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите сложность</option>
+                                <option v-for="risk in DATA.risks" :value="risk.code">{{ risk.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
+                        <div class="relative">
+                            <select v-model="form.materialCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите материал</option>
+                                <option v-for="m in DATA.materials" :value="m.code">{{ m.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
+                        <div class="relative">
+                            <select v-model="form.carClassCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                                <option :value="null" disabled selected>Выберите класс авто</option>
+                                <option v-for="c in DATA.carClasses" :value="c.code">{{ c.name }}</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-metallic rounded-2xl p-5">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Дополнительно</div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
+                    <div class="relative">
+                        <select v-model="form.disassemblyCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
+                            <option :value="null" disabled selected>Выберите арматурные работы</option>
+                            <option v-for="d in DATA.disassembly" :value="d.code">{{ d.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                            <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="resetForm" class="w-full py-4 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center space-x-2 opacity-80 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <span>Сбросить параметры</span>
+                </button>
+            </div>
+
+            <div v-if="calcMode === 'graphics'" class="h-full flex flex-col">
+
+                <div v-if="graphicsStep === 1" class="space-y-4 animate-fade-in pt-4">
+                    <h2 class="text-xl font-bold text-center mb-4 text-white">Выберите класс</h2>
+                    <button v-for="cls in graphicsData.carClasses" :key="cls.id" @click="selectGraphicsClass(cls)"
+                            class="w-full card-metallic p-6 rounded-2xl flex flex-col items-center gap-3 active:scale-95 transition-transform border border-white/5 hover:border-metric-green/50">
+                        <span class="text-4xl">{{ cls.icon }}</span>
+                        <span class="font-bold text-lg tracking-wide">{{ cls.name }}</span>
+                    </button>
+                </div>
+
+                <div v-if="graphicsStep === 2" class="animate-fade-in h-full flex flex-col pt-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <button @click="graphicsStep = 1" class="text-sm text-metric-silver hover:text-white px-2">← Назад</button>
+                        <h2 class="text-xl font-bold text-white">Выберите деталь</h2>
+                        <div class="w-8"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button v-for="part in graphicsData.partsList" :key="part.id" @click="selectGraphicsPart(part)"
+                                class="aspect-square card-metallic border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:bg-white/5 hover:border-metric-green/30">
+                            <div class="text-metric-green text-opacity-80 font-black text-2xl">
+                                <span v-if="part.icon === 'door'">🚪</span>
+                                <span v-else-if="part.icon === 'hood'">🚘</span>
+                                <span v-else-if="part.icon === 'fender'">🚙</span>
+                                <span v-else-if="part.icon === 'trunk'">📦</span>
+                                <span v-else>🔧</span>
+                            </div>
+                            <span class="font-medium text-sm">{{ part.name }}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="graphicsStep === 3" class="flex flex-col h-full animate-fade-in pt-2">
+                    <div class="flex justify-between items-center mb-2">
+                        <button @click="closeEditor" class="text-xs text-metric-silver px-2 py-1 rounded border border-white/10 hover:text-white">← Назад</button>
+                        <span class="text-xs text-metric-green font-bold uppercase tracking-widest">{{ graphicsState.selectedPart?.name }} • {{ graphicsState.selectedClass?.name }}</span>
+                        <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300">Сброс</button>
+                    </div>
+
+                    <div class="flex-1 relative border border-white/10 rounded-xl overflow-hidden shadow-2xl konva-bg w-full min-h-[300px]" id="canvas-wrapper">
+                        <div id="konva-container" class="absolute inset-0 w-full h-full"></div>
+                        <div v-if="graphicsState.dents.length === 0" class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
+                            <div class="text-center">
+                                <div class="text-2xl mb-1">👆</div>
+                                <span class="text-xs uppercase font-bold tracking-widest">Нарисуйте вмятину</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 grid grid-cols-2 gap-3">
+                        <button @click="openSizeMenu('circle')" class="card-metallic p-3 rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all">
+                            <div class="w-6 h-6 rounded-full border-2 border-metric-green bg-metric-green/20"></div>
+                            <div class="text-left"><div class="font-bold text-xs text-white">Вмятина</div><div class="text-[9px] text-gray-500">Круг/Овал</div></div>
+                        </button>
+
+                        <button @click="openSizeMenu('strip')" class="card-metallic p-3 rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all">
+                            <div class="w-6 h-2 bg-metric-silver rotate-45 rounded-sm"></div>
+                            <div class="text-left"><div class="font-bold text-xs text-white">Полоса</div><div class="text-[9px] text-gray-500">Царапина</div></div>
+                        </button>
                     </div>
                 </div>
             </div>
+            <div v-if="showSizeMenu" class="absolute inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm animate-fade-in" @click.self="showSizeMenu = false">
+                <div class="bg-[#151F2E] w-full rounded-t-2xl p-5 border-t border-white/10 shadow-2xl space-y-4 pb-8">
+                    <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                        <h3 class="text-white font-bold text-lg pl-1">
+                            Выберите размер ({{ activeToolType === 'circle' ? 'Круг/Овал' : 'Полоса' }})
+                        </h3>
+                        <button @click="showSizeMenu = false" class="text-gray-400 p-2 text-xl">✕</button>
+                    </div>
 
-            <!-- Technology (Time Mode) -->
-            <div class="card-metallic rounded-2xl p-5">
-                <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Технология</div>
-                <div class="relative">
-                    <select v-model="form.repairCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                        <option :value="null" disabled selected>Выберите технологию</option>
-                        <option v-for="r in DATA.repairTypes" :value="r.code">
-                            {{ r.name }} <!-- HIDDEN COEFFICIENT -->
-                        </option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                    <div class="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
+                        <button v-for="s in (activeToolType === 'circle' ? DATA.circleSizes : DATA.stripSizes)"
+                                :key="s.code"
+                                @click="confirmAddShape(s.code)"
+                                class="card-metallic p-3 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all hover:border-metric-green/50">
+                            <span class="text-metric-green font-bold text-base">{{ s.code }}</span>
+                            <span class="text-gray-400 text-xs text-center leading-tight">{{ s.name }}</span>
+                        </button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Labor Input -->
-            <div class="card-metallic rounded-2xl p-5">
-                <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Трудозатраты (Часы)</div>
-                <input 
-                    type="number" 
-                    v-model.number="form.hours" 
-                    min="0" step="0.5" 
-                    placeholder="Введите часы"
-                    inputmode="decimal"
-                    class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-xl font-bold shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors placeholder-gray-600"
-                >
             </div>
         </div>
-
-        <!-- Conditions Card (Complexity / Material / Class) -->
-        <div class="card-metallic rounded-2xl p-5 space-y-4">
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Условия</div>
-            
-            <!-- Complexity/Risk -->
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
-                <div class="relative">
-                    <select v-model="form.riskCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                        <option :value="null" disabled selected>Выберите сложность</option>
-                        <option v-for="risk in DATA.risks" :value="risk.code">
-                            {{ risk.name }} 
-                        </option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Material -->
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
-                <div class="relative">
-                    <select v-model="form.materialCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                        <option :value="null" disabled selected>Выберите материал</option>
-                        <option v-for="m in DATA.materials" :value="m.code">
-                            {{ m.name }} <!-- HIDDEN COEFFICIENT -->
-                        </option>
-                    </select>
-                     <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Car Class -->
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
-                <div class="relative">
-                    <select v-model="form.carClassCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                        <option :value="null" disabled selected>Выберите класс авто</option>
-                        <option v-for="c in DATA.carClasses" :value="c.code">
-                            {{ c.name }} <!-- HIDDEN COEFFICIENT -->
-                        </option>
-                    </select>
-                     <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add-ons Card -->
-        <div class="card-metallic rounded-2xl p-5">
-            <div class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Дополнительно</div>
-            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
-            <div class="relative">
-                <select v-model="form.disassemblyCode" required class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors">
-                    <option :value="null" disabled selected>Выберите арматурные работы</option>
-                    <option v-for="d in DATA.disassembly" :value="d.code">
-                        {{ d.name }} <!-- HIDDEN PRICE -->
-                    </option>
-                </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                    <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
-            </div>
-        </div>
-
-        <!-- RESET BUTTON -->
-        <button 
-            @click="resetForm" 
-            class="w-full py-4 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center space-x-2 opacity-80 hover:opacity-100"
-        >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            <span>Сбросить параметры</span>
-        </button>
     </div>
 
-    <!-- ===========================
-         TAB 2: SETTINGS
-         =========================== -->
-    <div v-if="currentTab === 'settings'" class="p-4 space-y-4">
+    <div v-if="currentTab === 'settings'" class="p-4 space-y-4 overflow-y-auto pb-24">
         <div class="card-metallic rounded-2xl p-5">
             <h2 class="text-xl font-bold mb-1 text-white">Настройки</h2>
         </div>
 
-        <!-- Masters Settings (New) -->
-        <div class="card-metallic rounded-2xl p-5">
+        <div class="card-metallic rounded-2xl p-5 space-y-3">
             <div class="flex justify-between items-center mb-4">
                 <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Мастера</div>
-                <button @click="addMaster" class="text-xs text-metric-green border border-metric-green px-2 py-1 rounded hover:bg-metric-green hover:text-black transition-colors">
-                    + Добавить
-                </button>
+                <button @click="addMaster" class="text-xs text-metric-green border border-metric-green px-2 py-1 rounded hover:bg-metric-green hover:text-black transition-colors">+ Добавить</button>
             </div>
-            
             <div class="space-y-3">
-                <div v-for="(master, idx) in userSettings.masters" :key="idx" class="flex gap-2 items-center">
-                     <input 
-                        v-model="master.name" 
-                        placeholder="Имя"
-                        class="flex-1 bg-[#151515] border border-[#333] rounded-lg p-2 text-sm text-white focus:border-metric-green outline-none"
-                     >
-                     <input 
-                        type="number"
-                        v-model.number="master.rate" 
-                        placeholder="₽/час"
-                        class="w-20 bg-[#151515] border border-[#333] rounded-lg p-2 text-sm text-right text-white focus:border-metric-green outline-none"
-                     >
-                     <button @click="removeMaster(idx)" class="text-red-500 p-2 hover:bg-red-900/20 rounded">
+                <div v-for="(m, idx) in userSettings.masters" :key="idx" class="flex gap-2 items-center">
+                    <input v-model="m.name" placeholder="Имя" class="flex-1 bg-[#151515] border border-[#333] rounded-lg p-2 text-sm text-white focus:border-metric-green outline-none">
+                    <input type="number" v-model.number="m.rate" placeholder="₽/час" class="w-20 bg-[#151515] border border-[#333] rounded-lg p-2 text-sm text-right text-white focus:border-metric-green outline-none">
+                    <button @click="removeMaster(idx)" class="text-red-500 p-2 hover:bg-red-900/20 rounded">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                     </button>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Circle Prices -->
         <div class="card-metallic rounded-2xl p-5">
             <div class="text-[10px] font-bold text-metric-green uppercase mb-4 tracking-widest">Круг/Овал (База)</div>
             <div v-for="size in DATA.circleSizes" :key="size.code" class="flex items-center justify-between mb-3 last:mb-0 border-b border-white/5 pb-2 last:border-0 last:pb-0">
@@ -396,16 +450,10 @@
                     <span class="font-bold text-sm text-gray-300">{{ size.code }}</span>
                     <span class="text-xs text-gray-500">{{ size.name }}</span>
                 </div>
-                <input 
-                    type="number" 
-                    v-model.number="userSettings.prices[size.code]" 
-                    inputmode="numeric"
-                    class="w-28 bg-[#151515] border border-[#333] rounded-lg p-2 text-right font-medium text-white shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none"
-                >
+                <input type="number" v-model.number="userSettings.prices[size.code]" inputmode="numeric" class="w-28 bg-[#151515] border border-[#333] rounded-lg p-2 text-right font-medium text-white shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none">
             </div>
         </div>
 
-        <!-- Strip Prices -->
         <div class="card-metallic rounded-2xl p-5">
             <div class="text-[10px] font-bold text-metric-green uppercase mb-4 tracking-widest">Полосы (База)</div>
             <div v-for="size in DATA.stripSizes" :key="size.code" class="flex items-center justify-between mb-3 last:mb-0 border-b border-white/5 pb-2 last:border-0 last:pb-0">
@@ -413,37 +461,23 @@
                     <span class="font-bold text-sm text-gray-300">{{ size.code }}</span>
                     <span class="text-xs text-gray-500">{{ size.name }}</span>
                 </div>
-                <input 
-                    type="number" 
-                    v-model.number="userSettings.prices[size.code]" 
-                    inputmode="numeric"
-                    class="w-28 bg-[#151515] border border-[#333] rounded-lg p-2 text-right font-medium text-white shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none"
-                >
+                <input type="number" v-model.number="userSettings.prices[size.code]" inputmode="numeric" class="w-28 bg-[#151515] border border-[#333] rounded-lg p-2 text-right font-medium text-white shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none">
             </div>
         </div>
 
-        <div class="flex flex-col space-y-3 pt-4 pb-8">
-            <button @click="saveSettings" class="w-full bg-metric-green text-black font-bold py-3.5 rounded-xl active:opacity-90 transition-opacity shadow-[0_0_15px_rgba(136,229,35,0.4)]">
-                Сохранить настройки
-            </button>
-            <button @click="resetDefaults" class="w-full text-gray-400 text-sm font-medium py-3 hover:text-white transition-colors">
-                Сбросить к стандартным
-            </button>
+        <div class="flex flex-col space-y-3 pt-4">
+            <button @click="saveSettings" class="w-full bg-metric-green text-black font-bold py-3.5 rounded-xl active:opacity-90 transition-opacity shadow-[0_0_15px_rgba(136,229,35,0.4)]">Сохранить настройки</button>
+            <button @click="resetDefaults" class="w-full text-gray-400 text-sm font-medium py-3 hover:text-white transition-colors">Сбросить к стандартным</button>
         </div>
     </div>
 
-    <!-- ===========================
-         TAB 3: INSTRUCTIONS (Accordion Design)
-         =========================== -->
-    <div v-if="currentTab === 'info'" class="p-4 pb-24 space-y-3">
-        <!-- Title -->
+    <div v-if="currentTab === 'info'" class="p-4 space-y-3 overflow-y-auto pb-24">
         <div class="flex items-center justify-center pb-4">
             <div class="px-5 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] shadow-lg">
                 <span class="text-[10px] font-bold uppercase text-metric-green tracking-widest">Инструкция & FAQ</span>
             </div>
         </div>
 
-        <!-- Section 1: About App -->
         <details class="group card-metallic rounded-2xl overflow-hidden transition-all">
             <summary class="flex items-center justify-between p-4 cursor-pointer select-none">
                 <div class="flex items-center space-x-3">
@@ -461,7 +495,6 @@
             </div>
         </details>
 
-        <!-- Section 2: How to use -->
         <details class="group card-metallic rounded-2xl overflow-hidden transition-all">
             <summary class="flex items-center justify-between p-4 cursor-pointer select-none">
                 <div class="flex items-center space-x-3">
@@ -481,7 +514,6 @@
             </div>
         </details>
 
-        <!-- Section 3: Decoding Parameters -->
         <details class="group card-metallic rounded-2xl overflow-hidden transition-all">
             <summary class="flex items-center justify-between p-4 cursor-pointer select-none">
                 <div class="flex items-center space-x-3">
@@ -498,10 +530,10 @@
                 <div>
                     <div class="font-bold text-metric-green text-[10px] uppercase mb-2 tracking-widest">СЛОЖНОСТЬ (K)</div>
                     <div class="space-y-1.5">
-                            <div class="flex space-x-2"><span class="text-white font-bold w-6">K1:</span><span>Лёгкая</span></div>
-                            <div class="flex space-x-2"><span class="text-white font-bold w-6">K2:</span><span>Средняя</span></div>
-                            <div class="flex space-x-2"><span class="text-white font-bold w-6">K3:</span><span>Сложная — заломы, плохой доступ.</span></div>
-                            <div class="flex space-x-2"><span class="text-white font-bold w-6">K4:</span><span>Экстра — острые складки, ребра.</span></div>
+                        <div class="flex space-x-2"><span class="text-white font-bold w-6">K1:</span><span>Лёгкая</span></div>
+                        <div class="flex space-x-2"><span class="text-white font-bold w-6">K2:</span><span>Средняя</span></div>
+                        <div class="flex space-x-2"><span class="text-white font-bold w-6">K3:</span><span>Сложная — заломы, плохой доступ.</span></div>
+                        <div class="flex space-x-2"><span class="text-white font-bold w-6">K4:</span><span>Экстра — острые складки, ребра.</span></div>
                     </div>
                 </div>
                 <div>
@@ -511,7 +543,6 @@
             </div>
         </details>
 
-        <!-- Section 4: Time Mode -->
         <details class="group card-metallic rounded-2xl overflow-hidden transition-all">
             <summary class="flex items-center justify-between p-4 cursor-pointer select-none">
                 <div class="flex items-center space-x-3">
@@ -528,7 +559,25 @@
             </div>
         </details>
 
-        <!-- Important Warning -->
+        <details class="group card-metallic rounded-2xl overflow-hidden transition-all">
+            <summary class="flex items-center justify-between p-4 cursor-pointer select-none">
+                <div class="flex items-center space-x-3">
+                    <span class="text-lg opacity-80">🎨</span>
+                    <span class="font-bold text-sm text-white">Графический режим</span>
+                </div>
+                <svg class="w-5 h-5 text-gray-500 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <div class="px-5 pb-5 pt-0 text-sm text-gray-400 leading-relaxed border-t border-white/5 mt-2 pt-4">
+                <p class="mb-2">Расчет на основе площади и расположения повреждения.</p>
+                <ol class="space-y-2 list-decimal pl-4 marker:text-metric-green marker:font-bold">
+                    <li>Выберите класс авто и деталь.</li>
+                    <li>Добавьте вмятину (Круг) или полосу.</li>
+                    <li>Перетаскивайте и меняйте размер фигуры.</li>
+                    <li><b class="text-white">Сложные зоны:</b> Если фигура пересекает красную зону (ребро), цена автоматически увеличивается.</li>
+                </ol>
+            </div>
+        </details>
+
         <div class="border border-red-500/30 bg-red-900/10 rounded-2xl p-4 flex gap-4 items-start mt-4">
             <div class="text-2xl pt-1">⚠️</div>
             <div>
@@ -540,17 +589,10 @@
         </div>
     </div>
 
-    <!-- ===========================
-         BOTTOM NAVIGATION
-         =========================== -->
     <div class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
-        <button 
-            v-for="tab in tabs" 
-            :key="tab.id"
-            @click="switchTab(tab.id)"
-            class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-            :class="currentTab === tab.id ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
-        >
+        <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
+                class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
+                :class="currentTab === tab.id ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'">
             <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">{{ tab.icon }}</span>
             <span class="text-[9px] font-bold uppercase tracking-widest">{{ tab.label }}</span>
         </button>
@@ -559,91 +601,101 @@
 </div>
 
 <script>
-    const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+    const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
 
-    // --- CLIENT DATA (IMMUTABLE CONFIG) ---
+    // --- CONFIG & CONSTANTS ---
+    const PRICE_BASE = 3000;
+    const PRICE_LOG_MULT = 1500;
+    const PX_TO_MM_SCALE = 2;
+    const CELL_SIZE_MM2 = 2500;
+    const RIB_MULTIPLIER = 1.3;
+
+    // GRAPHICS ASSETS (SVG Paths & Ribs)
+    const CAR_PARTS = {
+        door: {
+            id: 'door', name: 'Дверь', icon: 'door',
+            path: 'M20,20 L280,20 Q300,20 300,50 L300,350 Q300,380 280,380 L20,380 Q0,380 0,350 L0,50 Q0,20 20,20 Z',
+            // Ribs visible: red with opacity
+            ribs: [ { x: 0, y: 150, w: 300, h: 20 }, { x: 0, y: 320, w: 300, h: 30 } ]
+        },
+        hood: {
+            id: 'hood', name: 'Капот', icon: 'hood',
+            path: 'M50,20 L250,20 Q280,20 290,100 L300,350 Q300,380 150,390 Q0,380 0,350 L10,100 Q20,20 50,20 Z',
+            ribs: [ { x: 140, y: 20, w: 20, h: 370 }, { x: 50, y: 100, w: 200, h: 20 } ]
+        },
+        fender: {
+            id: 'fender', name: 'Крыло', icon: 'fender',
+            path: 'M20,20 L250,20 Q280,20 280,100 L280,350 Q150,250 20,350 L20,20 Z',
+            ribs: [ { x: 20, y: 180, w: 260, h: 40 } ]
+        },
+        trunk: {
+            id: 'trunk', name: 'Багажник', icon: 'trunk',
+            path: 'M20,20 L280,20 L280,350 L20,350 Z',
+            ribs: [ { x: 0, y: 200, w: 300, h: 30 } ]
+        }
+    };
+
+    // STANDARD DATA
     const initialData = {
-      repairTypes: [
-        { code: 'R1', name: 'Без покраски', mult: 1.0 },
-        { code: 'R2', name: 'Под покраску', mult: 0.85 }
-      ],
-      materials: [
-        { code: 'M1', name: 'Сталь', mult: 1.0 },
-        { code: 'M2', name: 'Алюминий', mult: 1.3 }
-      ],
-      carClasses: [
-        { code: 'CLASS_STD', name: 'Стандарт', mult: 1.0 },
-        { code: 'CLASS_PREM', name: 'Премиум / Новый', mult: 1.2 }
-      ],
-      // UI Selection for Complexity
-      risks: [
-        { code: 'RK1', name: 'Низкий', matrixKey: 'K1' },
-        { code: 'RK2', name: 'Средний', matrixKey: 'K2' },
-        { code: 'RK3', name: 'Высокий', matrixKey: 'K3' },
-        { code: 'RK4', name: 'Экстра', matrixKey: 'K4' }
-      ],
-      disassembly: [
-        { code: 'Z0', name: 'Без разборки', price: 0 },
-        { code: 'Z1', name: 'Фонарь', price: 1000 },
-        { code: 'Z2', name: 'Дверь', price: 2000 },
-        { code: 'Z3', name: 'Потолок', price: 4000 },
-        { code: 'Z4', name: 'Дверь+обшивка', price: 3000 }
-      ],
-      // Default masters if none saved
-      defaultMasters: [
-        { name: 'Андрей', rate: 5000 },
-        { name: 'Аким', rate: 2500 }
-      ],
-      circleSizes: [
-        { code: 'S2', name: 'с монету', basePrice: 2000 },
-        { code: 'S4', name: 'с куриное яйцо', basePrice: 3000 },
-        { code: 'S6', name: 'с апельсин', basePrice: 5000 },
-        { code: 'S8', name: 'с ладонь', basePrice: 7000 },
-        { code: 'S10', name: 'с футбольный мяч', basePrice: 12000 },
-        { code: 'S11', name: 'два мяча', basePrice: 15000 }
-      ],
-      stripSizes: [
-        { code: 'LS1', name: 'с спич. коробок', basePrice: 4000 },
-        { code: 'LS2', name: 'с карандаш', basePrice: 6000 },
-        { code: 'LS3', name: 'с линейку', basePrice: 9000 },
-        { code: 'LS4', name: 'с книгу', basePrice: 13000 },
-        { code: 'LS5', name: 'с ноутбук', basePrice: 16000 },
-        { code: 'LS6', name: 'с полдвери', basePrice: 22000 },
-        { code: 'LS7', name: 'с дверь', basePrice: 30000 },
-        { code: 'LS8', name: 'весь элемент', basePrice: 42000 }
-      ],
-      complexityMatrix: {
-        'S2':  { K1: 1.00, K2: 1.15, K3: 2.30, K4: 4.00 },
-        'S4':  { K1: 1.00, K2: 1.60, K3: 2.30, K4: 4.00 },
-        'S6':  { K1: 1.00, K2: 1.40, K3: 2.00, K4: 3.00 },
-        'S8':  { K1: 1.00, K2: 1.40, K3: 1.80, K4: 3.00 },
-        'S10': { K1: 1.00, K2: 1.30, K3: 1.60, K4: 2.20 },
-        'S11': { K1: 1.00, K2: 1.20, K3: 1.90, K4: 2.70 },
-        'STRIP_DEFAULT': { K1: 0.95, K2: 1.0, K3: 1.15, K4: 1.3 }
-      },
-      defaultHourlyRate: 6000
+        repairTypes: [ { code: 'R1', name: 'Без покраски', mult: 1.0 }, { code: 'R2', name: 'Под покраску', mult: 0.85 } ],
+        materials: [ { code: 'M1', name: 'Сталь', mult: 1.0 }, { code: 'M2', name: 'Алюминий', mult: 1.3 } ],
+        carClasses: [ { code: 'CLASS_STD', name: 'Стандарт', mult: 1.0 }, { code: 'CLASS_PREM', name: 'Премиум / Новый', mult: 1.2 } ],
+        risks: [ { code: 'RK1', name: 'Низкий', matrixKey: 'K1' }, { code: 'RK2', name: 'Средний', matrixKey: 'K2' }, { code: 'RK3', name: 'Высокий', matrixKey: 'K3' }, { code: 'RK4', name: 'Экстра', matrixKey: 'K4' } ],
+        disassembly: [ { code: 'Z0', name: 'Без разборки', price: 0 }, { code: 'Z1', name: 'Фонарь', price: 1000 }, { code: 'Z2', name: 'Дверь', price: 2000 }, { code: 'Z3', name: 'Потолок', price: 4000 }, { code: 'Z4', name: 'Дверь+обшивка', price: 3000 } ],
+        defaultMasters: [ { name: 'Андрей', rate: 5000 }, { name: 'Аким', rate: 2500 } ],
+
+        // Added 'area' in pixels relative to 1:1 scale on canvas for accurate starting size
+        circleSizes: [
+            { code: 'S2', name: 'с монету', basePrice: 2000, radius: 15, area: 706 },
+            { code: 'S4', name: 'с куриное яйцо', basePrice: 3000, radius: 25, area: 1963 },
+            { code: 'S6', name: 'с апельсин', basePrice: 5000, radius: 35, area: 3848 },
+            { code: 'S8', name: 'с ладонь', basePrice: 7000, radius: 45, area: 6361 },
+            { code: 'S10', name: 'с футбольный мяч', basePrice: 12000, radius: 60, area: 11309 },
+            { code: 'S11', name: 'два мяча', basePrice: 15000, radius: 75, area: 17671 }
+        ],
+        stripSizes: [
+            { code: 'LS1', name: 'с спич. коробок', basePrice: 4000, w: 40, h: 20, area: 800 },
+            { code: 'LS2', name: 'с карандаш', basePrice: 6000, w: 80, h: 10, area: 800 },
+            { code: 'LS3', name: 'с линейку', basePrice: 9000, w: 120, h: 10, area: 1200 },
+            { code: 'LS4', name: 'с книгу', basePrice: 13000, w: 150, h: 50, area: 7500 },
+            { code: 'LS5', name: 'с ноутбук', basePrice: 16000, w: 200, h: 100, area: 20000 },
+            { code: 'LS6', name: 'с полдвери', basePrice: 22000, w: 250, h: 150, area: 37500 },
+            { code: 'LS7', name: 'с дверь', basePrice: 30000, w: 280, h: 200, area: 56000 },
+            { code: 'LS8', name: 'весь элемент', basePrice: 42000, w: 300, h: 300, area: 90000 }
+        ],
+
+        complexityMatrix: { 'S2': { K1: 1.00, K2: 1.15, K3: 2.30, K4: 4.00 }, 'S4': { K1: 1.00, K2: 1.60, K3: 2.30, K4: 4.00 }, 'S6': { K1: 1.00, K2: 1.40, K3: 2.00, K4: 3.00 }, 'S8': { K1: 1.00, K2: 1.40, K3: 1.80, K4: 3.00 }, 'S10': { K1: 1.00, K2: 1.30, K3: 1.60, K4: 2.20 }, 'S11': { K1: 1.00, K2: 1.20, K3: 1.90, K4: 2.70 }, 'STRIP_DEFAULT': { K1: 0.95, K2: 1.0, K3: 1.15, K4: 1.3 } }
     };
 
     const APP = createApp({
         setup() {
-            // State
-            const currentTab = ref('calc');
-            const calcMode = ref('standard');
-            
-            // Initial form state with nulls to force selection
+            // STATE
+            const currentTab = ref('calc'); // calc, settings, info
+            const calcMode = ref('standard'); // standard, time, graphics
+            const graphicsStep = ref(1); // 1=Class, 2=Part, 3=Canvas
+
+            // Form Data (Standard/Time)
             const form = reactive({
-                shape: 'circle',
-                sizeCode: null,
-                repairCode: null,
-                riskCode: null,
-                materialCode: null,
-                carClassCode: null,
-                disassemblyCode: null,
-                hours: null,
-                masterIndex: null
+                shape: 'circle', sizeCode: null, repairCode: null, riskCode: null,
+                materialCode: null, carClassCode: null, disassemblyCode: null,
+                hours: null, masterIndex: null
             });
 
-            // Initialize User Settings (Prices & Masters)
+            // Graphics Data
+            const graphicsState = reactive({
+                selectedClass: null,
+                selectedPart: null,
+                selectedSizeCode: 'S2', // DEFAULT SELECTED SIZE
+                dents: []
+            });
+            const showSizeMenu = ref(false); // Показать/скрыть меню
+            const activeToolType = ref(null); // Какой инструмент выбран ('circle' или 'strip')
+            const openSizeMenu = (type) => {
+                haptic('selection');
+                activeToolType.value = type;
+                showSizeMenu.value = true;
+            };
+            // Settings
             const buildDefaultPrices = () => {
                 const p = {};
                 initialData.circleSizes.forEach(s => p[s.code] = s.basePrice);
@@ -654,8 +706,75 @@
             const userSettings = reactive({
                 hourlyRate: 0,
                 prices: buildDefaultPrices(),
-                masters: JSON.parse(JSON.stringify(initialData.defaultMasters)) // Deep copy
+                masters: JSON.parse(JSON.stringify(initialData.defaultMasters))
             });
+
+            // KONVA VARS
+            let stage = null, layerParts = null, layerDents = null, tr = null;
+
+            // --- COMPUTED PRICES ---
+
+            // 1. Standard Price Logic
+            const standardPrice = computed(() => {
+                if (!form.sizeCode || !form.repairCode || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) return 0;
+                const base = userSettings.prices[form.sizeCode] || 0;
+                const riskObj = initialData.risks.find(r => r.code === form.riskCode);
+                const kKey = riskObj ? riskObj.matrixKey : 'K2';
+
+                let matrixRow = initialData.complexityMatrix[form.sizeCode] || initialData.complexityMatrix['STRIP_DEFAULT'];
+                let compMult = matrixRow[kKey] || 1.0;
+
+                const repMult = initialData.repairTypes.find(r => r.code === form.repairCode)?.mult || 1.0;
+                const matMult = initialData.materials.find(m => m.code === form.materialCode)?.mult || 1.0;
+                const clsMult = initialData.carClasses.find(c => c.code === form.carClassCode)?.mult || 1.0;
+                const disCost = initialData.disassembly.find(d => d.code === form.disassemblyCode)?.price || 0;
+
+                const total = (base * repMult * matMult * compMult * clsMult) + disCost;
+                return Math.round(total / 500) * 500;
+            });
+
+            // 2. Time Price Logic
+            const timePrice = computed(() => {
+                if (!form.hours || !form.repairCode || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) return 0;
+
+                const riskObj = initialData.risks.find(r => r.code === form.riskCode);
+                const kKey = riskObj ? riskObj.matrixKey : 'K2';
+                const compMult = initialData.complexityMatrix['STRIP_DEFAULT'][kKey] || 1.0;
+
+                const repMult = initialData.repairTypes.find(r => r.code === form.repairCode)?.mult || 1.0;
+                const matMult = initialData.materials.find(m => m.code === form.materialCode)?.mult || 1.0;
+                const clsMult = initialData.carClasses.find(c => c.code === form.carClassCode)?.mult || 1.0;
+
+                const disCost = initialData.disassembly.find(d => d.code === form.disassemblyCode)?.price || 0;
+
+                const laborBase = (form.hours * userSettings.hourlyRate);
+
+                const total = (laborBase * repMult * matMult * compMult * clsMult) + disCost;
+                return Math.round(total / 100) * 100;
+            });
+
+            // 3. Graphics Price Logic (Interpolation)
+            const graphicsPrice = computed(() => {
+                if (graphicsState.dents.length === 0) return 0;
+                const sorted = [...graphicsState.dents].sort((a, b) => b.price - a.price);
+                let total = sorted[0].price;
+                for (let i = 1; i < sorted.length; i++) {
+                    total += sorted[i].price * 0.5; // 50% discount for additional dents
+                }
+                return Math.round(total / 100) * 100;
+            });
+
+            // UNIFIED TOTAL PRICE
+            const totalPrice = computed(() => {
+                if (currentTab.value === 'calc') {
+                    if (calcMode.value === 'standard') return standardPrice.value;
+                    if (calcMode.value === 'time') return timePrice.value;
+                    if (calcMode.value === 'graphics') return graphicsPrice.value;
+                }
+                return 0;
+            });
+
+            const currentSizeList = computed(() => form.shape === 'circle' ? initialData.circleSizes : initialData.stripSizes);
 
             const tabs = [
                 { id: 'calc', label: 'Калькулятор', icon: '🧮' },
@@ -663,101 +782,34 @@
                 { id: 'info', label: 'Инфо', icon: 'ℹ️' }
             ];
 
-            // Computed
-            const currentSizeList = computed(() => {
-                return form.shape === 'circle' ? initialData.circleSizes : initialData.stripSizes;
-            });
-
-            // --- MAIN CALCULATION LOGIC ---
-            const totalPrice = computed(() => {
-                // Return 0 if mandatory fields are missing
-                if (calcMode.value === 'standard') {
-                     if (!form.sizeCode || !form.repairCode || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) {
-                         return 0;
-                     }
-                } else {
-                     if (form.masterIndex === null || !form.repairCode || !form.hours || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) {
-                         return 0;
-                     }
-                }
-
-                // 1. Base Price from Size (lookup in userSettings for overrides)
-                const sizeBase = userSettings.prices[form.sizeCode] || 0;
-
-                // 2. Base Calculation (Standard vs Time)
-                let calculationBase = 0;
-                let complexityMult = 1.0;
-
-                const riskObj = initialData.risks.find(r => r.code === form.riskCode);
-                const kKey = riskObj ? riskObj.matrixKey : 'K2';
-
-                if (calcMode.value === 'standard') {
-                    // Standard Mode: Base Size Price
-                    calculationBase = sizeBase;
-                    
-                    // Determine Complexity based on Size
-                    let matrixRow = initialData.complexityMatrix[form.sizeCode];
-                    if (!matrixRow) {
-                        matrixRow = initialData.complexityMatrix['STRIP_DEFAULT'];
-                    }
-                    complexityMult = matrixRow ? matrixRow[kKey] : 1.0;
-                } else {
-                    // Time Mode: Labor Cost (Hours * Rate)
-                    const laborCost = (form.hours || 0) * userSettings.hourlyRate;
-                    calculationBase = laborCost;
-
-                    // Use standard complexity multipliers for time mode (or strip default)
-                    const matrixRow = initialData.complexityMatrix['STRIP_DEFAULT'];
-                    complexityMult = matrixRow ? matrixRow[kKey] : 1.0;
-                }
-
-                // 3. Multipliers
-                const repair = initialData.repairTypes.find(r => r.code === form.repairCode);
-                const repairMult = repair ? repair.mult : 1.0;
-
-                const material = initialData.materials.find(m => m.code === form.materialCode);
-                const materialMult = material ? material.mult : 1.0;
-
-                const carClass = initialData.carClasses.find(c => c.code === form.carClassCode);
-                const carClassMult = carClass ? carClass.mult : 1.0;
-
-                // 4. Add-on (Disassembly)
-                const disassembly = initialData.disassembly.find(d => d.code === form.disassemblyCode);
-                const disassemblyCost = disassembly ? disassembly.price : 0;
-
-                // Formula: (Base * Repair * Material * Complexity * CarClass) + Disassembly
-                const total = (calculationBase * repairMult * materialMult * complexityMult * carClassMult) + disassemblyCost;
-
-                return Math.round(total / 500) * 500;
-            });
-
-            // Methods
-            const updateRateFromMaster = () => {
-                if (form.masterIndex === null) return;
-                const master = userSettings.masters[form.masterIndex];
-                if (master) {
-                    userSettings.hourlyRate = master.rate;
-                }
+            const graphicsData = {
+                carClasses: [
+                    { id: 'sedan', name: 'Седан', icon: '🚗' },
+                    { id: 'crossover', name: 'Кроссовер', icon: '🚙' },
+                    { id: 'suv', name: 'Внедорожник', icon: '🚜' }
+                ],
+                partsList: Object.values(CAR_PARTS)
             };
 
-            const addMaster = () => {
-                userSettings.masters.push({ name: '', rate: 0 });
-            };
+            // --- METHODS ---
 
-            const removeMaster = (index) => {
-                userSettings.masters.splice(index, 1);
+            const formatCurrency = (v) => new Intl.NumberFormat('ru-RU').format(v);
+
+            const haptic = (type) => {
+                const tg = window.Telegram?.WebApp;
+                if (!tg?.HapticFeedback) return;
+                if (tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
+                    if (type === 'selection') tg.HapticFeedback.selectionChanged();
+                    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+                }
             };
 
             const setMode = (mode) => {
                 calcMode.value = mode;
-                resetForm(); // Reset when switching modes for clarity
-            };
-
-            const setShape = (shape) => {
-                form.shape = shape;
-                // Reset size when shape changes because options change
-                form.sizeCode = null; 
                 haptic('selection');
+                if (mode === 'graphics' && graphicsStep.value === 3) {
+                    setTimeout(initKonva, 100);
+                }
             };
 
             const switchTab = (tab) => {
@@ -765,26 +817,240 @@
                 haptic('selection');
             };
 
-            const resetForm = () => {
-                form.sizeCode = null;
-                form.repairCode = null;
-                form.riskCode = null;
-                form.materialCode = null;
-                form.carClassCode = null;
-                form.disassemblyCode = null;
-                form.hours = null;
-                form.masterIndex = null;
-                userSettings.hourlyRate = 0;
+            // Graphics Methods
+            const selectGraphicsClass = (cls) => {
+                graphicsState.selectedClass = cls;
+                graphicsStep.value = 2;
                 haptic('selection');
             };
 
-            const saveSettings = () => {
-                const dataToSave = {
-                    prices: userSettings.prices,
-                    masters: userSettings.masters
+            const selectGraphicsPart = (part) => {
+                graphicsState.selectedPart = part;
+                graphicsStep.value = 3;
+                haptic('selection');
+                nextTick(() => {
+                    setTimeout(initKonva, 100);
+                });
+            };
+
+            const closeEditor = () => {
+                graphicsStep.value = 2;
+                graphicsState.dents = [];
+                haptic('selection');
+            };
+
+            const resetGraphics = () => {
+                if (layerDents) {
+                    layerDents.destroyChildren();
+                    tr = new Konva.Transformer({
+                        anchorStroke: '#88E523', anchorFill: '#0B121E', anchorSize: 10,
+                        borderStroke: '#88E523', borderDash: [4, 4], centeredScaling: true
+                    });
+                    layerDents.add(tr);
+                    layerDents.draw();
+                }
+                graphicsState.dents = [];
+                haptic('selection');
+            };
+
+            const initKonva = () => {
+                const container = document.getElementById('konva-container');
+                if (!container) return;
+
+                const w = container.offsetWidth;
+                const h = container.offsetHeight;
+
+                if (stage) stage.destroy();
+
+                stage = new Konva.Stage({ container: 'konva-container', width: w, height: h });
+                layerParts = new Konva.Layer();
+                stage.add(layerParts);
+
+                const partData = graphicsState.selectedPart;
+                const scaleX = w / 320;
+                const scaleY = h / 420;
+                const scale = Math.min(scaleX, scaleY);
+
+                const partShape = new Konva.Path({
+                    data: partData.path,
+                    fill: '#151F2E', stroke: '#334155', strokeWidth: 3 / scale,
+                    shadowColor: 'black', shadowBlur: 20, shadowOpacity: 0.5,
+                    scaleX: scale, scaleY: scale,
+                    x: (w - (300 * scale)) / 2,
+                    y: (h - (400 * scale)) / 2
+                });
+                layerParts.add(partShape);
+
+                // Invisible Ribs (NOW VISIBLE as semi-transparent RED)
+                if (partData.ribs) {
+                    partData.ribs.forEach(rib => {
+                        const ribRect = new Konva.Rect({
+                            x: rib.x * scale + partShape.x(),
+                            y: rib.y * scale + partShape.y(),
+                            width: rib.w * scale, height: rib.h * scale,
+                            fill: 'rgba(255, 50, 50, 0.25)', // VISIBLE RED ZONE
+                            stroke: 'rgba(255, 50, 50, 0.5)',
+                            strokeWidth: 1,
+                            name: 'rib', listening: false
+                        });
+                        layerParts.add(ribRect);
+                    });
+                }
+
+                layerDents = new Konva.Layer();
+                stage.add(layerDents);
+
+                tr = new Konva.Transformer({
+                    anchorStroke: '#88E523', anchorFill: '#0B121E', anchorSize: 15,
+                    borderStroke: '#88E523', borderDash: [4, 4], centeredScaling: true
+                });
+                layerDents.add(tr);
+
+                stage.on('click tap', (e) => {
+                    if (e.target === stage || e.target === partShape) tr.nodes([]);
+                });
+
+                layerParts.draw();
+                layerDents.draw();
+            };
+
+            // Interpolation helper for smooth pricing
+            const getInterpolatedPrice = (areaPx, type) => {
+                const sizes = type === 'circle' ? initialData.circleSizes : initialData.stripSizes;
+                // Sort sizes by area just in case
+                const sortedSizes = [...sizes].sort((a,b) => a.area - b.area);
+
+                // If smaller than smallest
+                if (areaPx <= sortedSizes[0].area) return userSettings.prices[sortedSizes[0].code];
+                // If larger than largest
+                if (areaPx >= sortedSizes[sortedSizes.length-1].area) return userSettings.prices[sortedSizes[sortedSizes.length-1].code];
+
+                // Find bracket
+                for (let i = 0; i < sortedSizes.length - 1; i++) {
+                    const s1 = sortedSizes[i];
+                    const s2 = sortedSizes[i+1];
+                    if (areaPx >= s1.area && areaPx <= s2.area) {
+                        const p1 = userSettings.prices[s1.code];
+                        const p2 = userSettings.prices[s2.code];
+                        const ratio = (areaPx - s1.area) / (s2.area - s1.area);
+                        return p1 + (p2 - p1) * ratio;
+                    }
+                }
+                return userSettings.prices[sortedSizes[0].code];
+            };
+
+            // Эта функция вызывается когда юзер выбрал размер в меню
+            const confirmAddShape = (sizeCode) => {
+                if (!stage) return;
+                haptic('selection');
+
+                // 1. Скрываем меню
+                showSizeMenu.value = false;
+
+                const type = activeToolType.value;
+                const centerX = stage.width() / 2;
+                const centerY = stage.height() / 2;
+                const id = Date.now();
+
+                // 2. Ищем параметры выбранного размера
+                let sizeObj;
+                if (type === 'circle') {
+                    sizeObj = initialData.circleSizes.find(s => s.code === sizeCode);
+                } else {
+                    sizeObj = initialData.stripSizes.find(s => s.code === sizeCode);
+                }
+
+                // Защита от сбоя
+                if (!sizeObj) return;
+
+                let shape;
+                if (type === 'circle') {
+                    shape = new Konva.Ellipse({
+                        x: centerX, y: centerY,
+                        radiusX: sizeObj.radius,
+                        radiusY: sizeObj.radius,
+                        fill: 'rgba(136, 229, 35, 0.3)', stroke: '#88E523', strokeWidth: 2,
+                        draggable: true, name: 'dent', id: id.toString()
+                    });
+                } else {
+                    shape = new Konva.Rect({
+                        x: centerX - (sizeObj.w)/2,
+                        y: centerY - (sizeObj.h)/2,
+                        width: sizeObj.w,
+                        height: sizeObj.h,
+                        cornerRadius: 5,
+                        fill: 'rgba(200, 200, 200, 0.3)', stroke: '#A0AEC0', strokeWidth: 2,
+                        draggable: true, name: 'dent', id: id.toString()
+                    });
+                }
+
+                // Внутренняя функция пересчета (та же самая, что была)
+                const updateShapeCalc = () => {
+                    const scaleX = shape.scaleX();
+                    const scaleY = shape.scaleY();
+                    let areaPx = 0;
+
+                    if (shape.className === 'Ellipse') {
+                        areaPx = Math.PI * (shape.radiusX() * scaleX) * (shape.radiusY() * scaleY);
+                    } else {
+                        areaPx = (shape.width() * scaleX) * (shape.height() * scaleY);
+                    }
+
+                    const shapeRect = shape.getClientRect();
+                    const ribs = stage.find('.rib');
+                    let isComplex = false;
+
+                    for (let rib of ribs) {
+                        if (Konva.Util.haveIntersection(rib.getClientRect(), shapeRect)) {
+                            isComplex = true;
+                            break;
+                        }
+                    }
+
+                    let price = getInterpolatedPrice(areaPx, type);
+
+                    if (isComplex) price *= RIB_MULTIPLIER;
+
+                    if (isComplex) {
+                        shape.stroke('#FF4444');
+                        shape.fill('rgba(255, 68, 68, 0.3)');
+                    } else {
+                        shape.stroke(type === 'circle' ? '#88E523' : '#A0AEC0');
+                        shape.fill(type === 'circle' ? 'rgba(136, 229, 35, 0.3)' : 'rgba(200, 200, 200, 0.3)');
+                    }
+
+                    const idx = graphicsState.dents.findIndex(d => d.id === id);
+                    const dentData = { id, price, area: areaPx, isComplex };
+                    if (idx === -1) graphicsState.dents.push(dentData);
+                    else graphicsState.dents[idx] = dentData;
                 };
+
+                shape.on('dragmove transform', updateShapeCalc);
+                shape.on('click tap', () => tr.nodes([shape]));
+
+                layerDents.add(shape);
+                tr.nodes([shape]);
+                updateShapeCalc();
+            };
+
+            // Standard Logic helpers
+            const setShape = (s) => { form.shape = s; form.sizeCode = null; haptic('selection'); };
+            const resetForm = () => {
+                form.sizeCode = null; form.repairCode = null; form.riskCode = null;
+                form.materialCode = null; form.carClassCode = null; form.disassemblyCode = null;
+                form.hours = null; form.masterIndex = null;
+                haptic('selection');
+            };
+            const updateRateFromMaster = () => {
+                if (form.masterIndex !== null) userSettings.hourlyRate = userSettings.masters[form.masterIndex].rate;
+            };
+            const addMaster = () => userSettings.masters.push({name:'', rate:0});
+            const removeMaster = (i) => userSettings.masters.splice(i, 1);
+
+            const saveSettings = () => {
+                const dataToSave = { prices: userSettings.prices, masters: userSettings.masters };
                 localStorage.setItem('dentRepairSettings_v5', JSON.stringify(dataToSave));
-                
+
                 const tg = window.Telegram?.WebApp;
                 if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
                     tg.showPopup({ title: 'Готово', message: 'Настройки сохранены', buttons: [{type:'ok'}] });
@@ -797,102 +1063,14 @@
             const resetDefaults = () => {
                 const runReset = () => {
                     const defaultPrices = buildDefaultPrices();
-                    // We do NOT reset masters anymore based on user request.
-                    // const defaultMasters = JSON.parse(JSON.stringify(initialData.defaultMasters));
-                    
-                    // Update prices in place
                     Object.keys(userSettings.prices).forEach(key => delete userSettings.prices[key]);
                     Object.assign(userSettings.prices, defaultPrices);
-                    
-                    // userSettings.masters.splice(0, userSettings.masters.length, ...defaultMasters);
-                    
-                    // Save silently
-                    const dataToSave = {
-                        prices: userSettings.prices,
-                        masters: userSettings.masters
-                    };
-                    localStorage.setItem('dentRepairSettings_v5', JSON.stringify(dataToSave));
-                    
-                    // Notify
-                    const tg = window.Telegram?.WebApp;
-                    if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-                        tg.showPopup({ title: 'Сброс', message: 'Цены сброшены к стандартным', buttons: [{type:'ok'}] });
-                    } else {
-                        alert('Цены сброшены');
-                    }
-                    haptic('success');
+                    saveSettings();
                 };
-
-                const tg = window.Telegram?.WebApp;
-                if (tg && tg.showConfirm && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-                    tg.showConfirm("Сбросить цены к стандартным?", (ok) => { 
-                        if (ok) runReset(); 
-                    });
-                } else {
-                    if (confirm("Сбросить цены к стандартным?")) runReset();
-                }
+                if (confirm("Сбросить цены к стандартным?")) runReset();
             };
 
-            const formatCurrency = (val) => {
-                return new Intl.NumberFormat('ru-RU').format(val);
-            };
-
-            const haptic = (type) => {
-                const tg = window.Telegram?.WebApp;
-                if (!tg?.HapticFeedback) return;
-                if (tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
-                    if (type === 'selection') tg.HapticFeedback.selectionChanged();
-                    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
-                }
-            };
-
-            // Lifecycle
-            onMounted(() => {
-                // Load Settings (Prices & Masters)
-                const savedData = localStorage.getItem('dentRepairSettings_v5');
-                // Backward compatibility check for v4 price-only save
-                const oldPrices = localStorage.getItem('dentRepairPrices_v4');
-
-                if (savedData) {
-                    try { 
-                        const parsed = JSON.parse(savedData);
-                        if(parsed.prices) Object.assign(userSettings.prices, parsed.prices);
-                        if(parsed.masters) {
-                             userSettings.masters.splice(0, userSettings.masters.length, ...parsed.masters);
-                        }
-                    } catch(e) { console.error(e); }
-                } else if (oldPrices) {
-                     try { 
-                        Object.assign(userSettings.prices, JSON.parse(oldPrices)); 
-                    } catch(e) { console.error(e); }
-                }
-
-                // Telegram Init
-                if (window.Telegram?.WebApp) {
-                    const tg = window.Telegram.WebApp;
-                    tg.ready();
-                    tg.expand();
-                    tg.setHeaderColor('#000000');
-                    tg.setBackgroundColor('#000000');
-                    
-                    if (tg.MainButton.setParams) {
-                        tg.MainButton.setParams({
-                            color: '#88E523',
-                            text_color: '#000000'
-                        });
-                    }
-                    
-                    tg.MainButton.onClick(() => {
-                        if (currentTab.value !== 'calc') {
-                            switchTab('calc');
-                        } else {
-                            haptic('success');
-                        }
-                    });
-                }
-            });
-
-            // Update Telegram Main Button
+            // Telegram Main Button Sync
             watch(totalPrice, (val) => {
                 if (window.Telegram?.WebApp?.MainButton) {
                     const btn = window.Telegram.WebApp.MainButton;
@@ -903,20 +1081,34 @@
                         btn.hide();
                     }
                 }
-            }, { immediate: true });
+            });
+
+            onMounted(() => {
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                    window.Telegram.WebApp.MainButton.setParams({ color: '#88E523', text_color: '#000000' });
+                }
+                // Load Settings logic
+                const saved = localStorage.getItem('dentRepairSettings_v5');
+                if (saved) {
+                    const p = JSON.parse(saved);
+                    if(p.prices) Object.assign(userSettings.prices, p.prices);
+                    if(p.masters) userSettings.masters = p.masters;
+                }
+            });
 
             return {
-                currentTab, calcMode, form, userSettings, tabs,
-                DATA: initialData, currentSizeList, totalPrice,
-                setMode, setShape, switchTab, saveSettings, resetDefaults, 
-                formatCurrency, updateRateFromMaster, resetForm,
-                addMaster, removeMaster
+                currentTab, calcMode, graphicsStep, form, userSettings, tabs,
+                DATA: initialData, currentSizeList, graphicsData, graphicsState,
+                totalPrice, formatCurrency,
+                setMode, switchTab, setShape, resetForm, updateRateFromMaster, addMaster, removeMaster, saveSettings, resetDefaults,
+                selectGraphicsClass, selectGraphicsPart, closeEditor, resetGraphics, showSizeMenu, activeToolType, openSizeMenu, confirmAddShape
             };
         }
     });
 
     APP.mount('#app');
 </script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
