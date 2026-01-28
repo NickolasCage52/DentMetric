@@ -26,20 +26,18 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: dentmetric/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install
-        working-directory: dentmetric
         run: npm ci
 
       - name: Build
-        working-directory: dentmetric
         run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dentmetric/dist
+          path: dist
 
   deploy:
     environment:
