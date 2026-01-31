@@ -63,6 +63,11 @@ let contentWidth = 0;
 let contentHeight = 0;
 /** Scheduler: один fit за RAF, без дерганий */
 let fitPending = false;
+/** Размеры stage при последнем fit (чтобы не двигать вид при ложном resize, напр. после закрытия модалки) */
+let lastFitW = 0;
+let lastFitH = 0;
+/** Допуск в px: при изменении размера не больше этого считаем "без изменений", вид статичен */
+const FIT_SIZE_TOLERANCE_PX = 4;
 /** Сложные зоны в px в координатах stage для расчёта пересечения */
 let heatZonesPx = [];
 /** Тёмный фон stage в режиме мм (под contentGroup) */
@@ -395,6 +400,8 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
     basePos = { x: fit.posFit.x, y: fit.posFit.y };
     userScale = 1;
     userPan = { x: 0, y: 0 };
+    lastFitW = w;
+    lastFitH = h;
     applyTransform();
     contentGroup.dragBoundFunc((pos) => clampGroupPos(pos));
     contentGroup.on('dragmove', () => {
@@ -589,7 +596,8 @@ function updateCameraDraggable() {
 }
 
 /**
- * clampGroupPos(pos) — для contentGroup.dragBoundFunc (возвращает позицию без мутации).
+ * clampGroupPos(pos) — для contentGroup.dragBoundFunc и panBy.
+ * Когда контент больше stage (scaledW > stageW), x допустим в [stageW - scaledW, 0], иначе Math.max(0, ...) давало 0 и вид уезжал в левый верхний угол.
  */
 function clampGroupPos(pos) {
   if (!contentGroup || !stage || contentWidth <= 0 || contentHeight <= 0) return pos;
@@ -601,12 +609,14 @@ function clampGroupPos(pos) {
   let x = pos.x;
   let y = pos.y;
   if (scaledW >= stageW) {
-    x = Math.max(0, Math.min(stageW - scaledW, x));
+    const minX = stageW - scaledW;
+    x = Math.max(minX, Math.min(0, x));
   } else {
     x = (stageW - scaledW) / 2;
   }
   if (scaledH >= stageH) {
-    y = Math.max(0, Math.min(stageH - scaledH, y));
+    const minY = stageH - scaledH;
+    y = Math.max(minY, Math.min(0, y));
   } else {
     y = (stageH - scaledH) / 2;
   }
@@ -701,17 +711,21 @@ export function getZoom() {
   return contentGroup ? userScale : 1;
 }
 
-/** Шаг панорамирования в экранных пикселях (в stage-координатах). */
+/** Шаг панорамирования в экранных пикселях (stage). */
 const PAN_STEP_PX = 40;
 
 /**
- * Pan by UI buttons: сдвиг userPan; затем clamp и applyTransform.
+ * Pan by UI buttons: стрелка = направление вида (куда смотрим).
+ * Вправо (40,0) → userPan.x -= 40 → контент влево, видим правую часть. Вверх (0,-40) → userPan.y -= (-40) → контент вниз, видим верх.
+ * Проверяем userScale (не zoom), иначе при fit пан не срабатывал.
  */
 export function panBy(dx, dy) {
   if (!contentGroup || !stage) return;
-  if (zoom <= 1.01) return;
-  userPan.x -= Number(dx) || 0;
-  userPan.y -= Number(dy) || 0;
+  if (userScale <= 1.01) return;
+  const sx = Number(dx) || 0;
+  const sy = Number(dy) || 0;
+  userPan.x -= sx;
+  userPan.y -= sy;
   const clamped = clampGroupPos({ x: basePos.x + userPan.x, y: basePos.y + userPan.y });
   userPan.x = clamped.x - basePos.x;
   userPan.y = clamped.y - basePos.y;
@@ -751,12 +765,22 @@ export function resizeStageToContainer() {
 
 /**
  * Один раз: resize контейнера + пересчёт baseTransform (+ опционально сброс user). Без дерганий.
+ * Если размеры изменились не больше чем на FIT_SIZE_TOLERANCE_PX (напр. скроллбар/модалка) — basePos/baseScale не трогаем, вид статичен.
  */
 function doResizeAndFitOnce(resetUser) {
   resizeStageToContainer();
   if (!contentGroup || contentWidth <= 0 || contentHeight <= 0) return;
   const vw = stage.width();
   const vh = stage.height();
+  const tol = FIT_SIZE_TOLERANCE_PX;
+  const sizeUnchanged = lastFitW > 0 && lastFitH > 0 &&
+    Math.abs(vw - lastFitW) <= tol && Math.abs(vh - lastFitH) <= tol;
+  if (!resetUser && sizeUnchanged) {
+    applyTransform();
+    return;
+  }
+  lastFitW = vw;
+  lastFitH = vh;
   const fit = computeFitTransform(vw, vh);
   baseScale = fit.scaleFit;
   basePos = { x: fit.posFit.x, y: fit.posFit.y };
@@ -1470,6 +1494,8 @@ export function destroyKonva() {
   userPan = { x: 0, y: 0 };
   zoom = 1;
   fitPending = false;
+  lastFitW = 0;
+  lastFitH = 0;
   layerParts = null;
   layerGrid = null;
   layerDents = null;

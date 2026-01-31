@@ -478,14 +478,14 @@
       ></div>
     </div>
 
-    <!-- Size menu modal (graphics): teleport into graphicsRoot when step 3 so it appears in fullscreen -->
+    <!-- Size menu modal (graphics): по центру экрана; teleport в graphicsRoot при step 3 для fullscreen -->
     <Teleport :to="sizeMenuPortalTarget" :disabled="!sizeMenuPortalTarget">
       <div
         v-if="showSizeMenu"
-        class="absolute inset-0 z-[10000] flex items-end justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
+        class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
         @click.self="showSizeMenu = false"
       >
-        <div class="bg-[#151F2E] w-full rounded-t-2xl p-5 border-t border-white/10 shadow-2xl space-y-4 pb-8">
+        <div class="bg-[#151F2E] w-full max-w-md rounded-2xl p-5 border border-white/10 shadow-2xl space-y-4 pb-8 max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b border-white/5 pb-3">
           <h3 class="text-white font-bold text-lg pl-1">
             Выберите размер ({{ activeToolType === 'circle' ? 'Круг/Овал' : 'Полоса' }})
@@ -967,6 +967,10 @@ const resetGraphics = () => {
 
 let resizeObserverKonva = null;
 let resizeObservedEl = null;
+/** Размер контейнера при последнем fit; не вызывать scheduleFit при мелких сдвигах (модалка, скроллбар) */
+let lastKonvaW = 0;
+let lastKonvaH = 0;
+const RESIZE_FIT_THRESHOLD_PX = 5;
 
 const initKonvaEditor = async () => {
   if (!konvaContainer.value || !graphicsState.selectedPart) return;
@@ -985,9 +989,21 @@ const initKonvaEditor = async () => {
     (info) => { selectedDentSize.value = info; }
   );
   editorZoom.value = getZoom();
+  lastKonvaW = konvaContainer.value.offsetWidth || 0;
+  lastKonvaH = konvaContainer.value.offsetHeight || 0;
   resizeObservedEl = konvaContainer.value;
   resizeObserverKonva = new ResizeObserver(() => {
-    if (konvaContainer.value) scheduleFit('resize');
+    if (!konvaContainer.value) return;
+    const w = konvaContainer.value.offsetWidth || 0;
+    const h = konvaContainer.value.offsetHeight || 0;
+    const t = RESIZE_FIT_THRESHOLD_PX;
+    const significant = lastKonvaW === 0 && lastKonvaH === 0 ||
+      Math.abs(w - lastKonvaW) > t || Math.abs(h - lastKonvaH) > t;
+    if (significant) {
+      lastKonvaW = w;
+      lastKonvaH = h;
+      scheduleFit('resize');
+    }
   });
   resizeObserverKonva.observe(resizeObservedEl);
 };
