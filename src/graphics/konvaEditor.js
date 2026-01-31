@@ -343,8 +343,17 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
   pxPerMm = null;
   imageRect = null;
 
-  const w = containerEl.offsetWidth;
-  const h = containerEl.offsetHeight;
+  let w = containerEl.offsetWidth || 0;
+  let h = containerEl.offsetHeight || 0;
+  if (w <= 0 || h <= 0) {
+    await new Promise((r) => requestAnimationFrame(r));
+    w = containerEl.offsetWidth || 0;
+    h = containerEl.offsetHeight || 0;
+  }
+  if (w <= 0 || h <= 0) {
+    w = Math.max(w, 320);
+    h = Math.max(h, 240);
+  }
   stageBounds = { x: 0, y: 0, width: w, height: h };
 
   if (stage) stage.destroy();
