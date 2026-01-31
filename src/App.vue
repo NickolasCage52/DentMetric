@@ -395,8 +395,14 @@
                 </div>
               </div>
             </div>
-            <!-- Размеры (мм): только при выбранной вмятине -->
-            <div v-if="selectedDentSize" class="mt-1.5 rounded-xl bg-black/35 border border-white/10 p-2.5">
+            <!-- Размеры (мм): только при выбранной вмятине; keyboard-aware на мобилке -->
+            <div
+              v-if="selectedDentSize"
+              ref="dimensionsPanelRef"
+              :class="{ 'dimensions-panel-keyboard-open': isKeyboardOpen }"
+              :style="dimensionsPanelKeyboardStyle"
+              class="mt-1.5 rounded-xl bg-black/35 border border-white/10 p-2.5 transition-[bottom] duration-200"
+            >
               <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-2">Размеры (мм)</div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
@@ -407,7 +413,10 @@
                     min="0.1"
                     max="2000"
                     step="0.5"
+                    inputmode="decimal"
+                    enterkeyhint="done"
                     class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
+                    @focus="onDimensionsInputFocus"
                   />
                 </div>
                 <div>
@@ -418,9 +427,15 @@
                     min="0.1"
                     max="2000"
                     step="0.5"
+                    inputmode="decimal"
+                    enterkeyhint="done"
                     class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
+                    @focus="onDimensionsInputFocus"
                   />
                 </div>
+              </div>
+              <div v-if="isKeyboardOpen" class="mt-3 flex justify-end">
+                <button type="button" class="text-metric-green text-sm font-medium px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 active:opacity-90" @click="closeDimensionsKeyboard">Готово</button>
               </div>
             </div>
             <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
@@ -771,6 +786,52 @@ const selectedDentSize = ref(null);
 const sizeWidthMm = ref(0);
 const sizeHeightMm = ref(0);
 let sizeApplyTimeout = null;
+
+/** Keyboard-aware: высота клавиатуры (px) для панели размеров на мобилке */
+const keyboardInset = ref(0);
+const isKeyboardOpen = computed(() => keyboardInset.value > 0);
+let keyboardInsetRaf = null;
+function updateKeyboardInset() {
+  if (keyboardInsetRaf) return;
+  keyboardInsetRaf = requestAnimationFrame(() => {
+    keyboardInsetRaf = null;
+    const vv = window.visualViewport;
+    if (!vv) {
+      keyboardInset.value = 0;
+      return;
+    }
+    const inset = window.innerHeight - vv.height - (vv.offsetTop || 0);
+    keyboardInset.value = Math.max(0, Math.round(inset));
+  });
+}
+/** Стили панели размеров при открытой клавиатуре: фиксируем над клавиатурой */
+const dimensionsPanelKeyboardStyle = computed(() => {
+  if (!isKeyboardOpen.value) return undefined;
+  const px = keyboardInset.value;
+  return {
+    position: 'fixed',
+    left: 0,
+    right: 0,
+    bottom: `calc(12px + env(safe-area-inset-bottom, 0px) + ${px}px)`,
+    maxHeight: `calc(100vh - ${px}px - 24px)`,
+    zIndex: 1000,
+    overflow: 'auto'
+  };
+});
+/** При фокусе на input размеров — поднять поле в зону видимости (над клавиатурой) */
+function onDimensionsInputFocus(event) {
+  const el = event?.target;
+  if (!el || !el.scrollIntoView) return;
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    }, 200);
+  });
+}
+function closeDimensionsKeyboard() {
+  const active = document.activeElement;
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) active.blur();
+}
 
 watch(selectedDentSize, (info) => {
   if (info) {
@@ -1138,6 +1199,9 @@ const handleKeyDown = (e) => {
   }
 };
 
+function onVisualViewportResize() { updateKeyboardInset(); }
+function onVisualViewportScroll() { updateKeyboardInset(); }
+
 onMounted(() => {
   if (window.Telegram?.WebApp) {
     window.Telegram.WebApp.ready();
@@ -1146,6 +1210,12 @@ onMounted(() => {
   }
   window.addEventListener('keydown', handleKeyDown);
   document.addEventListener('fullscreenchange', onFullscreenChange);
+  const vv = window.visualViewport;
+  if (vv) {
+    vv.addEventListener('resize', onVisualViewportResize);
+    vv.addEventListener('scroll', onVisualViewportScroll);
+    updateKeyboardInset();
+  }
 });
 
 onBeforeUnmount(() => {
@@ -1154,6 +1224,11 @@ onBeforeUnmount(() => {
   if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   window.removeEventListener('keydown', handleKeyDown);
+  const vv = window.visualViewport;
+  if (vv) {
+    vv.removeEventListener('resize', onVisualViewportResize);
+    vv.removeEventListener('scroll', onVisualViewportScroll);
+  }
   if (resizeObserverKonva && resizeObservedEl) {
     resizeObserverKonva.unobserve(resizeObservedEl);
     resizeObserverKonva = null;
