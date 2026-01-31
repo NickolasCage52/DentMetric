@@ -30,6 +30,7 @@ const HANDLE_STROKE = 'rgba(136,229,35,0.85)';
 const HANDLE_RING_STROKE = 'rgba(136,229,35,0.35)';
 
 let stage = null;
+let containerRef = null;
 let layerParts = null;
 let layerGrid = null;
 let layerDents = null;
@@ -37,6 +38,8 @@ let tr = null;
 let selectedPart = null;
 let prices = {};
 let onDentChangeCallback = null;
+/** Вызывается при смене выбора или изменении размеров выбранной вмятины (для UI «Размеры мм»). */
+let onSelectedDentChangeCallback = null;
 let dentsMap = new Map();
 let partBounds = null;
 let stageBounds = null;
@@ -48,11 +51,18 @@ let imageRect = null; // { x, y, width, height } — bbox в координат�
 let imageNode = null; // Konva.Image/Rect детали для getClientRect (режим мм)
 let useMmMode = false;
 
-/** Зум (пока отключён для режима мм — всё в координатах stage) */
+/** Двухуровневый transform: base (fit) + user (zoom/pan). Итог = baseScale*userScale, basePos+userPan */
+let baseScale = 1;
+let basePos = { x: 0, y: 0 };
+let userScale = 1;
+let userPan = { x: 0, y: 0 };
+/** Для совместимости: итоговый scale (baseScale*userScale); обновляется в applyTransform */
 let zoom = 1;
 let contentGroup = null;
 let contentWidth = 0;
 let contentHeight = 0;
+/** Scheduler: один fit за RAF, без дерганий */
+let fitPending = false;
 /** Сложные зоны в px в координатах stage для расчёта пересечения */
 let heatZonesPx = [];
 /** Тёмный фон stage в режиме мм (под contentGroup) */
@@ -87,6 +97,7 @@ function selectNode(node) {
   }
   const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
   if (layer) layer.batchDraw();
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
 }
 
 /** Снять выделение. B) Скрываем handle. */
@@ -99,6 +110,7 @@ function clearSelection() {
   }
   const layer = layerDents ? (layerDents.getLayer ? layerDents.getLayer() : layerDents) : null;
   if (layer) layer.batchDraw();
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(null);
 }
 
 /**
@@ -318,13 +330,15 @@ function loadPartImage(src) {
  * Инициализация Konva: поддержка детали как изображения (realSizeMm) или legacy Path
  * Для деталей с изображением — асинхронная загрузка картинки.
  */
-export async function initKonva(containerEl, partData, priceMap, onDentChange, baseUrlOption = '') {
+export async function initKonva(containerEl, partData, priceMap, onDentChange, baseUrlOption = '', onSelectedDentChange = null) {
   if (!containerEl || !partData) return;
 
+  containerRef = containerEl;
   baseUrl = baseUrlOption || '';
   selectedPart = partData;
   prices = priceMap || {};
   onDentChangeCallback = onDentChange;
+  onSelectedDentChangeCallback = onSelectedDentChange ?? null;
   useMmMode = !!(partData.realSizeMm && partData.asset && partData.asset.type === 'image');
   pxPerMm = null;
   imageRect = null;
@@ -338,7 +352,6 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
   stage = new Konva.Stage({ container: containerEl, width: w, height: h });
 
   if (useMmMode) {
-    zoom = 1;
     const mainLayer = new Konva.Layer();
     stage.add(mainLayer);
     bgRect = new Konva.Rect({
@@ -368,13 +381,23 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
     contentWidth = imageRect ? imageRect.width : 0;
     contentHeight = imageRect ? imageRect.height : 0;
     contentGroup.offset({ x: 0, y: 0 });
-    contentGroup.scale({ x: 1, y: 1 });
-    contentGroup.position({ x: w / 2 - contentWidth / 2, y: h / 2 - contentHeight / 2 });
+    const fit = computeFitTransform(w, h);
+    baseScale = fit.scaleFit;
+    basePos = { x: fit.posFit.x, y: fit.posFit.y };
+    userScale = 1;
+    userPan = { x: 0, y: 0 };
+    applyTransform();
     contentGroup.dragBoundFunc((pos) => clampGroupPos(pos));
-    contentGroup.on('dragmove', clampCamera);
-    contentGroup.on('dragend', clampCamera);
+    contentGroup.on('dragmove', () => {
+      const layer = contentGroup.getLayer();
+      if (layer) layer.batchDraw();
+    });
+    contentGroup.on('dragend', () => {
+      userPan.x = contentGroup.x() - basePos.x;
+      userPan.y = contentGroup.y() - basePos.y;
+      clampCamera();
+    });
     updateCameraDraggable();
-    clampCamera();
   } else {
     bgRect = null;
     contentGroup = null;
@@ -420,6 +443,7 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
       }
       const layer = layerDents?.getLayer ? layerDents.getLayer() : layerDents;
       if (layer) layer.batchDraw();
+      if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(null);
     }
   });
 
@@ -434,34 +458,31 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
   if (drawLayer) drawLayer.batchDraw();
 }
 
+/** Margin (px) для clamp: контент не уезжает за край больше чем на это. */
+const CLAMP_MARGIN_PX = 40;
+
 /**
- * C) clampCamera() — удерживает изображение детали в viewport.
- * Референс: imageNode.getClientRect({ relativeTo: stage }).
+ * C) clampCamera() — удерживает изображение детали в viewport; обновляет userPan и applyTransform.
  */
 function clampCamera() {
   if (!contentGroup || !stage || !imageNode) return;
   const rect = imageNode.getClientRect({ relativeTo: stage });
   const stageW = stage.width();
   const stageH = stage.height();
+  const m = CLAMP_MARGIN_PX;
   let dx = 0;
   let dy = 0;
-  if (rect.width <= stageW) {
-    dx = stageW / 2 - (rect.x + rect.width / 2);
-  } else {
-    if (rect.x > 0) dx = -rect.x;
-    if (rect.x + rect.width < stageW) dx = stageW - (rect.x + rect.width);
-  }
-  if (rect.height <= stageH) {
-    dy = stageH / 2 - (rect.y + rect.height / 2);
-  } else {
-    if (rect.y > 0) dy = -rect.y;
-    if (rect.y + rect.height < stageH) dy = stageH - (rect.y + rect.height);
-  }
+  if (rect.x > m) dx = m - rect.x;
+  else if (rect.x + rect.width < stageW - m) dx = (stageW - m) - (rect.x + rect.width);
+  if (rect.y > m) dy = m - rect.y;
+  else if (rect.y + rect.height < stageH - m) dy = (stageH - m) - (rect.y + rect.height);
   if (dx !== 0 || dy !== 0) {
-    contentGroup.x(contentGroup.x() + dx);
-    contentGroup.y(contentGroup.y() + dy);
+    userPan.x += dx;
+    userPan.y += dy;
+    applyTransform();
+  } else {
+    contentGroup.getLayer().batchDraw();
   }
-  contentGroup.getLayer().batchDraw();
 }
 
 /**
@@ -565,8 +586,9 @@ function clampGroupPos(pos) {
   if (!contentGroup || !stage || contentWidth <= 0 || contentHeight <= 0) return pos;
   const stageW = stage.width();
   const stageH = stage.height();
-  const scaledW = contentWidth * zoom;
-  const scaledH = contentHeight * zoom;
+  const totalScale = contentGroup.scaleX();
+  const scaledW = contentWidth * totalScale;
+  const scaledH = contentHeight * totalScale;
   let x = pos.x;
   let y = pos.y;
   if (scaledW >= stageW) {
@@ -590,27 +612,30 @@ function clampContentPosition() {
   else contentGroup.getLayer().batchDraw();
 }
 
-/**
- * B) setZoomCentered(newZoom) — зум ВСЕГДА относительно центра stage. Подключить к ползунку и +/-.
- */
-export function setZoomCentered(newZoom) {
-  const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(Number(newZoom) * 10) / 10));
-  zoom = z;
-  if (!contentGroup || !stage || contentWidth <= 0 || contentHeight <= 0) return zoom;
-  const stageW = stage.width();
-  const stageH = stage.height();
-  const anchor = { x: stageW / 2, y: stageH / 2 };
-  const oldScale = contentGroup.scaleX();
-  const pointTo = {
-    x: (anchor.x - contentGroup.x()) / oldScale,
-    y: (anchor.y - contentGroup.y()) / oldScale
+/** Bounds контента: fit scale и позиция по центру для vw×vh. */
+function computeFitTransform(vw, vh) {
+  if (!contentWidth || !contentHeight || vw <= 0 || vh <= 0) {
+    return { scaleFit: 1, posFit: { x: 0, y: 0 } };
+  }
+  const ratio = 0.92;
+  const scaleFit = Math.min(vw / contentWidth, vh / contentHeight) * ratio;
+  const posFit = {
+    x: (vw - contentWidth * scaleFit) / 2,
+    y: (vh - contentHeight * scaleFit) / 2
   };
-  contentGroup.scale({ x: zoom, y: zoom });
+  return { scaleFit, posFit };
+}
+
+/** Применить base + user transform на contentGroup; обновить zoom и перерисовать. */
+function applyTransform() {
+  if (!contentGroup || !stage) return;
+  const totalScale = baseScale * userScale;
+  zoom = totalScale;
+  contentGroup.scale({ x: totalScale, y: totalScale });
   contentGroup.position({
-    x: anchor.x - pointTo.x * zoom,
-    y: anchor.y - pointTo.y * zoom
+    x: basePos.x + userPan.x,
+    y: basePos.y + userPan.y
   });
-  clampCamera();
   updateCameraDraggable();
   if (layerDents) {
     const children = layerDents.getChildren ? layerDents.getChildren() : [];
@@ -623,7 +648,30 @@ export function setZoomCentered(newZoom) {
     });
   }
   updateHandleStyle();
-  return zoom;
+  const layer = contentGroup.getLayer();
+  if (layer) layer.batchDraw();
+}
+
+/**
+ * B) setZoomCentered(newZoom) — управляет только userScale; центр stage фиксирован.
+ */
+export function setZoomCentered(newZoom) {
+  const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(Number(newZoom) * 10) / 10));
+  if (!contentGroup || !stage || contentWidth <= 0 || contentHeight <= 0) return userScale;
+  const stageW = stage.width();
+  const stageH = stage.height();
+  const anchor = { x: stageW / 2, y: stageH / 2 };
+  const totalScale = baseScale * userScale;
+  const pointInContent = {
+    x: (anchor.x - (basePos.x + userPan.x)) / totalScale,
+    y: (anchor.y - (basePos.y + userPan.y)) / totalScale
+  };
+  userScale = z;
+  const newTotalScale = baseScale * userScale;
+  userPan.x = anchor.x - pointInContent.x * newTotalScale - basePos.x;
+  userPan.y = anchor.y - pointInContent.y * newTotalScale - basePos.y;
+  applyTransform();
+  return userScale;
 }
 
 /** Оставлен для совместимости; внутри вызывает setZoomCentered. */
@@ -632,19 +680,37 @@ export function setZoom(value) {
 }
 
 export function zoomIn() {
-  return setZoomCentered(zoom + 0.1);
+  return setZoomCentered(userScale + 0.1);
 }
 
 export function zoomOut() {
-  return setZoomCentered(zoom - 0.1);
+  return setZoomCentered(userScale - 0.1);
 }
 
+/** Для UI слайдера: пользовательский зум (1..3), не итоговый base*user. */
 export function getZoom() {
-  return contentGroup ? zoom : 1;
+  return contentGroup ? userScale : 1;
+}
+
+/** Шаг панорамирования в экранных пикселях (в stage-координатах). */
+const PAN_STEP_PX = 40;
+
+/**
+ * Pan by UI buttons: сдвиг userPan; затем clamp и applyTransform.
+ */
+export function panBy(dx, dy) {
+  if (!contentGroup || !stage) return;
+  if (zoom <= 1.01) return;
+  userPan.x -= Number(dx) || 0;
+  userPan.y -= Number(dy) || 0;
+  const clamped = clampGroupPos({ x: basePos.x + userPan.x, y: basePos.y + userPan.y });
+  userPan.x = clamped.x - basePos.x;
+  userPan.y = clamped.y - basePos.y;
+  applyTransform();
 }
 
 /**
- * Обновить размер stage при изменении контейнера; обновляет bgRect и вызывает clamp.
+ * Обновить размер stage при изменении контейнера; обновляет bgRect. В mm-режиме clamp не вызываем (fit делает scheduleFit).
  */
 export function resizeStage(w, h) {
   if (!stage || w <= 0 || h <= 0) return;
@@ -655,11 +721,54 @@ export function resizeStage(w, h) {
     bgRect.width(w);
     bgRect.height(h);
   }
-  if (contentGroup && imageNode) {
-    clampCamera();
-  } else if (contentGroup && contentWidth > 0 && contentHeight > 0) {
+  if (contentGroup && !imageNode && contentWidth > 0 && contentHeight > 0) {
     clampContentPosition();
   }
+  const layer = layerDents ? (layerDents.getLayer ? layerDents.getLayer() : layerDents) : null;
+  if (layer) layer.batchDraw();
+}
+
+/**
+ * Resize stage to current container dimensions. Для fullscreen/fit вызывать scheduleFit.
+ */
+export function resizeStageToContainer() {
+  const el = containerRef || (stage && stage.container && stage.container());
+  if (!stage || !el) return;
+  const w = el.clientWidth || el.offsetWidth;
+  const h = el.clientHeight || el.offsetHeight;
+  if (w <= 0 || h <= 0) return;
+  resizeStage(w, h);
+}
+
+/**
+ * Один раз: resize контейнера + пересчёт baseTransform (+ опционально сброс user). Без дерганий.
+ */
+function doResizeAndFitOnce(resetUser) {
+  resizeStageToContainer();
+  if (!contentGroup || contentWidth <= 0 || contentHeight <= 0) return;
+  const vw = stage.width();
+  const vh = stage.height();
+  const fit = computeFitTransform(vw, vh);
+  baseScale = fit.scaleFit;
+  basePos = { x: fit.posFit.x, y: fit.posFit.y };
+  if (resetUser) {
+    userScale = 1;
+    userPan = { x: 0, y: 0 };
+  }
+  applyTransform();
+}
+
+/**
+ * Запланировать один fit на следующий RAF (вход/выход fullscreen, resize). Не перезаписывает user zoom/pan при resize.
+ */
+export function scheduleFit(reason) {
+  if (fitPending) return;
+  fitPending = true;
+  requestAnimationFrame(() => {
+    fitPending = false;
+    const resetUser = reason === 'enter-fullscreen' || reason === 'exit-fullscreen';
+    doResizeAndFitOnce(resetUser);
+  });
 }
 
 function initLegacyPathPart(w, h) {
@@ -992,6 +1101,59 @@ function updateShapeCalc(shape, type, id, sizes) {
   }
 }
 
+/** Макс. размер по оси в мм для UI (защита от багов). */
+const SIZE_MM_MAX = 2000;
+const SIZE_MM_MIN = 0.1;
+
+/**
+ * Размеры выбранной вмятины в мм (единый источник: pxPerMm в konvaEditor).
+ * null если ничего не выбрано или не mm-режим.
+ */
+export function getSelectedDentSizeMm() {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return null;
+  const r = getShapeRectLocal(node);
+  return {
+    id: node._dentMeta.id,
+    type: node._dentMeta.type,
+    widthMm: r.width / pxPerMm,
+    heightMm: r.height / pxPerMm
+  };
+}
+
+/**
+ * Установить размеры выбранной вмятины по мм; центр сохраняется.
+ * Вызывает applyBounds, updateShapeCalc, positionHandle.
+ */
+export function setSelectedDentSizeMm(widthMm, heightMm) {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return;
+  const wMm = Math.max(SIZE_MM_MIN, Math.min(SIZE_MM_MAX, Number(widthMm) || SIZE_MM_MIN));
+  const hMm = Math.max(SIZE_MM_MIN, Math.min(SIZE_MM_MAX, Number(heightMm) || SIZE_MM_MIN));
+  const wPx = wMm * pxPerMm;
+  const hPx = hMm * pxPerMm;
+  if (node.className === 'Ellipse') {
+    node.radiusX(wPx / 2);
+    node.radiusY(hPx / 2);
+  } else {
+    node.width(wPx);
+    node.height(hPx);
+    node.scaleX(1);
+    node.scaleY(1);
+    node.offsetX(wPx / 2);
+    node.offsetY(hPx / 2);
+  }
+  if (useMmMode && imageNode) applyBounds(node);
+  const meta = node._dentMeta;
+  updateShapeCalc(node, meta.type, meta.id, meta.sizes);
+  updateStroke(node);
+  updateHitArea(node);
+  if (useMmMode && handleGroup) positionHandle(node);
+  const layer = node.getLayer();
+  if (layer) layer.batchDraw();
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+}
+
 export function addDent(type, sizeCode, sizes) {
   if (!stage || !layerDents || !tr) return;
 
@@ -1098,13 +1260,18 @@ export function addDent(type, sizeCode, sizes) {
   const storeLastGoodTransform = () => {
     const sx = Math.max(MIN_SCALE, shape.scaleX());
     const sy = Math.max(MIN_SCALE, shape.scaleY());
-    shape._lastGoodTransform = {
+    const attrs = {
       x: shape.x(),
       y: shape.y(),
       scaleX: sx,
       scaleY: sy,
       rotation: shape.rotation()
     };
+    if (shape.className === 'Ellipse') {
+      attrs.radiusX = shape.radiusX();
+      attrs.radiusY = shape.radiusY();
+    }
+    shape._lastGoodTransform = attrs;
   };
   storeLastGoodTransform();
 
@@ -1175,6 +1342,21 @@ export function addDent(type, sizeCode, sizes) {
       shape.offsetX(newW / 2);
       shape.offsetY(newH / 2);
     }
+    if (shape.className === 'Ellipse') {
+      let newRx = shape.radiusX() * shape.scaleX();
+      let newRy = shape.radiusY() * shape.scaleY();
+      if (useMmMode && pxPerMm != null && pxPerMm > 0) {
+        const maxR = (SIZE_MM_MAX / 2) * pxPerMm;
+        newRx = Math.min(newRx, maxR);
+        newRy = Math.min(newRy, maxR);
+      }
+      newRx = Math.max(2, newRx);
+      newRy = Math.max(2, newRy);
+      shape.radiusX(newRx);
+      shape.radiusY(newRy);
+      shape.scaleX(1);
+      shape.scaleY(1);
+    }
     if (useMmMode && imageNode) applyBounds(shape);
     updateStroke(shape);
     updateHitArea(shape);
@@ -1193,6 +1375,7 @@ export function addDent(type, sizeCode, sizes) {
     }
     updateHandler();
     if (useMmMode && handleGroup) positionHandle(shape);
+    if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
   });
   shape.on('click tap', (e) => {
     e.cancelBubble = true;
@@ -1231,6 +1414,7 @@ export function deleteSelected() {
   const layer = layerDents ? layerDents.getLayer() : null;
   if (layer) layer.batchDraw();
   if (onDentChangeCallback) onDentChangeCallback(Array.from(dentsMap.values()));
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(null);
 }
 
 export function resetDents() {
@@ -1257,6 +1441,7 @@ export function resetDents() {
       if (layer) layer.batchDraw();
     }
     if (onDentChangeCallback) onDentChangeCallback([]);
+    if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(null);
   }
 }
 
@@ -1269,6 +1454,13 @@ export function destroyKonva() {
     stage.destroy();
     stage = null;
   }
+  containerRef = null;
+  baseScale = 1;
+  basePos = { x: 0, y: 0 };
+  userScale = 1;
+  userPan = { x: 0, y: 0 };
+  zoom = 1;
+  fitPending = false;
   layerParts = null;
   layerGrid = null;
   layerDents = null;
@@ -1276,6 +1468,7 @@ export function destroyKonva() {
   selectedPart = null;
   prices = {};
   onDentChangeCallback = null;
+  onSelectedDentChangeCallback = null;
   dentsMap.clear();
   partBounds = null;
   stageBounds = null;
@@ -1284,7 +1477,6 @@ export function destroyKonva() {
   imageNode = null;
   useMmMode = false;
   baseUrl = '';
-  zoom = 1;
   contentGroup = null;
   contentWidth = 0;
   contentHeight = 0;

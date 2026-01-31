@@ -346,11 +346,22 @@
               </button>
             </div>
           </div>
-          <div v-if="graphicsStep === 3" class="flex flex-col h-full animate-fade-in pt-2 p-4">
-            <div class="flex justify-between items-center mb-2">
+          <div v-if="graphicsStep === 3" ref="graphicsRoot" class="relative flex flex-col h-full animate-fade-in pt-1 px-3 pb-2 graphics-step3-root">
+            <div class="flex justify-between items-center mb-1">
               <button @click="closeEditor" class="text-xs text-metric-silver px-2 py-1 rounded border border-white/10 hover:text-white">← Назад</button>
               <span class="text-xs text-metric-green font-bold uppercase tracking-widest">{{ graphicsState.selectedPart?.name }} • {{ graphicsState.selectedClass?.name }}</span>
-              <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300">Сброс</button>
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  @click="toggleFullscreen"
+                  class="text-metric-silver hover:text-white p-1.5 rounded border border-white/10 hover:border-white/20 transition-colors"
+                  :aria-label="isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'"
+                >
+                  <svg v-if="!isFullscreen" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                  <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 8h2v-3h3v-2h-5v5zm2-8V5h-2v5h5V8h-3z"/></svg>
+                </button>
+                <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300">Сброс</button>
+              </div>
             </div>
             <!-- A) Фон редактора: DOM (без konva-bg) + Konva bgRect в konvaEditor.js -->
             <div
@@ -359,21 +370,60 @@
               style="background-color: #0b0f14"
             >
               <div ref="konvaContainer" id="konva-container" class="absolute inset-0 w-full h-full" style="background-color: #0b0f14"></div>
-              <div v-if="graphicsState.dents.length === 0" class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
-                <div class="text-center">
-                  <div class="text-2xl mb-1">👆</div>
-                  <span class="text-xs uppercase font-bold tracking-widest">Нарисуйте вмятину</span>
+              <!-- Camera controls overlay: D-pad + Zoom компактнее и ниже -->
+              <div class="absolute inset-0 pointer-events-none p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] flex flex-col justify-end">
+                <div class="flex items-end justify-between gap-1 pointer-events-none">
+                  <!-- D-pad: 28px ячейки; только блок ловит клики -->
+                  <div class="pointer-events-auto grid grid-cols-[28px_28px_28px] grid-rows-[28px_28px_28px] gap-0.5 rounded bg-black/35 backdrop-blur-sm border border-white/10 p-0.5 place-items-center shrink-0">
+                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(0, -40)" aria-label="Вверх" :disabled="editorZoom <= 1.01">↑</button>
+                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(-40, 0)" aria-label="Влево" :disabled="editorZoom <= 1.01">←</button>
+                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(40, 0)" aria-label="Вправо" :disabled="editorZoom <= 1.01">→</button>
+                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(0, 40)" aria-label="Вниз" :disabled="editorZoom <= 1.01">↓</button>
+                    <span class="w-7 h-7" aria-hidden="true"></span>
+                  </div>
+                  <!-- Zoom: компактнее; только блок ловит клики -->
+                  <div class="pointer-events-auto flex items-center gap-1 rounded bg-black/35 backdrop-blur-sm border border-white/10 p-1 max-w-[180px] min-w-0">
+                    <button type="button" class="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 p-0.5 rounded border border-white/20 flex items-center justify-center text-metric-green font-bold text-sm hover:bg-white/10 hover:border-metric-green/50 active:scale-95" @click="editorZoomOut" aria-label="Уменьшить">−</button>
+                    <input type="range" min="0.5" max="3" step="0.05" v-model.number="editorZoom" class="flex-1 min-w-0 w-[100px] max-w-[120px] h-1 rounded-full appearance-none bg-white/10 accent-[#88E523] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#88E523] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#88E523] [&::-moz-range-thumb]:border-0" @input="editorZoomInput" />
+                    <button type="button" class="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 p-0.5 rounded border border-white/20 flex items-center justify-center text-metric-green font-bold text-sm hover:bg-white/10 hover:border-metric-green/50 active:scale-95" @click="editorZoomIn" aria-label="Увеличить">+</button>
+                    <span class="shrink-0 text-[10px] font-mono text-metric-green w-7 text-right">{{ Math.round(editorZoom * 100) }}%</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="mt-2 flex items-center gap-2">
-              <span class="text-[10px] text-gray-500 uppercase w-12 shrink-0">Зум</span>
-              <button type="button" class="shrink-0 w-9 h-9 rounded-lg border border-white/10 bg-black/50 flex items-center justify-center text-metric-green font-bold text-lg hover:bg-white/5 active:scale-95" @click="editorZoomOut" aria-label="Уменьшить">−</button>
-              <input type="range" min="0.5" max="3" step="0.05" v-model.number="editorZoom" class="flex-1 h-2 rounded-full appearance-none bg-white/10 accent-metric-green" @input="editorZoomInput" />
-              <button type="button" class="shrink-0 w-9 h-9 rounded-lg border border-white/10 bg-black/50 flex items-center justify-center text-metric-green font-bold text-lg hover:bg-white/5 active:scale-95" @click="editorZoomIn" aria-label="Увеличить">+</button>
-              <span class="text-xs font-mono text-metric-green w-12 shrink-0 text-right">{{ Math.round(editorZoom * 100) }}%</span>
+            <!-- Размеры (мм): только при выбранной вмятине -->
+            <div v-if="selectedDentSize" class="mt-1.5 rounded-xl bg-black/35 border border-white/10 p-2.5">
+              <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-2">Размеры (мм)</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[10px] text-gray-500 mb-1">{{ selectedDentSize.type === 'circle' ? 'Ширина' : 'Длина' }}</label>
+                  <input
+                    v-model.number="sizeWidthMm"
+                    type="number"
+                    min="0.1"
+                    max="2000"
+                    step="0.5"
+                    class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-gray-500 mb-1">{{ selectedDentSize.type === 'circle' ? 'Высота' : 'Ширина' }}</label>
+                  <input
+                    v-model.number="sizeHeightMm"
+                    type="number"
+                    min="0.1"
+                    max="2000"
+                    step="0.5"
+                    class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
+                  />
+                </div>
+              </div>
             </div>
-            <div class="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+            <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
               <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateLeft">
                 <span class="text-base">⟲ -15°</span>
                 <span class="text-[9px] text-gray-500">Повернуть</span>
@@ -387,7 +437,7 @@
                 <span class="text-[9px] text-gray-500">Удалить</span>
               </button>
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-3">
+            <div class="mt-2 grid grid-cols-2 gap-3">
               <button @click="openSizeMenu('circle')" class="card-metallic p-3 rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all">
                 <div class="w-6 h-6 rounded-full border-2 border-metric-green bg-metric-green/20"></div>
                 <div class="text-left">
@@ -428,13 +478,14 @@
       ></div>
     </div>
 
-    <!-- Size menu modal (graphics) -->
-    <div
-      v-if="showSizeMenu"
-      class="absolute inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
-      @click.self="showSizeMenu = false"
-    >
-      <div class="bg-[#151F2E] w-full rounded-t-2xl p-5 border-t border-white/10 shadow-2xl space-y-4 pb-8">
+    <!-- Size menu modal (graphics): teleport into graphicsRoot when step 3 so it appears in fullscreen -->
+    <Teleport :to="sizeMenuPortalTarget" :disabled="!sizeMenuPortalTarget">
+      <div
+        v-if="showSizeMenu"
+        class="absolute inset-0 z-[10000] flex items-end justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
+        @click.self="showSizeMenu = false"
+      >
+        <div class="bg-[#151F2E] w-full rounded-t-2xl p-5 border-t border-white/10 shadow-2xl space-y-4 pb-8">
         <div class="flex justify-between items-center border-b border-white/5 pb-3">
           <h3 class="text-white font-bold text-lg pl-1">
             Выберите размер ({{ activeToolType === 'circle' ? 'Круг/Овал' : 'Полоса' }})
@@ -453,7 +504,8 @@
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </Teleport>
 
     <!-- Tab: Settings -->
     <div v-if="currentTab === 'settings'" class="p-4 space-y-4 overflow-y-auto pb-24">
@@ -632,7 +684,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
-import { initKonva, destroyKonva, addDent, resetDents, rotateSelected, deleteSelected, setZoomCentered, getZoom, resizeStage } from './graphics/konvaEditor';
+import { initKonva, destroyKonva, addDent, resetDents, rotateSelected, deleteSelected, setZoomCentered, getZoom, resizeStage, scheduleFit, panBy, setSelectedDentSizeMm } from './graphics/konvaEditor';
 import { initialData } from './data/initialData';
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
@@ -711,7 +763,41 @@ const graphicsData = {
 const showSizeMenu = ref(false);
 const activeToolType = ref(null);
 const konvaContainer = ref(null);
+const graphicsRoot = ref(null);
+const isFullscreen = ref(false);
 const editorZoom = ref(1);
+/** Выбранная вмятина: размеры в мм для панели «Размеры (мм)». null если ничего не выбрано. */
+const selectedDentSize = ref(null);
+const sizeWidthMm = ref(0);
+const sizeHeightMm = ref(0);
+let sizeApplyTimeout = null;
+
+watch(selectedDentSize, (info) => {
+  if (info) {
+    sizeWidthMm.value = Math.round(info.widthMm * 10) / 10;
+    sizeHeightMm.value = Math.round(info.heightMm * 10) / 10;
+  }
+}, { immediate: true });
+
+watch([sizeWidthMm, sizeHeightMm], () => {
+  if (!selectedDentSize.value) return;
+  if (sizeApplyTimeout) clearTimeout(sizeApplyTimeout);
+  sizeApplyTimeout = setTimeout(() => {
+    const w = Number(sizeWidthMm.value);
+    const h = Number(sizeHeightMm.value);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+      sizeApplyTimeout = null;
+      return;
+    }
+    const cur = selectedDentSize.value;
+    if (cur && Math.abs(cur.widthMm - w) < 0.01 && Math.abs(cur.heightMm - h) < 0.01) {
+      sizeApplyTimeout = null;
+      return;
+    }
+    setSelectedDentSizeMm(w, h);
+    sizeApplyTimeout = null;
+  }, 150);
+});
 
 // Computed
 const currentSizeList = computed(() =>
@@ -725,6 +811,12 @@ const graphicsCircleSizes = computed(() => {
     return circleSizesWithArea;
   }
   return initialData.circleSizes;
+});
+
+/** Teleport target for size menu: inside graphicsRoot when step 3 so popup is visible in fullscreen */
+const sizeMenuPortalTarget = computed(() => {
+  if (graphicsStep.value === 3 && graphicsRoot.value) return graphicsRoot.value;
+  return typeof document !== 'undefined' ? document.body : null;
 });
 
 const standardPrice = computed(() => {
@@ -869,6 +961,7 @@ const closeEditor = () => {
 const resetGraphics = () => {
   resetDents();
   graphicsState.dents = [];
+  selectedDentSize.value = null;
   haptic('selection');
 };
 
@@ -888,12 +981,13 @@ const initKonvaEditor = async () => {
     graphicsState.selectedPart,
     userSettings.prices,
     (dents) => { graphicsState.dents = dents; },
-    baseUrl
+    baseUrl,
+    (info) => { selectedDentSize.value = info; }
   );
   editorZoom.value = getZoom();
   resizeObservedEl = konvaContainer.value;
   resizeObserverKonva = new ResizeObserver(() => {
-    if (konvaContainer.value) resizeStage(konvaContainer.value.offsetWidth, konvaContainer.value.offsetHeight);
+    if (konvaContainer.value) scheduleFit('resize');
   });
   resizeObserverKonva.observe(resizeObservedEl);
 };
@@ -909,6 +1003,11 @@ const editorZoomIn = () => {
 const editorZoomOut = () => {
   setZoomCentered(getZoom() - 0.1);
   editorZoom.value = getZoom();
+};
+
+const editorPan = (dx, dy) => {
+  if (getZoom() <= 1.01) return;
+  panBy(dx, dy);
 };
 
 const openSizeMenu = (type) => {
@@ -930,6 +1029,76 @@ const rotateLeft = () => rotateSelected(-15);
 const rotateRight = () => rotateSelected(15);
 const deleteCurrent = () => deleteSelected();
 
+// Fullscreen (step 3 graphics only): один раз fit (baseTransform), без дерганий; user zoom/pan сохраняются при resize
+function resizeKonvaAfterFullscreen(reason) {
+  nextTick(() => {
+    scheduleFit(reason);
+    editorZoom.value = getZoom();
+  });
+}
+
+function handleFullscreenResize() {
+  if (!isFullscreen.value) return;
+  resizeKonvaAfterFullscreen('resize');
+}
+
+function enterPseudoFullscreen() {
+  if (!graphicsRoot.value) return;
+  graphicsRoot.value.classList.add('graphics-fullscreen-pseudo');
+  isFullscreen.value = true;
+  window.addEventListener('resize', handleFullscreenResize);
+  resizeKonvaAfterFullscreen('enter-fullscreen');
+}
+
+function exitPseudoFullscreen() {
+  window.removeEventListener('resize', handleFullscreenResize);
+  if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
+  isFullscreen.value = false;
+  resizeKonvaAfterFullscreen('exit-fullscreen');
+}
+
+async function enterNativeFullscreen() {
+  if (!graphicsRoot.value) return;
+  try {
+    await graphicsRoot.value.requestFullscreen();
+    isFullscreen.value = true;
+    window.addEventListener('resize', handleFullscreenResize);
+    resizeKonvaAfterFullscreen('enter-fullscreen');
+  } catch (_) {
+    enterPseudoFullscreen();
+  }
+}
+
+async function exitNativeFullscreen() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+  } catch (_) {}
+  // fullscreenchange will run and clear state + resize
+}
+
+function onFullscreenChange() {
+  if (!document.fullscreenElement) {
+    window.removeEventListener('resize', handleFullscreenResize);
+    isFullscreen.value = false;
+    if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
+    resizeKonvaAfterFullscreen('exit-fullscreen');
+  } else {
+    resizeKonvaAfterFullscreen('enter-fullscreen');
+  }
+}
+
+function toggleFullscreen() {
+  if (isFullscreen.value) {
+    if (document.fullscreenElement) {
+      exitNativeFullscreen();
+    } else {
+      exitPseudoFullscreen();
+    }
+  } else {
+    enterNativeFullscreen();
+  }
+}
+
 // Telegram Main Button
 watch(totalPrice, (val) => {
   const btn = window.Telegram?.WebApp?.MainButton;
@@ -945,6 +1114,9 @@ watch(totalPrice, (val) => {
 const handleKeyDown = (e) => {
   if (calcMode.value !== 'graphics' || graphicsStep.value !== 3) return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
+    const active = document.activeElement;
+    const isEditable = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (typeof active.isContentEditable === 'boolean' && active.isContentEditable));
+    if (isEditable) return;
     e.preventDefault();
     deleteSelected();
   }
@@ -957,9 +1129,14 @@ onMounted(() => {
     window.Telegram.WebApp.MainButton.setParams({ color: '#88E523', text_color: '#000000' });
   }
   window.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
 });
 
 onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', onFullscreenChange);
+  window.removeEventListener('resize', handleFullscreenResize);
+  if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   window.removeEventListener('keydown', handleKeyDown);
   if (resizeObserverKonva && resizeObservedEl) {
     resizeObserverKonva.unobserve(resizeObservedEl);
@@ -983,4 +1160,12 @@ onBeforeUnmount(() => {
   background-image: none !important;
 }
 .canvas-editor-wrap.konva-bg { background-image: none !important; }
+
+/* Fullscreen: only container (step 3), fallback when Fullscreen API unavailable (e.g. Telegram WebView) */
+.graphics-step3-root.graphics-fullscreen-pseudo {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+}
 </style>
