@@ -394,10 +394,10 @@
               </div>
             </div>
           </div>
-          <!-- Controls-area: шаг edit — размещение; шаг conditions — только условия + "Назад" -->
+          <!-- Controls-area: шаг edit — размещение; шаг conditions — только условия + "Назад". Блок размеров в потоке, не поверх кнопок. -->
           <div
             ref="graphicsControlsAreaRef"
-            class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80"
+            class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pb-[env(safe-area-inset-bottom,0px)]"
             :style="controlsAreaKeyboardStyle"
           >
             <!-- Шаг "Условия": primary "Назад к редактированию", ConditionsPanel -->
@@ -463,13 +463,11 @@
                 <span>Свободное растяжение (неправильная форма)</span>
               </label>
             </div>
-            <!-- Размеры (мм): keyboard-aware -->
+            <!-- Размеры (мм): в потоке ниже панели инструментов, без position:fixed — не перекрывает «Вмятина/Полоса» -->
             <div
               v-if="selectedDentSize"
               ref="dimensionsPanelRef"
-              :class="{ 'dimensions-panel-keyboard-open': isKeyboardOpen }"
-              :style="dimensionsPanelKeyboardStyle"
-              class="mx-2 mb-2 rounded-xl bg-black/35 border border-white/10 p-2.5 transition-[bottom] duration-200"
+              class="mx-2 mb-2 rounded-xl bg-black/35 border border-white/10 p-2.5"
             >
               <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-2">Размеры (мм)</div>
               <div class="grid grid-cols-2 gap-3">
@@ -902,20 +900,6 @@ function updateKeyboardInset() {
     keyboardInset.value = Math.max(0, Math.round(inset));
   });
 }
-/** Стили панели размеров при открытой клавиатуре: фиксируем над клавиатурой */
-const dimensionsPanelKeyboardStyle = computed(() => {
-  if (!isKeyboardOpen.value) return undefined;
-  const px = keyboardInset.value;
-  return {
-    position: 'fixed',
-    left: 0,
-    right: 0,
-    bottom: `calc(12px + env(safe-area-inset-bottom, 0px) + ${px}px)`,
-    maxHeight: `calc(100vh - ${px}px - 24px)`,
-    zIndex: 1000,
-    overflow: 'auto'
-  };
-});
 let dimensionsScrollGuard = false;
 /** При фокусе на input размеров — плавно поднять поле в зону видимости (над клавиатурой), без множественных скачков */
 function onDimensionsInputFocus(event) {

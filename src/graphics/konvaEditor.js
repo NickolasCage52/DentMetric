@@ -738,18 +738,24 @@ function computeFitTransform(vw, vh) {
   return { scaleFit, posFit };
 }
 
+/** Горизонтальный отступ (px) при fit по ширине — деталь почти впритык по краям. */
+const FIT_WIDTH_PADDING_PX = 8;
+
 /**
- * Fit по ширине: деталь вписана по ширине контейнера (максимально большая по ширине), центр по центру.
- * Используется при mount и смене модуля для мобильного UX.
+ * Fit по ширине: деталь вписана по ширине контейнера (baseScale = авто-вписывание).
+ * stageScale = baseScale * zoomFactor; 100% в UI = вписано по ширине.
  */
 function computeFitTransformByWidth(vw, vh) {
   if (!contentWidth || !contentHeight || vw <= 0 || vh <= 0) {
     return { scaleFit: 1, posFit: { x: 0, y: 0 } };
   }
-  const scaleFit = vw / contentWidth;
+  const availableW = Math.max(1, vw - FIT_WIDTH_PADDING_PX * 2);
+  const scaleFit = availableW / contentWidth;
+  const scaledW = contentWidth * scaleFit;
+  const scaledH = contentHeight * scaleFit;
   const posFit = {
-    x: 0,
-    y: (vh - contentHeight * scaleFit) / 2
+    x: (vw - scaledW) / 2,
+    y: (vh - scaledH) / 2
   };
   return { scaleFit, posFit };
 }
