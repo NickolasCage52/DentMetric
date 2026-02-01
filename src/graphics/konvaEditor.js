@@ -78,6 +78,8 @@ const FIT_SIZE_TOLERANCE_PX = 4;
 let heatZonesPx = [];
 /** Тёмный фон stage в режиме мм (под contentGroup) */
 let bgRect = null;
+/** Слой UI: логотип DentMetric слева сверху, listening: false */
+let logoLayer = null;
 /** B) Handle для перемещения выбранной вмятины (крестик снизу). Только в mm-режиме. */
 let handleGroup = null;
 let activeDent = null;
@@ -440,7 +442,7 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
     if (gridRectRef) {
       contentGroup.clip({ x: gridRectRef.x, y: gridRectRef.y, width: gridRectRef.width, height: gridRectRef.height });
     }
-    const fit = computeFitTransform(w, h);
+    const fit = computeFitTransformByWidth(w, h);
     baseScale = fit.scaleFit;
     basePos = { x: fit.posFit.x, y: fit.posFit.y };
     userScale = 1;
@@ -489,6 +491,33 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
 
   if (useMmMode) createHandleGroup();
   if (useMmMode && handleGroup) layerDents.add(handleGroup);
+
+  if (useMmMode) {
+    logoLayer = new Konva.Layer({ listening: false });
+    stage.add(logoLayer);
+    const base = (baseUrl || import.meta.env?.BASE_URL || '/').replace(/\/$/, '') || '';
+    const logoPath = base ? `${window.location.origin}${base}/logo.png` : `${window.location.origin}/logo.png`;
+    const logoImg = new window.Image();
+    logoImg.crossOrigin = 'anonymous';
+    logoImg.onload = () => {
+      if (!logoLayer) return;
+      const logoW = 44;
+      const logoH = Math.min(44, (logoImg.naturalHeight / logoImg.naturalWidth) * logoW);
+      const logoNode = new Konva.Image({
+        image: logoImg,
+        x: 10,
+        y: 10,
+        width: logoW,
+        height: logoH,
+        opacity: 0.5,
+        listening: false
+      });
+      logoLayer.add(logoNode);
+      logoLayer.batchDraw();
+    };
+    logoImg.onerror = () => {};
+    logoImg.src = logoPath;
+  }
 
   stage.on('click tap', (e) => {
     const t = e.target;
@@ -709,6 +738,22 @@ function computeFitTransform(vw, vh) {
   return { scaleFit, posFit };
 }
 
+/**
+ * Fit по ширине: деталь вписана по ширине контейнера (максимально большая по ширине), центр по центру.
+ * Используется при mount и смене модуля для мобильного UX.
+ */
+function computeFitTransformByWidth(vw, vh) {
+  if (!contentWidth || !contentHeight || vw <= 0 || vh <= 0) {
+    return { scaleFit: 1, posFit: { x: 0, y: 0 } };
+  }
+  const scaleFit = vw / contentWidth;
+  const posFit = {
+    x: 0,
+    y: (vh - contentHeight * scaleFit) / 2
+  };
+  return { scaleFit, posFit };
+}
+
 /** Применить base + user transform на contentGroup; обновить zoom и перерисовать. */
 function applyTransform() {
   if (!contentGroup || !stage) return;
@@ -877,7 +922,7 @@ function doResizeAndFitOnce(resetUser) {
   }
   lastFitW = vw;
   lastFitH = vh;
-  const fit = computeFitTransform(vw, vh);
+  const fit = computeFitTransformByWidth(vw, vh);
   baseScale = fit.scaleFit;
   basePos = { x: fit.posFit.x, y: fit.posFit.y };
   if (resetUser) {
@@ -895,7 +940,7 @@ export function scheduleFit(reason) {
   fitPending = true;
   requestAnimationFrame(() => {
     fitPending = false;
-    const resetUser = reason === 'enter-fullscreen' || reason === 'exit-fullscreen';
+    const resetUser = reason === 'enter-fullscreen' || reason === 'exit-fullscreen' || reason === 'back-to-edit';
     doResizeAndFitOnce(resetUser);
   });
 }
@@ -1652,6 +1697,7 @@ export function destroyKonva() {
   contentHeight = 0;
   heatZonesPx = [];
   bgRect = null;
+  logoLayer = null;
   handleGroup = null;
   activeDent = null;
   transformerKeepRatio = true;

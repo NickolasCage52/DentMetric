@@ -331,10 +331,6 @@
               </select>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-              <button type="button" @click="toggleFullscreen" class="text-metric-silver hover:text-white p-1.5 rounded border border-white/10" :aria-label="isFullscreen ? 'Выйти из полноэкранного' : 'Полноэкранный'">
-                <svg v-if="!isFullscreen" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 8h2v-3h3v-2h-5v5zm2-8V5h-2v5h5V8h-3z"/></svg>
-              </button>
               <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300 shrink-0">Сброс</button>
             </div>
           </header>
@@ -363,7 +359,7 @@
               >
                 Просмотр
               </div>
-              <!-- Мини-HUD: цена выбранной вмятины, только на шаге edit -->
+              <!-- HUD Цена: сумма всех вмятин (без условий), всегда виден на шаге edit -->
               <div
                 v-if="graphicsWizardStep === 'edit'"
                 class="absolute top-2 right-2 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/55 backdrop-blur-sm border border-white/10 text-[11px] font-medium pointer-events-none"
@@ -371,7 +367,7 @@
                 <svg class="w-3.5 h-3.5 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span class="text-gray-400">Цена:</span>
                 <span :class="basePriceTotal > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
-                  {{ formatCurrency(Math.round(basePriceTotal / 100) * 100) }} ₽
+                  {{ basePriceTotal > 0 ? formatCurrency(Math.round(basePriceTotal / 100) * 100) + ' ₽' : '---' }}
                 </span>
               </div>
               <!-- D-pad и Zoom: только на шаге edit -->
@@ -404,16 +400,16 @@
             class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80"
             :style="controlsAreaKeyboardStyle"
           >
-            <!-- Шаг "Условия": primary "Редактировать", ConditionsPanel -->
+            <!-- Шаг "Условия": primary "Назад к редактированию", ConditionsPanel -->
             <template v-if="graphicsWizardStep === 'conditions'">
               <div class="p-2 mb-2 flex flex-col gap-2" ref="conditionsSectionRef">
                 <button
                   type="button"
-                  @click="graphicsWizardStep = 'edit'"
+                  @click="backToEdit"
                   class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90 transition-opacity"
                 >
                   <span aria-hidden="true">✎</span>
-                  <span>Редактировать</span>
+                  <span>Назад к редактированию</span>
                 </button>
               </div>
               <div class="mx-2 mb-2">
@@ -508,23 +504,20 @@
                   />
                 </div>
               </div>
-              <div class="mt-2 flex justify-end gap-2">
-                <button type="button" class="text-metric-green text-sm font-medium px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 active:opacity-90" @click="closeDimensionsKeyboard">Готово</button>
-              </div>
             </div>
-            <!-- Кнопка "ГОТОВО": переход на шаг "Условия" только по нажатию. Активна только при валидных размерах выбранной вмятины. -->
+            <!-- Кнопка перехода на шаг "Условия": активна, если есть хотя бы одна вмятина. -->
             <div class="mx-2 mb-2">
               <button
                 type="button"
                 @click="goToConditionsStep"
                 :disabled="!canGoToConditions"
-                :title="canGoToConditions ? '' : 'Сначала задайте размеры'"
+                :title="canGoToConditions ? '' : 'Добавьте хотя бы одну вмятину'"
                 class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                 :class="canGoToConditions ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
               >
-                <span>Готово</span>
+                <span>Перейти к условиям и коэффициентам</span>
               </button>
-              <p v-if="!canGoToConditions && graphicsState.dents.length > 0" class="text-[10px] text-gray-500 mt-1 text-center">Сначала задайте размеры</p>
+              <p v-if="!canGoToConditions" class="text-[10px] text-gray-500 mt-1 text-center">Добавьте хотя бы одну вмятину</p>
             </div>
             </template>
           </div>
@@ -885,7 +878,6 @@ const showSizeMenu = ref(false);
 const activeToolType = ref(null);
 const konvaContainer = ref(null);
 const graphicsRoot = ref(null);
-const isFullscreen = ref(false);
 const editorZoom = ref(1);
 /** Выбранная вмятина: размеры в мм для панели «Размеры (мм)». null если ничего не выбрано. */
 const selectedDentSize = ref(null);
@@ -924,21 +916,20 @@ const dimensionsPanelKeyboardStyle = computed(() => {
     overflow: 'auto'
   };
 });
-/** При фокусе на input размеров — поднять поле в зону видимости (над клавиатурой) */
+let dimensionsScrollGuard = false;
+/** При фокусе на input размеров — плавно поднять поле в зону видимости (над клавиатурой), без множественных скачков */
 function onDimensionsInputFocus(event) {
   const el = event?.target;
   if (!el || !el.scrollIntoView) return;
+  if (dimensionsScrollGuard) return;
+  dimensionsScrollGuard = true;
   requestAnimationFrame(() => {
     setTimeout(() => {
-      el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-    }, 200);
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      setTimeout(() => { dimensionsScrollGuard = false; }, 600);
+    }, 150);
   });
 }
-function closeDimensionsKeyboard() {
-  const active = document.activeElement;
-  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) active.blur();
-}
-
 watch(selectedDentSize, (info) => {
   if (info) {
     sizeWidthMm.value = Math.round(info.widthMm * 10) / 10;
@@ -1037,11 +1028,8 @@ const graphicsPrice = computed(() => {
 /** Вмятина "сформирована": есть хотя бы одна. */
 const graphicsDentFormed = computed(() => graphicsState.dents.length >= 1);
 
-/** Можно перейти на шаг "Условия": есть выбранная вмятина с валидными размерами (width/height > 0). */
-const canGoToConditions = computed(() => {
-  const info = selectedDentSize.value;
-  return info && Number(info.widthMm) > 0 && Number(info.heightMm) > 0;
-});
+/** Можно перейти на шаг "Условия": есть хотя бы одна вмятина в сцене (валидна, в разрешённой области). */
+const canGoToConditions = computed(() => graphicsState.dents.length >= 1);
 
 /** Общая базовая цена всех вмятин (по размеру, без условий). Использует формулу: первая + 0.5×остальные. */
 const basePriceTotal = computed(() => graphicsBasePrice.value);
@@ -1054,6 +1042,15 @@ function goToConditionsStep() {
   graphicsWizardStep.value = 'conditions';
   nextTick(() => {
     conditionsSectionRef.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  });
+}
+
+/** Возврат к редактированию: режим edit + сброс матрицы к начальному виду (fit по ширине, scale/position). */
+function backToEdit() {
+  graphicsWizardStep.value = 'edit';
+  nextTick(() => {
+    scheduleFit('back-to-edit');
+    editorZoom.value = getZoom();
   });
 }
 
@@ -1152,10 +1149,20 @@ const closeEditor = () => {
   haptic('selection');
 };
 
+/** Полный сброс графики и условий: вмятины, режим редактирования, все коэффициенты, HUD. */
 const resetGraphics = () => {
   resetDents();
   graphicsState.dents = [];
   selectedDentSize.value = null;
+  graphicsWizardStep.value = 'edit';
+  form.repairCode = null;
+  form.riskCode = null;
+  form.materialCode = null;
+  form.carClassCode = null;
+  form.disassemblyCode = null;
+  freeStretchMode.value = false;
+  setKeepRatio(true);
+  showSizeMenu.value = false;
   haptic('selection');
 };
 
@@ -1191,9 +1198,8 @@ const initKonvaEditor = async () => {
     const w = konvaContainer.value.offsetWidth || 0;
     const h = konvaContainer.value.offsetHeight || 0;
     const t = RESIZE_FIT_THRESHOLD_PX;
-    const significant = lastKonvaW === 0 && lastKonvaH === 0 ||
-      Math.abs(w - lastKonvaW) > t || Math.abs(h - lastKonvaH) > t;
-    if (significant) {
+    const widthChanged = lastKonvaW === 0 && lastKonvaH === 0 || Math.abs(w - lastKonvaW) > t;
+    if (widthChanged) {
       lastKonvaW = w;
       lastKonvaH = h;
       scheduleFit('resize');
@@ -1239,76 +1245,6 @@ const rotateLeft = () => rotateSelected(-15);
 const rotateRight = () => rotateSelected(15);
 const deleteCurrent = () => deleteSelected();
 
-// Fullscreen (step 3 graphics only): один раз fit (baseTransform), без дерганий; user zoom/pan сохраняются при resize
-function resizeKonvaAfterFullscreen(reason) {
-  nextTick(() => {
-    scheduleFit(reason);
-    editorZoom.value = getZoom();
-  });
-}
-
-function handleFullscreenResize() {
-  if (!isFullscreen.value) return;
-  resizeKonvaAfterFullscreen('resize');
-}
-
-function enterPseudoFullscreen() {
-  if (!graphicsRoot.value) return;
-  graphicsRoot.value.classList.add('graphics-fullscreen-pseudo');
-  isFullscreen.value = true;
-  window.addEventListener('resize', handleFullscreenResize);
-  resizeKonvaAfterFullscreen('enter-fullscreen');
-}
-
-function exitPseudoFullscreen() {
-  window.removeEventListener('resize', handleFullscreenResize);
-  if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
-  isFullscreen.value = false;
-  resizeKonvaAfterFullscreen('exit-fullscreen');
-}
-
-async function enterNativeFullscreen() {
-  if (!graphicsRoot.value) return;
-  try {
-    await graphicsRoot.value.requestFullscreen();
-    isFullscreen.value = true;
-    window.addEventListener('resize', handleFullscreenResize);
-    resizeKonvaAfterFullscreen('enter-fullscreen');
-  } catch (_) {
-    enterPseudoFullscreen();
-  }
-}
-
-async function exitNativeFullscreen() {
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-  } catch (_) {}
-  // fullscreenchange will run and clear state + resize
-}
-
-function onFullscreenChange() {
-  if (!document.fullscreenElement) {
-    window.removeEventListener('resize', handleFullscreenResize);
-    isFullscreen.value = false;
-    if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
-    resizeKonvaAfterFullscreen('exit-fullscreen');
-  } else {
-    resizeKonvaAfterFullscreen('enter-fullscreen');
-  }
-}
-
-function toggleFullscreen() {
-  if (isFullscreen.value) {
-    if (document.fullscreenElement) {
-      exitNativeFullscreen();
-    } else {
-      exitPseudoFullscreen();
-    }
-  } else {
-    enterNativeFullscreen();
-  }
-}
-
 // Telegram Main Button
 watch(totalPrice, (val) => {
   const btn = window.Telegram?.WebApp?.MainButton;
@@ -1343,7 +1279,6 @@ onMounted(() => {
     window.Telegram.WebApp.MainButton.setParams({ color: '#88E523', text_color: '#000000' });
   }
   window.addEventListener('keydown', handleKeyDown);
-  document.addEventListener('fullscreenchange', onFullscreenChange);
   const vv = window.visualViewport;
   if (vv) {
     vv.addEventListener('resize', onVisualViewportResize);
@@ -1376,10 +1311,6 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  document.removeEventListener('fullscreenchange', onFullscreenChange);
-  window.removeEventListener('resize', handleFullscreenResize);
-  if (graphicsRoot.value) graphicsRoot.value.classList.remove('graphics-fullscreen-pseudo');
-  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   window.removeEventListener('keydown', handleKeyDown);
   const vv = window.visualViewport;
   if (vv) {
