@@ -7,10 +7,12 @@ const ZOOM_MAX = 3;
 const HEAT_RATIO_THRESHOLD = 0.08;
 /** A) Bounds для вмятин: зазор вокруг детали (px в stage). */
 const BOUNDS_MARGIN_PX = 12;
-/** B) Hit area: доля от размера фигуры, min/max px (чтобы не цепляло издалека). */
-const HIT_SIZE_MIN = 6;
-const HIT_SIZE_MAX = 12;
-const HIT_SIZE_RATIO = 0.35;
+/** Отступ сетки от края видимой части детали (1–2px). */
+const GRID_PADDING_PX = 2;
+/** B) Hit area: доля от размера фигуры, min/max px (удобный захват пальцем, но не мешает другим). */
+const HIT_SIZE_MIN = 8;
+const HIT_SIZE_MAX = 16;
+const HIT_SIZE_RATIO = 0.42;
 /** C) Stroke: тоньше для маленьких (minSizePx < 40), clamp. */
 const STROKE_THIN = 0.8;
 const STROKE_NORMAL = 1.4;
@@ -19,15 +21,17 @@ const STROKE_MAX = 2;
 /** D) Удаление белого фона: порог RGB (255=только чисто белый). Уменьшить до 240 если «съедает» края. */
 const REMOVE_WHITE_BACKGROUND = true;
 const WHITE_THRESHOLD = 245;
-/** B) Handle для перемещения вмятины: линия + крестик. */
-const STEM_LEN_MIN = 18;
-const STEM_LEN_MAX = 40;
+/** B) Handle для перемещения вмятины: линия + крестик; смещён ниже центра вмятины, чтобы палец не закрывал фигуру. */
+const HANDLE_OFFSET_BELOW_PX = 26;
+const STEM_LEN_MIN = 20;
+const STEM_LEN_MAX = 36;
 const STEM_LEN_RATIO = 0.35;
-const HANDLE_HIT_RADIUS = 18;
+const HANDLE_HIT_RADIUS = 16;
 const HANDLE_COLOR = '#88E523';
-const HANDLE_FILL = 'rgba(136,229,35,0.18)';
-const HANDLE_STROKE = 'rgba(136,229,35,0.85)';
-const HANDLE_RING_STROKE = 'rgba(136,229,35,0.35)';
+const HANDLE_FILL = 'rgba(136,229,35,0.22)';
+const HANDLE_STROKE = 'rgba(136,229,35,0.9)';
+const HANDLE_RING_STROKE = 'rgba(136,229,35,0.4)';
+const HANDLE_VISUAL_RADIUS = 8;
 
 let stage = null;
 let containerRef = null;
@@ -50,6 +54,8 @@ let pxPerMm = null;
 let imageRect = null; // { x, y, width, height } — bbox в координатах contentGroup (displayRect)
 let imageNode = null; // Konva.Image/Rect детали для getClientRect (режим мм)
 let useMmMode = false;
+/** gridRect в координатах contentGroup — область сетки (bbox детали + padding). Для clip и bounds вмятин. */
+let gridRectRef = null;
 
 /** Двухуровневый transform: base (fit) + user (zoom/pan). Итог = baseScale*userScale, basePos+userPan */
 let baseScale = 1;
@@ -76,6 +82,8 @@ let bgRect = null;
 let handleGroup = null;
 let activeDent = null;
 let lastPlusPos = { x: 0, y: 0 };
+/** Режим свободного растяжения (не keepRatio) для выбранной вмятины. */
+let transformerKeepRatio = true;
 
 function getActiveNode() {
   if (!tr) return null;
@@ -86,6 +94,7 @@ function getActiveNode() {
 /** Выбрать одну фигуру, показать Transformer, перерисовать слой. B) В mm-режиме для dent показываем handle. */
 function selectNode(node) {
   if (!tr || !layerDents) return;
+  tr.keepRatio(transformerKeepRatio);
   tr.nodes([node]);
   if (node && node.moveToTop) node.moveToTop();
   if (tr.getParent() === layerDents) tr.moveToTop();
@@ -135,33 +144,33 @@ function createHandleGroup() {
   const plusGroup = new Konva.Group({ name: 'handle-plus', draggable: true, listening: true });
   const plusVisualGroup = new Konva.Group({ listening: false });
   const baseCircle = new Konva.Circle({
-    radius: 10,
+    radius: HANDLE_VISUAL_RADIUS,
     x: 0,
     y: 0,
     fill: HANDLE_FILL,
     stroke: HANDLE_STROKE,
     strokeWidth: 1.5,
     shadowColor: HANDLE_COLOR,
-    shadowBlur: 10,
-    shadowOpacity: 0.55,
+    shadowBlur: 8,
+    shadowOpacity: 0.5,
     listening: false
   });
   const line1 = new Konva.Line({
-    points: [-6, 0, 6, 0],
+    points: [-5, 0, 5, 0],
     stroke: HANDLE_COLOR,
-    strokeWidth: 2,
+    strokeWidth: 1.8,
     lineCap: 'round',
     listening: false
   });
   const line2 = new Konva.Line({
-    points: [0, -6, 0, 6],
+    points: [0, -5, 0, 5],
     stroke: HANDLE_COLOR,
-    strokeWidth: 2,
+    strokeWidth: 1.8,
     lineCap: 'round',
     listening: false
   });
   const ring = new Konva.Circle({
-    radius: 12,
+    radius: HANDLE_VISUAL_RADIUS + 2,
     x: 0,
     y: 0,
     stroke: HANDLE_RING_STROKE,
@@ -186,6 +195,9 @@ function createHandleGroup() {
 
   plusGroup.on('click tap dragstart', (e) => {
     e.cancelBubble = true;
+  });
+  plusGroup.on('mousedown touchstart', () => {
+    if (contentGroup) contentGroup.draggable(false);
   });
   plusGroup.on('dragstart', (e) => {
     if (e && e.cancelBubble !== undefined) e.cancelBubble = true;
@@ -226,8 +238,8 @@ function updateHandleStyle() {
 }
 
 /**
- * B) positionHandle(dent) — ставит handle (линия + крестик) под нижней точкой bbox вмятины.
- * Координаты относительно родителя (layerDents).
+ * B) positionHandle(dent) — ставит handle (линия + крестик) ниже центра вмятины на фиксированное расстояние,
+ * чтобы палец не перекрывал саму вмятину. Координаты относительно родителя (layerDents).
  */
 function positionHandle(dent) {
   if (!handleGroup || !dent) return;
@@ -235,7 +247,7 @@ function positionHandle(dent) {
   const dentRect = dent.getClientRect({ relativeTo: parent });
   const anchorX = dentRect.x + dentRect.width / 2;
   const anchorY = dentRect.y + dentRect.height;
-  const stemLen = Math.max(STEM_LEN_MIN, Math.min(STEM_LEN_MAX, dentRect.height * STEM_LEN_RATIO));
+  const stemLen = Math.max(HANDLE_OFFSET_BELOW_PX, Math.max(STEM_LEN_MIN, Math.min(STEM_LEN_MAX, dentRect.height * STEM_LEN_RATIO)));
   const plusCenterX = anchorX;
   const plusCenterY = anchorY + stemLen;
 
@@ -305,6 +317,36 @@ function removeWhiteBackground(srcImage) {
     img.onerror = () => reject(new Error('removeWhiteBackground: failed to load result image'));
     img.src = dataURL;
   });
+}
+
+/** Bbox непустых (непрозрачных) пикселей в координатах изображения. Порог alpha. */
+function getImageOpaqueBbox(img, alphaThreshold = 10) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = 0, maxY = 0;
+  let found = false;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (data[i + 3] > alphaThreshold) {
+        found = true;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (!found) return null;
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
 /**
@@ -395,6 +437,9 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
     contentWidth = imageRect ? imageRect.width : 0;
     contentHeight = imageRect ? imageRect.height : 0;
     contentGroup.offset({ x: 0, y: 0 });
+    if (gridRectRef) {
+      contentGroup.clip({ x: gridRectRef.x, y: gridRectRef.y, width: gridRectRef.width, height: gridRectRef.height });
+    }
     const fit = computeFitTransform(w, h);
     baseScale = fit.scaleFit;
     basePos = { x: fit.posFit.x, y: fit.posFit.y };
@@ -434,7 +479,11 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
     borderStroke: '#88E523',
     borderDash: [4, 4],
     centeredScaling: true,
-    rotateEnabled: true
+    rotateEnabled: true,
+    keepRatio: transformerKeepRatio
+  });
+  tr.on('mousedown touchstart', () => {
+    if (contentGroup) contentGroup.draggable(false);
   });
   layerDents.add(tr);
 
@@ -503,12 +552,27 @@ function clampCamera() {
 
 /**
  * A) applyBounds(node, opts) — ограничивает позицию вмятины bbox детали + margin (в stage-координатах).
+ * Использует gridRect (если есть) как bounds, иначе imageNode.
  * opts: { marginPx } (по умолчанию BOUNDS_MARGIN_PX).
  */
 function applyBounds(node, opts = {}) {
-  if (!stage || !imageNode || !contentGroup) return;
-  const marginPx = opts.marginPx ?? BOUNDS_MARGIN_PX;
-  const partRect = imageNode.getClientRect({ relativeTo: stage });
+  if (!stage || !contentGroup) return;
+  const marginPx = gridRectRef ? (opts.marginPx ?? 0) : (opts.marginPx ?? BOUNDS_MARGIN_PX);
+  let partRect;
+  if (gridRectRef) {
+    const s = contentGroup.scaleX();
+    const pos = contentGroup.position();
+    partRect = {
+      x: pos.x + gridRectRef.x * s,
+      y: pos.y + gridRectRef.y * s,
+      width: gridRectRef.width * s,
+      height: gridRectRef.height * s
+    };
+  } else if (imageNode) {
+    partRect = imageNode.getClientRect({ relativeTo: stage });
+  } else {
+    return;
+  }
   const expanded = {
     left: partRect.x - marginPx,
     top: partRect.y - marginPx,
@@ -711,6 +775,38 @@ export function getZoom() {
   return contentGroup ? userScale : 1;
 }
 
+/** Включить/выключить сохранение пропорций при растягивании выбранной вмятины (свободное растяжение). */
+export function setKeepRatio(keepRatio) {
+  transformerKeepRatio = !!keepRatio;
+  if (tr) tr.keepRatio(transformerKeepRatio);
+}
+
+/**
+ * Включить/выключить интерактивность редактора (режим "только просмотр" на шаге "Условия").
+ * Когда false: никакой drag, resize, rotate, выделения; stage не реагирует на клики/тапы.
+ */
+export function setEditorInteractive(interactive) {
+  if (!stage) return;
+  stage.listening(!!interactive);
+  if (tr) tr.visible(!!interactive);
+  if (handleGroup) handleGroup.visible(!!interactive && !!activeDent);
+  const children = layerDents?.getChildren?.() || [];
+  children.forEach((node) => {
+    if (node !== tr && node !== handleGroup && node.getAttr?.('name') === 'dent') {
+      node.draggable(!!interactive);
+    }
+  });
+  if (contentGroup) {
+    if (interactive) {
+      updateCameraDraggable();
+    } else {
+      contentGroup.draggable(false);
+    }
+  }
+  const layer = layerDents?.getLayer ? layerDents.getLayer() : layerDents;
+  if (layer) layer.batchDraw();
+}
+
 /** Шаг панорамирования в экранных пикселях (stage). */
 const PAN_STEP_PX = 40;
 
@@ -851,6 +947,7 @@ async function initImagePart(stageW, stageH) {
   let imgNode = null;
   let dispW = 0;
   let dispH = 0;
+  let imgForBbox = null;
 
   try {
     let img = await loadPartImage(src);
@@ -861,6 +958,7 @@ async function initImagePart(stageW, stageH) {
         // fallback: use original image
       }
     }
+    imgForBbox = img;
     const realWpx = Math.max(1, img.naturalWidth);
     const realHpx = Math.max(1, img.naturalHeight);
     const scale = Math.min(stageW / realWpx, stageH / realHpx) || 1;
@@ -924,9 +1022,33 @@ async function initImagePart(stageW, stageH) {
   }
 
   imageRect = { x: 0, y: 0, width: dispW, height: dispH };
-  partBounds = imageRect;
+  gridRectRef = null;
 
-  drawGridStage(0, 0, dispW, dispH);
+  const natW = imgForBbox ? (imgForBbox.naturalWidth || imgForBbox.width) : 0;
+  const natH = imgForBbox ? (imgForBbox.naturalHeight || imgForBbox.height) : 0;
+  let gridRect = { x: 0, y: 0, width: dispW, height: dispH };
+  if (imgForBbox && natW > 0 && natH > 0) {
+    const opaqueBbox = getImageOpaqueBbox(imgForBbox);
+    if (opaqueBbox) {
+      const scaleX = dispW / natW;
+      const scaleY = dispH / natH;
+      const gx = opaqueBbox.x * scaleX - GRID_PADDING_PX;
+      const gy = opaqueBbox.y * scaleY - GRID_PADDING_PX;
+      const gw = opaqueBbox.width * scaleX + 2 * GRID_PADDING_PX;
+      const gh = opaqueBbox.height * scaleY + 2 * GRID_PADDING_PX;
+      const right = Math.min(dispW, gx + gw);
+      const bottom = Math.min(dispH, gy + gh);
+      gridRect = {
+        x: Math.max(0, gx),
+        y: Math.max(0, gy),
+        width: Math.max(1, right - Math.max(0, gx)),
+        height: Math.max(1, bottom - Math.max(0, gy))
+      };
+    }
+  }
+  gridRectRef = gridRect;
+  partBounds = gridRect;
+  drawGridStage(gridRect.x, gridRect.y, gridRect.width, gridRect.height);
   heatZonesPx = [];
   // TODO: heatZones temporarily disabled — re-enable drawHeatZonesStage when zones are corrected
 
@@ -934,16 +1056,19 @@ async function initImagePart(stageW, stageH) {
   if (layer) layer.batchDraw();
 }
 
-/** Сетка 30×30 мм в координатах contentGroup (0,0 — dispW, dispH). strokeScaleEnabled: false чтобы при зуме линии не жирнели. */
+/** Сетка 30×30 мм. (x,y,dispW,dispH) — область отрисовки в координатах contentGroup. Линии выравниваются по глобальной сетке (0,0). */
 function drawGridStage(x, y, dispW, dispH) {
   if (!layerGrid || pxPerMm == null || dispW <= 0 || dispH <= 0) return;
   layerGrid.destroyChildren();
   const cellPx = CELL_MM * pxPerMm;
-  const cols = Math.ceil(dispW / cellPx);
-  const rows = Math.ceil(dispH / cellPx);
-  for (let i = 0; i <= cols; i++) {
+  const firstCol = Math.floor(x / cellPx);
+  const lastCol = Math.ceil((x + dispW) / cellPx);
+  const firstRow = Math.floor(y / cellPx);
+  const lastRow = Math.ceil((y + dispH) / cellPx);
+  for (let i = firstCol; i <= lastCol; i++) {
+    const lx = i * cellPx;
     const line = new Konva.Line({
-      points: [x + i * cellPx, y, x + i * cellPx, y + dispH],
+      points: [lx, y, lx, y + dispH],
       stroke: 'rgba(255,255,255,0.06)',
       strokeWidth: 1,
       strokeScaleEnabled: false,
@@ -952,9 +1077,10 @@ function drawGridStage(x, y, dispW, dispH) {
     line.setAttr('isBackground', true);
     layerGrid.add(line);
   }
-  for (let j = 0; j <= rows; j++) {
+  for (let j = firstRow; j <= lastRow; j++) {
+    const ly = j * cellPx;
     const line = new Konva.Line({
-      points: [x, y + j * cellPx, x + dispW, y + j * cellPx],
+      points: [x, ly, x + dispW, ly],
       stroke: 'rgba(255,255,255,0.06)',
       strokeWidth: 1,
       strokeScaleEnabled: false,
@@ -1195,9 +1321,9 @@ export function addDent(type, sizeCode, sizes) {
 
   const id = Date.now();
   let centerX, centerY;
-  if (useMmMode && imageRect) {
-    centerX = imageRect.x + imageRect.width / 2;
-    centerY = imageRect.y + imageRect.height / 2;
+  if (useMmMode && partBounds) {
+    centerX = partBounds.x + partBounds.width / 2;
+    centerY = partBounds.y + partBounds.height / 2;
   } else if (partBounds) {
     centerX = partBounds.x + partBounds.width / 2;
     centerY = partBounds.y + partBounds.height / 2;
@@ -1262,13 +1388,13 @@ export function addDent(type, sizeCode, sizes) {
 
   shape._dentMeta = { id, type, sizes };
 
-  if (useMmMode && imageRect) {
+  if (useMmMode && partBounds) {
     const r = getShapeRectLocal(shape);
     let dx = 0, dy = 0;
-    if (r.x < imageRect.x) dx = imageRect.x - r.x;
-    else if (r.x + r.width > imageRect.x + imageRect.width) dx = imageRect.x + imageRect.width - (r.x + r.width);
-    if (r.y < imageRect.y) dy = imageRect.y - r.y;
-    else if (r.y + r.height > imageRect.y + imageRect.height) dy = imageRect.y + imageRect.height - (r.y + r.height);
+    if (r.x < partBounds.x) dx = partBounds.x - r.x;
+    else if (r.x + r.width > partBounds.x + partBounds.width) dx = partBounds.x + partBounds.width - (r.x + r.width);
+    if (r.y < partBounds.y) dy = partBounds.y - r.y;
+    else if (r.y + r.height > partBounds.y + partBounds.height) dy = partBounds.y + partBounds.height - (r.y + r.height);
     if (dx !== 0 || dy !== 0) shape.position({ x: shape.x() + dx, y: shape.y() + dy });
   }
 
@@ -1326,6 +1452,10 @@ export function addDent(type, sizeCode, sizes) {
     }
   };
 
+  shape.on('mousedown touchstart', (e) => {
+    e.cancelBubble = true;
+    if (contentGroup) contentGroup.draggable(false);
+  });
   shape.on('dragstart', (e) => {
     e.cancelBubble = true;
     selectNode(shape);
@@ -1462,7 +1592,11 @@ export function resetDents() {
         borderStroke: '#88E523',
         borderDash: [4, 4],
         centeredScaling: true,
-        rotateEnabled: true
+        rotateEnabled: true,
+        keepRatio: transformerKeepRatio
+      });
+      tr.on('mousedown touchstart', () => {
+        if (contentGroup) contentGroup.draggable(false);
       });
       layerDents.add(tr);
       if (useMmMode) {
@@ -1510,6 +1644,7 @@ export function destroyKonva() {
   pxPerMm = null;
   imageRect = null;
   imageNode = null;
+  gridRectRef = null;
   useMmMode = false;
   baseUrl = '';
   contentGroup = null;
@@ -1519,4 +1654,5 @@ export function destroyKonva() {
   bgRect = null;
   handleGroup = null;
   activeDent = null;
+  transformerKeepRatio = true;
 }

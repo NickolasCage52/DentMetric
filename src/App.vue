@@ -2,7 +2,7 @@
   <div class="max-w-md mx-auto relative h-screen flex flex-col bg-black text-white pb-[env(safe-area-inset-bottom)]">
     <!-- Tab: Calc -->
     <div v-if="currentTab === 'calc'" class="flex flex-col h-full">
-      <div class="p-4 space-y-4 shrink-0 z-20 bg-black">
+      <div v-if="calcMode !== 'graphics'" class="p-4 space-y-4 shrink-0 z-20 bg-black">
         <div class="flex justify-center pt-2 pb-2">
           <img src="/logo.png" alt="DentMetric" class="w-full max-w-[320px] h-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
         </div>
@@ -46,7 +46,7 @@
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24">
+      <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
         <!-- Standard mode -->
         <div v-if="calcMode === 'standard'" class="space-y-4">
           <div class="card-metallic rounded-2xl p-5">
@@ -307,101 +307,173 @@
           </button>
         </div>
 
-        <!-- Graphics mode -->
-        <div v-if="calcMode === 'graphics'" class="h-full flex flex-col">
-          <div v-if="graphicsStep === 1" class="space-y-4 animate-fade-in pt-4">
-            <h2 class="text-xl font-bold text-center mb-4 text-white">Выберите класс</h2>
-            <button
-              v-for="cls in graphicsData.carClasses"
-              :key="cls.id"
-              @click="selectGraphicsClass(cls)"
-              class="w-full card-metallic p-6 rounded-2xl flex flex-col items-center gap-3 active:scale-95 transition-transform border border-white/5 hover:border-metric-green/50"
-            >
-              <span class="text-4xl">{{ cls.icon }}</span>
-              <span class="font-bold text-lg tracking-wide">{{ cls.name }}</span>
-            </button>
-          </div>
-          <div v-if="graphicsStep === 2" class="animate-fade-in h-full flex flex-col pt-4 p-4">
-            <div class="flex items-center justify-between mb-4">
-              <button @click="graphicsStep = 1" class="text-sm text-metric-silver hover:text-white px-2">← Назад</button>
-              <h2 class="text-xl font-bold text-white">Выберите деталь</h2>
-              <div class="w-8"></div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                v-for="part in graphicsData.partsList"
-                :key="part.id"
-                @click="selectGraphicsPart(part)"
-                class="aspect-square card-metallic border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:bg-white/5 hover:border-metric-green/30"
+        <!-- Graphics mode: fullscreen layout, dropdowns для класса и детали, без отдельных экранов -->
+        <div v-if="calcMode === 'graphics'" ref="graphicsRoot" class="graphics-fullscreen-wrapper">
+          <!-- Header: назад, селекты, fullscreen, сброс -->
+          <header class="graphics-header shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-white/10 bg-black/60">
+            <button @click="closeEditor" class="text-metric-silver hover:text-white p-1.5 rounded border border-white/10 shrink-0" aria-label="Назад">←</button>
+            <div class="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+              <select
+                v-model="graphicsSelectedClassId"
+                :disabled="isLockedSelection"
+                @change="onGraphicsClassChange"
+                class="graphics-select flex-1 min-w-0 max-w-[140px] bg-[#151515] border border-[#333] rounded-lg px-2 py-1.5 text-xs text-white focus:border-metric-green/50 outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
-                <div class="text-metric-green text-opacity-80 font-black text-2xl">
-                  <span v-if="part.icon === 'door'">🚪</span>
-                  <span v-else-if="part.icon === 'hood'">🚘</span>
-                  <span v-else-if="part.icon === 'fender'">🚙</span>
-                  <span v-else-if="part.icon === 'trunk'">📦</span>
-                  <span v-else-if="part.icon === 'roof'">🏠</span>
-                  <span v-else>🔧</span>
-                </div>
-                <span class="font-medium text-sm">{{ part.name }}</span>
+                <option v-for="cls in graphicsData.carClasses" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
+              </select>
+              <select
+                v-model="graphicsSelectedPartId"
+                :disabled="isLockedSelection"
+                @change="onGraphicsPartChange"
+                class="graphics-select flex-1 min-w-0 max-w-[160px] bg-[#151515] border border-[#333] rounded-lg px-2 py-1.5 text-xs text-white focus:border-metric-green/50 outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
+              >
+                <option v-for="part in graphicsPartsList" :key="part.id" :value="part.id">{{ part.name }}</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" @click="toggleFullscreen" class="text-metric-silver hover:text-white p-1.5 rounded border border-white/10" :aria-label="isFullscreen ? 'Выйти из полноэкранного' : 'Полноэкранный'">
+                <svg v-if="!isFullscreen" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 8h2v-3h3v-2h-5v5zm2-8V5h-2v5h5V8h-3z"/></svg>
               </button>
+              <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300 shrink-0">Сброс</button>
             </div>
-          </div>
-          <div v-if="graphicsStep === 3" ref="graphicsRoot" class="relative flex flex-col h-full animate-fade-in pt-1 px-3 pb-2 graphics-step3-root">
-            <div class="flex justify-between items-center mb-1">
-              <button @click="closeEditor" class="text-xs text-metric-silver px-2 py-1 rounded border border-white/10 hover:text-white">← Назад</button>
-              <span class="text-xs text-metric-green font-bold uppercase tracking-widest">{{ graphicsState.selectedPart?.name }} • {{ graphicsState.selectedClass?.name }}</span>
-              <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  @click="toggleFullscreen"
-                  class="text-metric-silver hover:text-white p-1.5 rounded border border-white/10 hover:border-white/20 transition-colors"
-                  :aria-label="isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'"
-                >
-                  <svg v-if="!isFullscreen" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                  <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 8h2v-3h3v-2h-5v5zm2-8V5h-2v5h5V8h-3z"/></svg>
-                </button>
-                <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300">Сброс</button>
-              </div>
-            </div>
-            <!-- A) Фон редактора: DOM (без konva-bg) + Konva bgRect в konvaEditor.js -->
+          </header>
+          <!-- Stage: на шаге conditions — превью детали (фикс. высота); на edit — flex-1 -->
+          <div
+            class="graphics-stage-area flex flex-col w-full border-b border-white/10"
+            :class="graphicsWizardStep === 'conditions' ? 'graphics-stage-preview shrink-0' : 'flex-1 min-h-0'"
+          >
             <div
               id="canvas-wrapper"
-              class="canvas-editor-wrap flex-1 relative w-full min-h-[300px] overflow-hidden rounded-xl border border-white/10 shadow-2xl"
+              class="canvas-editor-wrap relative w-full overflow-hidden"
+              :class="graphicsWizardStep === 'conditions' ? 'h-[40vh] min-h-[200px] max-h-[45vh]' : 'flex-1 min-h-0'"
               style="background-color: #0b0f14"
             >
               <div ref="konvaContainer" id="konva-container" class="absolute inset-0 w-full h-full" style="background-color: #0b0f14"></div>
-              <!-- Camera controls overlay: D-pad + Zoom компактнее и ниже -->
-              <div class="absolute inset-0 pointer-events-none p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] flex flex-col justify-end">
+              <!-- Режим "только просмотр": перехват всех кликов/тапов по канвасу (доп. к setEditorInteractive). -->
+              <div
+                v-if="graphicsWizardStep === 'conditions'"
+                class="absolute inset-0 z-10 cursor-default pointer-events-auto"
+                aria-label="Режим просмотра"
+              ></div>
+              <!-- Бейдж "Просмотр" на шаге conditions -->
+              <div
+                v-if="graphicsWizardStep === 'conditions'"
+                class="absolute top-2 left-2 z-20 px-2 py-1 rounded-md bg-black/60 border border-white/20 text-[10px] font-bold uppercase tracking-widest text-metric-silver pointer-events-none"
+              >
+                Просмотр
+              </div>
+              <!-- Мини-HUD: цена выбранной вмятины, только на шаге edit -->
+              <div
+                v-if="graphicsWizardStep === 'edit'"
+                class="absolute top-2 right-2 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/55 backdrop-blur-sm border border-white/10 text-[11px] font-medium pointer-events-none"
+              >
+                <svg class="w-3.5 h-3.5 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="text-gray-400">Цена:</span>
+                <span :class="basePriceTotal > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
+                  {{ formatCurrency(Math.round(basePriceTotal / 100) * 100) }} ₽
+                </span>
+              </div>
+              <!-- D-pad и Zoom: только на шаге edit -->
+              <div v-if="graphicsWizardStep === 'edit'" class="absolute inset-0 pointer-events-none p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] flex flex-col justify-end">
                 <div class="flex items-end justify-between gap-1 pointer-events-none">
-                  <!-- D-pad: 28px ячейки; только блок ловит клики -->
                   <div class="pointer-events-auto grid grid-cols-[28px_28px_28px] grid-rows-[28px_28px_28px] gap-0.5 rounded bg-black/35 backdrop-blur-sm border border-white/10 p-0.5 place-items-center shrink-0">
-                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <span class="w-7 h-7"></span>
                     <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(0, -40)" aria-label="Вверх" :disabled="editorZoom <= 1.01">↑</button>
-                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <span class="w-7 h-7"></span>
                     <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(-40, 0)" aria-label="Влево" :disabled="editorZoom <= 1.01">←</button>
-                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <span class="w-7 h-7"></span>
                     <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(40, 0)" aria-label="Вправо" :disabled="editorZoom <= 1.01">→</button>
-                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <span class="w-7 h-7"></span>
                     <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(0, 40)" aria-label="Вниз" :disabled="editorZoom <= 1.01">↓</button>
-                    <span class="w-7 h-7" aria-hidden="true"></span>
+                    <span class="w-7 h-7"></span>
                   </div>
-                  <!-- Zoom: компактнее; только блок ловит клики -->
                   <div class="pointer-events-auto flex items-center gap-1 rounded bg-black/35 backdrop-blur-sm border border-white/10 p-1 max-w-[180px] min-w-0">
                     <button type="button" class="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 p-0.5 rounded border border-white/20 flex items-center justify-center text-metric-green font-bold text-sm hover:bg-white/10 hover:border-metric-green/50 active:scale-95" @click="editorZoomOut" aria-label="Уменьшить">−</button>
-                    <input type="range" min="0.5" max="3" step="0.05" v-model.number="editorZoom" class="flex-1 min-w-0 w-[100px] max-w-[120px] h-1 rounded-full appearance-none bg-white/10 accent-[#88E523] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#88E523] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#88E523] [&::-moz-range-thumb]:border-0" @input="editorZoomInput" />
+                    <input type="range" min="0.5" max="3" step="0.05" v-model.number="editorZoom" class="flex-1 min-w-0 w-[100px] max-w-[120px] h-1 rounded-full appearance-none bg-white/10 accent-[#88E523] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#88E523] [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#88E523] [&::-moz-range-thumb]:border-0" @input="editorZoomInput" />
                     <button type="button" class="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 p-0.5 rounded border border-white/20 flex items-center justify-center text-metric-green font-bold text-sm hover:bg-white/10 hover:border-metric-green/50 active:scale-95" @click="editorZoomIn" aria-label="Увеличить">+</button>
                     <span class="shrink-0 text-[10px] font-mono text-metric-green w-7 text-right">{{ Math.round(editorZoom * 100) }}%</span>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- Размеры (мм): только при выбранной вмятине; keyboard-aware на мобилке -->
+          </div>
+          <!-- Controls-area: шаг edit — размещение; шаг conditions — только условия + "Назад" -->
+          <div
+            ref="graphicsControlsAreaRef"
+            class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80"
+            :style="controlsAreaKeyboardStyle"
+          >
+            <!-- Шаг "Условия": primary "Редактировать", ConditionsPanel -->
+            <template v-if="graphicsWizardStep === 'conditions'">
+              <div class="p-2 mb-2 flex flex-col gap-2" ref="conditionsSectionRef">
+                <button
+                  type="button"
+                  @click="graphicsWizardStep = 'edit'"
+                  class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90 transition-opacity"
+                >
+                  <span aria-hidden="true">✎</span>
+                  <span>Редактировать</span>
+                </button>
+              </div>
+              <div class="mx-2 mb-2">
+                <ConditionsPanel
+                  :model="form"
+                  :initial-data="initialData"
+                  :disabled="false"
+                  compact
+                  :open-when-formed="true"
+                />
+              </div>
+            </template>
+
+            <!-- Шаг "Размещение": тип вмятины, поворот/удалить, размеры, кнопка ГОТОВО -->
+            <template v-else>
+            <!-- Выбор типа вмятины -->
+            <div class="grid grid-cols-2 gap-2 p-2">
+              <button @click="openSizeMenu('circle')" class="card-metallic p-2.5 rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all">
+                <div class="w-5 h-5 rounded-full border-2 border-metric-green bg-metric-green/20 shrink-0"></div>
+                <div class="text-left min-w-0">
+                  <div class="font-bold text-[10px] text-white">Вмятина</div>
+                  <div class="text-[9px] text-gray-500">Круг/Овал</div>
+                </div>
+              </button>
+              <button @click="openSizeMenu('strip')" class="card-metallic p-2.5 rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all">
+                <div class="w-5 h-2 bg-metric-silver rotate-45 rounded-sm shrink-0"></div>
+                <div class="text-left min-w-0">
+                  <div class="font-bold text-[10px] text-white">Полоса</div>
+                  <div class="text-[9px] text-gray-500">Царапина</div>
+                </div>
+              </button>
+            </div>
+            <!-- Поворот / Удалить / Свободное растяжение -->
+            <div class="grid grid-cols-3 gap-2 px-2 pb-2 text-[11px]">
+              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateLeft">
+                <span class="text-base">⟲ -15°</span>
+                <span class="text-[9px] text-gray-500">Повернуть</span>
+              </button>
+              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateRight">
+                <span class="text-base">⟳ +15°</span>
+                <span class="text-[9px] text-gray-500">Повернуть</span>
+              </button>
+              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 hover:border-red-400/60 transition-all" @click="deleteCurrent">
+                <span class="text-base text-red-400">✕</span>
+                <span class="text-[9px] text-gray-500">Удалить</span>
+              </button>
+            </div>
+            <div class="px-2 pb-2 flex items-center gap-2">
+              <label class="flex items-center gap-2 cursor-pointer text-[10px] text-gray-400">
+                <input type="checkbox" v-model="freeStretchMode" @change="onFreeStretchChange" class="rounded border-white/20 bg-[#151515] text-metric-green focus:ring-metric-green/50" />
+                <span>Свободное растяжение (неправильная форма)</span>
+              </label>
+            </div>
+            <!-- Размеры (мм): keyboard-aware -->
             <div
               v-if="selectedDentSize"
               ref="dimensionsPanelRef"
               :class="{ 'dimensions-panel-keyboard-open': isKeyboardOpen }"
               :style="dimensionsPanelKeyboardStyle"
-              class="mt-1.5 rounded-xl bg-black/35 border border-white/10 p-2.5 transition-[bottom] duration-200"
+              class="mx-2 mb-2 rounded-xl bg-black/35 border border-white/10 p-2.5 transition-[bottom] duration-200"
             >
               <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-2">Размеры (мм)</div>
               <div class="grid grid-cols-2 gap-3">
@@ -413,7 +485,8 @@
                     min="0.1"
                     max="2000"
                     step="0.5"
-                    inputmode="decimal"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
                     enterkeyhint="done"
                     class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
                     @focus="onDimensionsInputFocus"
@@ -427,47 +500,33 @@
                     min="0.1"
                     max="2000"
                     step="0.5"
-                    inputmode="decimal"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
                     enterkeyhint="done"
                     class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
                     @focus="onDimensionsInputFocus"
                   />
                 </div>
               </div>
-              <div v-if="isKeyboardOpen" class="mt-3 flex justify-end">
+              <div class="mt-2 flex justify-end gap-2">
                 <button type="button" class="text-metric-green text-sm font-medium px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 active:opacity-90" @click="closeDimensionsKeyboard">Готово</button>
               </div>
             </div>
-            <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
-              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateLeft">
-                <span class="text-base">⟲ -15°</span>
-                <span class="text-[9px] text-gray-500">Повернуть</span>
+            <!-- Кнопка "ГОТОВО": переход на шаг "Условия" только по нажатию. Активна только при валидных размерах выбранной вмятины. -->
+            <div class="mx-2 mb-2">
+              <button
+                type="button"
+                @click="goToConditionsStep"
+                :disabled="!canGoToConditions"
+                :title="canGoToConditions ? '' : 'Сначала задайте размеры'"
+                class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                :class="canGoToConditions ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
+              >
+                <span>Готово</span>
               </button>
-              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateRight">
-                <span class="text-base">⟳ +15°</span>
-                <span class="text-[9px] text-gray-500">Повернуть</span>
-              </button>
-              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 hover:border-red-400/60 transition-all" @click="deleteCurrent">
-                <span class="text-base text-red-400">✕</span>
-                <span class="text-[9px] text-gray-500">Удалить</span>
-              </button>
+              <p v-if="!canGoToConditions && graphicsState.dents.length > 0" class="text-[10px] text-gray-500 mt-1 text-center">Сначала задайте размеры</p>
             </div>
-            <div class="mt-2 grid grid-cols-2 gap-3">
-              <button @click="openSizeMenu('circle')" class="card-metallic p-3 rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all">
-                <div class="w-6 h-6 rounded-full border-2 border-metric-green bg-metric-green/20"></div>
-                <div class="text-left">
-                  <div class="font-bold text-xs text-white">Вмятина</div>
-                  <div class="text-[9px] text-gray-500">Круг/Овал</div>
-                </div>
-              </button>
-              <button @click="openSizeMenu('strip')" class="card-metallic p-3 rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all">
-                <div class="w-6 h-2 bg-metric-silver rotate-45 rounded-sm"></div>
-                <div class="text-left">
-                  <div class="font-bold text-xs text-white">Полоса</div>
-                  <div class="text-[9px] text-gray-500">Царапина</div>
-                </div>
-              </button>
-            </div>
+            </template>
           </div>
         </div>
       </div>
@@ -699,16 +758,20 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
-import { initKonva, destroyKonva, addDent, resetDents, rotateSelected, deleteSelected, setZoomCentered, getZoom, resizeStage, scheduleFit, panBy, setSelectedDentSizeMm } from './graphics/konvaEditor';
+import { initKonva, destroyKonva, addDent, resetDents, rotateSelected, deleteSelected, setZoomCentered, getZoom, resizeStage, scheduleFit, panBy, setSelectedDentSizeMm, setKeepRatio, setEditorInteractive } from './graphics/konvaEditor';
 import { initialData } from './data/initialData';
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesWithArea } from './data/dentSizes';
+import { applyConditionsToBase } from './utils/priceCalc';
+import ConditionsPanel from './components/ConditionsPanel.vue';
 
 // Tabs & mode
 const currentTab = ref('calc');
 const calcMode = ref('standard');
 const graphicsStep = ref(1);
+/** Шаг визарда в режиме Графика: 'edit' — размещение вмятины, 'conditions' — выбор коэффициентов. Переход только по кнопке "ГОТОВО". */
+const graphicsWizardStep = ref('edit');
 
 const tabs = [
   { id: 'calc', label: 'Калькулятор', icon: '🧮' },
@@ -766,14 +829,57 @@ const graphicsData = {
     { id: 'sedan', name: 'Седан', icon: '🚗' },
     { id: 'crossover', name: 'Кроссовер', icon: '🚙' },
     { id: 'suv', name: 'Внедорожник', icon: '🚜' }
-  ],
-  get partsList() {
-    if (graphicsState.selectedClass?.id === 'crossover') {
-      return getPartsByClass('crossover');
-    }
-    return Object.values(CAR_PARTS);
-  }
+  ]
 };
+
+/** Блокировка выбора типа авто и детали на шаге "Условия". */
+const isLockedSelection = computed(() => graphicsWizardStep.value === 'conditions');
+
+/** Список деталей для выбранного класса (для dropdown). */
+const graphicsPartsList = computed(() => {
+  if (graphicsState.selectedClass?.id === 'crossover') {
+    return getPartsByClass('crossover');
+  }
+  return Object.values(CAR_PARTS);
+});
+
+const graphicsSelectedClassId = ref('crossover');
+const graphicsSelectedPartId = ref('hood');
+
+watch([graphicsState.selectedClass, graphicsState.selectedPart], () => {
+  if (graphicsState.selectedClass) graphicsSelectedClassId.value = graphicsState.selectedClass.id;
+  if (graphicsState.selectedPart) graphicsSelectedPartId.value = graphicsState.selectedPart.id;
+}, { immediate: true });
+
+function ensureGraphicsSelection() {
+  const classId = graphicsSelectedClassId.value || graphicsData.carClasses[0]?.id;
+  const cls = graphicsData.carClasses.find((c) => c.id === classId) || graphicsData.carClasses[0];
+  graphicsState.selectedClass = cls || null;
+  const list = cls?.id === 'crossover' ? getPartsByClass('crossover') : Object.values(CAR_PARTS);
+  const partId = graphicsSelectedPartId.value;
+  let part = list.find((p) => p.id === partId);
+  if (!part) part = list[0] || null;
+  graphicsState.selectedPart = part;
+  if (part) graphicsSelectedPartId.value = part.id;
+  if (cls) graphicsSelectedClassId.value = cls.id;
+}
+
+function onGraphicsClassChange() {
+  if (graphicsWizardStep.value === 'conditions') return;
+  const cls = graphicsData.carClasses.find((c) => c.id === graphicsSelectedClassId.value);
+  graphicsState.selectedClass = cls || null;
+  const list = graphicsPartsList.value;
+  graphicsState.selectedPart = list[0] || null;
+  graphicsSelectedPartId.value = graphicsState.selectedPart?.id || '';
+  nextTick(() => setTimeout(initKonvaEditor, 50));
+}
+
+function onGraphicsPartChange() {
+  if (graphicsWizardStep.value === 'conditions') return;
+  const part = graphicsPartsList.value.find((p) => p.id === graphicsSelectedPartId.value);
+  graphicsState.selectedPart = part || null;
+  nextTick(() => setTimeout(initKonvaEditor, 50));
+}
 
 const showSizeMenu = ref(false);
 const activeToolType = ref(null);
@@ -874,56 +980,90 @@ const graphicsCircleSizes = computed(() => {
   return initialData.circleSizes;
 });
 
-/** Teleport target for size menu: inside graphicsRoot when step 3 so popup is visible in fullscreen */
+/** Teleport target for size menu: inside graphicsRoot when in graphics mode */
 const sizeMenuPortalTarget = computed(() => {
-  if (graphicsStep.value === 3 && graphicsRoot.value) return graphicsRoot.value;
+  if (calcMode.value === 'graphics' && graphicsRoot.value) return graphicsRoot.value;
   return typeof document !== 'undefined' ? document.body : null;
 });
 
+/** В Графике условия (как в Стандарт/Время) применяются к базе от вмятин; используем общий form. */
+
+/** Стиль панели контролов при открытой клавиатуре: поднять над клавиатурой */
+const controlsAreaKeyboardStyle = computed(() => {
+  if (!isKeyboardOpen.value) return undefined;
+  const px = keyboardInset.value;
+  return {
+    paddingBottom: `calc(12px + env(safe-area-inset-bottom, 0px) + ${px}px)`
+  };
+});
+
+/** Режим свободного растяжения (неправильная форма) для выбранной вмятины */
+const freeStretchMode = ref(false);
+
+function onFreeStretchChange() {
+  setKeepRatio(!freeStretchMode.value);
+}
+
 const standardPrice = computed(() => {
-  if (!form.sizeCode || !form.repairCode || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) return 0;
+  if (!form.sizeCode) return 0;
   const base = userSettings.prices[form.sizeCode] || 0;
-  const riskObj = initialData.risks.find(r => r.code === form.riskCode);
-  const kKey = riskObj ? riskObj.matrixKey : 'K2';
-  const matrixRow = initialData.complexityMatrix[form.sizeCode] || initialData.complexityMatrix['STRIP_DEFAULT'];
-  const compMult = matrixRow[kKey] || 1.0;
-  const repMult = initialData.repairTypes.find(r => r.code === form.repairCode)?.mult || 1.0;
-  const matMult = initialData.materials.find(m => m.code === form.materialCode)?.mult || 1.0;
-  const clsMult = initialData.carClasses.find(c => c.code === form.carClassCode)?.mult || 1.0;
-  const disCost = initialData.disassembly.find(d => d.code === form.disassemblyCode)?.price || 0;
-  const total = (base * repMult * matMult * compMult * clsMult) + disCost;
-  return Math.round(total / 500) * 500;
+  return applyConditionsToBase(base, form, initialData, form.sizeCode, 500);
 });
 
 const timePrice = computed(() => {
-  if (!form.hours || !form.repairCode || !form.riskCode || !form.materialCode || !form.carClassCode || !form.disassemblyCode) return 0;
-  const riskObj = initialData.risks.find(r => r.code === form.riskCode);
-  const kKey = riskObj ? riskObj.matrixKey : 'K2';
-  const compMult = initialData.complexityMatrix['STRIP_DEFAULT'][kKey] || 1.0;
-  const repMult = initialData.repairTypes.find(r => r.code === form.repairCode)?.mult || 1.0;
-  const matMult = initialData.materials.find(m => m.code === form.materialCode)?.mult || 1.0;
-  const clsMult = initialData.carClasses.find(c => c.code === form.carClassCode)?.mult || 1.0;
-  const disCost = initialData.disassembly.find(d => d.code === form.disassemblyCode)?.price || 0;
+  if (!form.hours) return 0;
   const laborBase = form.hours * userSettings.hourlyRate;
-  const total = (laborBase * repMult * matMult * compMult * clsMult) + disCost;
-  return Math.round(total / 100) * 100;
+  return applyConditionsToBase(laborBase, form, initialData, 'STRIP_DEFAULT', 100);
 });
 
-const graphicsPrice = computed(() => {
+/** База от вмятин (как раньше: первая + 0.5 за каждую следующую). */
+const graphicsBasePrice = computed(() => {
   if (graphicsState.dents.length === 0) return 0;
   const sorted = [...graphicsState.dents].sort((a, b) => b.price - a.price);
   let total = sorted[0].price;
   for (let i = 1; i < sorted.length; i++) {
     total += sorted[i].price * 0.5;
   }
-  return Math.round(total / 100) * 100;
+  return total;
 });
+
+/** Итоговая цена в Графике: база от вмятин + те же коэффициенты, что в Стандарт/Время. */
+const graphicsPrice = computed(() => {
+  const base = graphicsBasePrice.value;
+  if (base <= 0) return 0;
+  return applyConditionsToBase(base, form, initialData, 'STRIP_DEFAULT', 100);
+});
+
+/** Вмятина "сформирована": есть хотя бы одна. */
+const graphicsDentFormed = computed(() => graphicsState.dents.length >= 1);
+
+/** Можно перейти на шаг "Условия": есть выбранная вмятина с валидными размерами (width/height > 0). */
+const canGoToConditions = computed(() => {
+  const info = selectedDentSize.value;
+  return info && Number(info.widthMm) > 0 && Number(info.heightMm) > 0;
+});
+
+/** Общая базовая цена всех вмятин (по размеру, без условий). Использует формулу: первая + 0.5×остальные. */
+const basePriceTotal = computed(() => graphicsBasePrice.value);
+
+const conditionsSectionRef = ref(null);
+const graphicsControlsAreaRef = ref(null);
+
+function goToConditionsStep() {
+  if (!canGoToConditions.value) return;
+  graphicsWizardStep.value = 'conditions';
+  nextTick(() => {
+    conditionsSectionRef.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  });
+}
 
 const totalPrice = computed(() => {
   if (currentTab.value !== 'calc') return 0;
   if (calcMode.value === 'standard') return standardPrice.value;
   if (calcMode.value === 'time') return timePrice.value;
-  if (calcMode.value === 'graphics') return graphicsPrice.value;
+  if (calcMode.value === 'graphics') {
+    return graphicsWizardStep.value === 'conditions' ? graphicsPrice.value : Math.round(graphicsBasePrice.value / 100) * 100;
+  }
   return 0;
 });
 
@@ -942,7 +1082,11 @@ const haptic = (type) => {
 const setMode = (mode) => {
   calcMode.value = mode;
   haptic('selection');
-  if (mode === 'graphics' && graphicsStep.value === 3) {
+  if (mode === 'graphics') {
+    if (window.Telegram?.WebApp?.expand) window.Telegram.WebApp.expand();
+    ensureGraphicsSelection();
+    graphicsStep.value = 3;
+    graphicsWizardStep.value = 'edit';
     nextTick(() => setTimeout(initKonvaEditor, 100));
   }
 };
@@ -999,21 +1143,10 @@ const resetDefaults = () => {
 };
 
 // Graphics
-const selectGraphicsClass = (cls) => {
-  graphicsState.selectedClass = cls;
-  graphicsStep.value = 2;
-  haptic('selection');
-};
-
-const selectGraphicsPart = (part) => {
-  graphicsState.selectedPart = part;
-  graphicsStep.value = 3;
-  haptic('selection');
-  nextTick(() => setTimeout(initKonvaEditor, 100));
-};
-
 const closeEditor = () => {
-  graphicsStep.value = 2;
+  calcMode.value = 'standard';
+  graphicsStep.value = 1;
+  graphicsWizardStep.value = 'edit';
   graphicsState.dents = [];
   resetDents();
   haptic('selection');
@@ -1190,6 +1323,7 @@ watch(totalPrice, (val) => {
 
 const handleKeyDown = (e) => {
   if (calcMode.value !== 'graphics' || graphicsStep.value !== 3) return;
+  if (graphicsWizardStep.value === 'conditions') return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
     const active = document.activeElement;
     const isEditable = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (typeof active.isContentEditable === 'boolean' && active.isContentEditable));
@@ -1217,6 +1351,29 @@ onMounted(() => {
     updateKeyboardInset();
   }
 });
+
+watch(
+  () => calcMode.value === 'graphics',
+  (isGraphics) => {
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('graphics-fullscreen-active', isGraphics);
+    if (isGraphics && window.Telegram?.WebApp?.expand) window.Telegram.WebApp.expand();
+  },
+  { immediate: true }
+);
+
+/** При смене шага визарда в Графике: отключать/включать интерактивность канваса (режим "только просмотр" на шаге conditions). */
+watch(
+  graphicsWizardStep,
+  (step) => {
+    if (calcMode.value !== 'graphics') return;
+    nextTick(() => {
+      setEditorInteractive(step === 'edit');
+      if (step === 'conditions') setTimeout(() => scheduleFit('resize'), 150);
+    });
+  },
+  { immediate: true }
+);
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange);
@@ -1252,11 +1409,51 @@ onBeforeUnmount(() => {
 }
 .canvas-editor-wrap.konva-bg { background-image: none !important; }
 
-/* Fullscreen: only container (step 3), fallback when Fullscreen API unavailable (e.g. Telegram WebView) */
-.graphics-step3-root.graphics-fullscreen-pseudo {
+/* Fullscreen: контейнер графики занимает весь экран (fixed), 100dvh, без прокрутки body */
+.graphics-fullscreen-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: #000;
+}
+
+.graphics-header {
+  flex-shrink: 0;
+}
+
+.graphics-stage-area {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.graphics-controls-area {
+  flex-shrink: 0;
+}
+
+/* Body без прокрутки при активной графике */
+body.graphics-fullscreen-active {
+  overflow: hidden;
+  height: 100dvh;
+}
+
+/* Fullscreen pseudo (кнопка «полноэкранный») */
+.graphics-fullscreen-wrapper.graphics-fullscreen-pseudo {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #000;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 </style>
