@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:setup": "node scripts/deploy.js setup",
+    "deploy": "node scripts/deploy.js deploy"
   },
   "dependencies": {
     "konva": "^10.2.0",

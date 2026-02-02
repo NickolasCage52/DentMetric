@@ -1,5 +1,11 @@
-# Vue 3 + Vite
+# DentMetric
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + Vite + Konva. Приложение для оценки вмятин на кузове авто.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Как задеплоить
+
+1. `npm ci`
+2. `npm run deploy:setup` — один раз (проверяет origin, создаёт ветку gh-pages при необходимости)
+3. `npm run deploy` — каждый раз (сборка + пуш dist в gh-pages)
+
+**Важно:** В GitHub → Settings → Pages выберите **Source: Deploy from a branch**, **Branch: gh-pages** с корнем `/ (root)`.
