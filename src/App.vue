@@ -307,270 +307,24 @@
           </button>
         </div>
 
-        <!-- Graphics mode: fullscreen layout, dropdowns для класса и детали, без отдельных экранов -->
-        <div v-if="calcMode === 'graphics'" ref="graphicsRoot" class="graphics-fullscreen-wrapper">
-          <!-- Header: назад, селекты, fullscreen, сброс -->
-          <header class="graphics-header shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-white/10 bg-black/60">
-            <button @click="closeEditor" class="text-metric-silver hover:text-white p-1.5 rounded border border-white/10 shrink-0" aria-label="Назад">←</button>
-            <div class="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
-              <select
-                v-model="graphicsSelectedClassId"
-                :disabled="isLockedSelection"
-                @change="onGraphicsClassChange"
-                class="graphics-select flex-1 min-w-0 max-w-[140px] bg-[#151515] border border-[#333] rounded-lg px-2 py-1.5 text-xs text-white focus:border-metric-green/50 outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
-              >
-                <option v-for="cls in graphicsData.carClasses" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
-              </select>
-              <select
-                v-model="graphicsSelectedPartId"
-                :disabled="isLockedSelection"
-                @change="onGraphicsPartChange"
-                class="graphics-select flex-1 min-w-0 max-w-[160px] bg-[#151515] border border-[#333] rounded-lg px-2 py-1.5 text-xs text-white focus:border-metric-green/50 outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
-              >
-                <option v-for="part in graphicsPartsList" :key="part.id" :value="part.id">{{ part.name }}</option>
-              </select>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <button @click="resetGraphics" class="text-xs text-red-400 px-2 py-1 hover:text-red-300 shrink-0">Сброс</button>
-            </div>
-          </header>
-          <!-- Stage: на шаге conditions — превью детали (фикс. высота); на edit — flex-1 -->
-          <div
-            class="graphics-stage-area flex flex-col w-full border-b border-white/10"
-            :class="graphicsWizardStep === 'conditions' ? 'graphics-stage-preview shrink-0' : 'flex-1 min-h-0'"
-          >
-            <div
-              id="canvas-wrapper"
-              class="canvas-editor-wrap relative w-full overflow-hidden"
-              :class="graphicsWizardStep === 'conditions' ? 'h-[40vh] min-h-[200px] max-h-[45vh]' : 'flex-1 min-h-0'"
-              style="background-color: #0b0f14"
-            >
-              <div ref="konvaContainer" id="konva-container" class="absolute inset-0 w-full h-full" style="background-color: #0b0f14"></div>
-              <!-- Режим "только просмотр": перехват всех кликов/тапов по канвасу (доп. к setEditorInteractive). -->
-              <div
-                v-if="graphicsWizardStep === 'conditions'"
-                class="absolute inset-0 z-10 cursor-default pointer-events-auto"
-                aria-label="Режим просмотра"
-              ></div>
-              <!-- Бейдж "Просмотр" на шаге conditions -->
-              <div
-                v-if="graphicsWizardStep === 'conditions'"
-                class="absolute top-2 left-2 z-20 px-2 py-1 rounded-md bg-black/60 border border-white/20 text-[10px] font-bold uppercase tracking-widest text-metric-silver pointer-events-none"
-              >
-                Просмотр
-              </div>
-              <!-- HUD Цена: сумма всех вмятин (без условий), всегда виден на шаге edit -->
-              <div
-                v-if="graphicsWizardStep === 'edit'"
-                class="absolute top-2 right-2 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/55 backdrop-blur-sm border border-white/10 text-[11px] font-medium pointer-events-none"
-              >
-                <svg class="w-3.5 h-3.5 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span class="text-gray-400">Цена:</span>
-                <span :class="basePriceTotal > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
-                  {{ basePriceTotal > 0 ? formatCurrency(Math.round(basePriceTotal / 100) * 100) + ' ₽' : '---' }}
-                </span>
-              </div>
-              <!-- D-pad и Zoom: только на шаге edit -->
-              <div v-if="graphicsWizardStep === 'edit'" class="absolute inset-0 pointer-events-none p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] flex flex-col justify-end">
-                <div class="flex items-end justify-between gap-1 pointer-events-none">
-                  <div class="pointer-events-auto grid grid-cols-[28px_28px_28px] grid-rows-[28px_28px_28px] gap-0.5 rounded bg-black/35 backdrop-blur-sm border border-white/10 p-0.5 place-items-center shrink-0">
-                    <span class="w-7 h-7"></span>
-                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(0, -40)" aria-label="Вверх" :disabled="editorZoom <= 1.01">↑</button>
-                    <span class="w-7 h-7"></span>
-                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(-40, 0)" aria-label="Влево" :disabled="editorZoom <= 1.01">←</button>
-                    <span class="w-7 h-7"></span>
-                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(40, 0)" aria-label="Вправо" :disabled="editorZoom <= 1.01">→</button>
-                    <span class="w-7 h-7"></span>
-                    <button type="button" class="min-w-[28px] min-h-[28px] w-7 h-7 rounded border flex items-center justify-center text-metric-green font-bold text-xs hover:bg-white/10 hover:border-metric-green/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors" :class="editorZoom <= 1.01 ? 'border-white/5 text-gray-500' : 'border-white/20'" @click="editorPan(0, 40)" aria-label="Вниз" :disabled="editorZoom <= 1.01">↓</button>
-                    <span class="w-7 h-7"></span>
-                  </div>
-                  <div class="pointer-events-auto flex items-center gap-1 rounded bg-black/35 backdrop-blur-sm border border-white/10 p-1 max-w-[180px] min-w-0">
-                    <button type="button" class="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 p-0.5 rounded border border-white/20 flex items-center justify-center text-metric-green font-bold text-sm hover:bg-white/10 hover:border-metric-green/50 active:scale-95" @click="editorZoomOut" aria-label="Уменьшить">−</button>
-                    <input type="range" min="0.5" max="3" step="0.05" v-model.number="editorZoom" class="flex-1 min-w-0 w-[100px] max-w-[120px] h-1 rounded-full appearance-none bg-white/10 accent-[#88E523] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#88E523] [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#88E523] [&::-moz-range-thumb]:border-0" @input="editorZoomInput" />
-                    <button type="button" class="shrink-0 min-w-[32px] min-h-[32px] w-8 h-8 p-0.5 rounded border border-white/20 flex items-center justify-center text-metric-green font-bold text-sm hover:bg-white/10 hover:border-metric-green/50 active:scale-95" @click="editorZoomIn" aria-label="Увеличить">+</button>
-                    <span class="shrink-0 text-[10px] font-mono text-metric-green w-7 text-right">{{ Math.round(editorZoom * 100) }}%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Controls-area: шаг edit — размещение; шаг conditions — только условия + "Назад". Блок размеров в потоке, не поверх кнопок. -->
-          <div
-            ref="graphicsControlsAreaRef"
-            class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pb-[env(safe-area-inset-bottom,0px)]"
-            :style="controlsAreaKeyboardStyle"
-          >
-            <!-- Шаг "Условия": primary "Назад к редактированию", ConditionsPanel -->
-            <template v-if="graphicsWizardStep === 'conditions'">
-              <div class="p-2 mb-2 flex flex-col gap-2" ref="conditionsSectionRef">
-                <button
-                  type="button"
-                  @click="backToEdit"
-                  class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90 transition-opacity"
-                >
-                  <span aria-hidden="true">✎</span>
-                  <span>Назад к редактированию</span>
-                </button>
-              </div>
-              <div class="mx-2 mb-2">
-                <ConditionsPanel
-                  :model="form"
-                  :initial-data="initialData"
-                  :disabled="false"
-                  compact
-                  :open-when-formed="true"
-                />
-              </div>
-            </template>
-
-            <!-- Шаг "Размещение": тип вмятины, поворот/удалить, размеры, кнопка ГОТОВО -->
-            <template v-else>
-            <!-- Выбор типа вмятины -->
-            <div class="grid grid-cols-2 gap-2 p-2">
-              <button @click="openSizeMenu('circle')" class="card-metallic p-2.5 rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all">
-                <div class="w-5 h-5 rounded-full border-2 border-metric-green bg-metric-green/20 shrink-0"></div>
-                <div class="text-left min-w-0">
-                  <div class="font-bold text-[10px] text-white">Вмятина</div>
-                  <div class="text-[9px] text-gray-500">Круг/Овал</div>
-                </div>
-              </button>
-              <button @click="openSizeMenu('strip')" class="card-metallic p-2.5 rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all">
-                <div class="w-5 h-2 bg-metric-silver rotate-45 rounded-sm shrink-0"></div>
-                <div class="text-left min-w-0">
-                  <div class="font-bold text-[10px] text-white">Полоса</div>
-                  <div class="text-[9px] text-gray-500">Царапина</div>
-                </div>
-              </button>
-            </div>
-            <!-- Поворот / Удалить / Свободное растяжение -->
-            <div class="grid grid-cols-3 gap-2 px-2 pb-2 text-[11px]">
-              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateLeft">
-                <span class="text-base">⟲ -15°</span>
-                <span class="text-[9px] text-gray-500">Повернуть</span>
-              </button>
-              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 hover:border-metric-green/30 transition-all" @click="rotateRight">
-                <span class="text-base">⟳ +15°</span>
-                <span class="text-[9px] text-gray-500">Повернуть</span>
-              </button>
-              <button type="button" class="card-metallic px-2 py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 hover:border-red-400/60 transition-all" @click="deleteCurrent">
-                <span class="text-base text-red-400">✕</span>
-                <span class="text-[9px] text-gray-500">Удалить</span>
-              </button>
-            </div>
-            <div class="px-2 pb-2 flex items-center gap-2">
-              <label class="flex items-center gap-2 cursor-pointer text-[10px] text-gray-400">
-                <input type="checkbox" v-model="freeStretchMode" @change="onFreeStretchChange" class="rounded border-white/20 bg-[#151515] text-metric-green focus:ring-metric-green/50" />
-                <span>Свободное растяжение (неправильная форма)</span>
-              </label>
-            </div>
-            <!-- Размеры (мм): в потоке ниже панели инструментов, без position:fixed — не перекрывает «Вмятина/Полоса» -->
-            <div
-              v-if="selectedDentSize"
-              ref="dimensionsPanelRef"
-              class="mx-2 mb-2 rounded-xl bg-black/35 border border-white/10 p-2.5"
-            >
-              <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-2">Размеры (мм)</div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[10px] text-gray-500 mb-1">{{ selectedDentSize.type === 'circle' ? 'Ширина' : 'Длина' }}</label>
-                  <input
-                    v-model.number="sizeWidthMm"
-                    type="number"
-                    min="0.1"
-                    max="2000"
-                    step="0.5"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    enterkeyhint="done"
-                    class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
-                    @focus="onDimensionsInputFocus"
-                  />
-                </div>
-                <div>
-                  <label class="block text-[10px] text-gray-500 mb-1">{{ selectedDentSize.type === 'circle' ? 'Высота' : 'Ширина' }}</label>
-                  <input
-                    v-model.number="sizeHeightMm"
-                    type="number"
-                    min="0.1"
-                    max="2000"
-                    step="0.5"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    enterkeyhint="done"
-                    class="w-full rounded-lg bg-white/5 border border-white/20 px-2 py-1.5 text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none"
-                    @focus="onDimensionsInputFocus"
-                  />
-                </div>
-              </div>
-            </div>
-            <!-- Кнопка перехода на шаг "Условия": активна, если есть хотя бы одна вмятина. -->
-            <div class="mx-2 mb-2">
-              <button
-                type="button"
-                @click="goToConditionsStep"
-                :disabled="!canGoToConditions"
-                :title="canGoToConditions ? '' : 'Добавьте хотя бы одну вмятину'"
-                class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                :class="canGoToConditions ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
-              >
-                <span>Перейти к условиям и коэффициентам</span>
-              </button>
-              <p v-if="!canGoToConditions" class="text-[10px] text-gray-500 mt-1 text-center">Добавьте хотя бы одну вмятину</p>
-            </div>
-            </template>
-          </div>
-        </div>
+        <!-- Graphics mode: wizard из 4 шагов -->
+        <GraphicsWizard
+          v-if="calcMode === 'graphics'"
+          v-model:selected-class-id="graphicsSelectedClassId"
+          v-model:selected-part-id="graphicsSelectedPartId"
+          :form="form"
+          :initial-data="initialData"
+          :user-settings="userSettings"
+          :car-classes="graphicsData.carClasses"
+          :parts-list="graphicsPartsList"
+          :selected-part="graphicsState.selectedPart"
+          :circle-sizes="graphicsCircleSizes"
+          :strip-sizes="initialData.stripSizes"
+          @close="closeEditor"
+          @dents-change="(d) => graphicsState.dents = d"
+        />
       </div>
     </div>
-
-    <!-- Total price overlay (graphics step 3) -->
-    <div
-      v-if="currentTab === 'calc' && calcMode === 'graphics' && graphicsStep === 3"
-      class="fixed top-4 left-1/2 transform -translate-x-1/2 z-40 card-metallic rounded-2xl p-4 relative overflow-hidden text-center max-w-[90%]"
-    >
-      <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-      <div class="text-[11px] uppercase font-bold text-gray-400 tracking-widest mb-1">Итоговая оценка</div>
-      <div
-        class="text-5xl font-black transition-all duration-300"
-        :class="totalPrice > 0 ? 'text-metric-green drop-shadow-[0_0_15px_rgba(136,229,35,0.3)]' : 'text-gray-600'"
-      >
-        {{ totalPrice > 0 ? formatCurrency(totalPrice) : '---' }}
-        <span v-if="totalPrice > 0" class="text-2xl align-top">₽</span>
-      </div>
-      <div
-        class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-4 blur-xl transition-all duration-300"
-        :class="totalPrice > 0 ? 'bg-metric-green/10' : 'bg-transparent'"
-      ></div>
-    </div>
-
-    <!-- Size menu modal (graphics): по центру экрана; teleport в graphicsRoot при step 3 для fullscreen -->
-    <Teleport :to="sizeMenuPortalTarget" :disabled="!sizeMenuPortalTarget">
-      <div
-        v-if="showSizeMenu"
-        class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
-        @click.self="showSizeMenu = false"
-      >
-        <div class="bg-[#151F2E] w-full max-w-md rounded-2xl p-5 border border-white/10 shadow-2xl space-y-4 pb-8 max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center border-b border-white/5 pb-3">
-          <h3 class="text-white font-bold text-lg pl-1">
-            Выберите размер ({{ activeToolType === 'circle' ? 'Круг/Овал' : 'Полоса' }})
-          </h3>
-          <button @click="showSizeMenu = false" class="text-gray-400 p-2 text-xl">✕</button>
-        </div>
-        <div class="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
-          <button
-            v-for="s in (activeToolType === 'circle' ? graphicsCircleSizes : initialData.stripSizes)"
-            :key="s.code"
-            @click="confirmAddShape(s.code)"
-            class="card-metallic p-3 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all hover:border-metric-green/50"
-          >
-            <span class="text-metric-green font-bold text-base">{{ s.code }}</span>
-            <span class="text-gray-400 text-xs text-center leading-tight">{{ s.name }}</span>
-          </button>
-        </div>
-      </div>
-      </div>
-    </Teleport>
 
     <!-- Tab: Settings -->
     <div v-if="currentTab === 'settings'" class="p-4 space-y-4 overflow-y-auto pb-24">
@@ -749,20 +503,18 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
-import { initKonva, destroyKonva, addDent, resetDents, rotateSelected, deleteSelected, setZoomCentered, getZoom, resizeStage, scheduleFit, panBy, setSelectedDentSizeMm, setKeepRatio, setEditorInteractive } from './graphics/konvaEditor';
+import { deleteSelected } from './graphics/konvaEditor';
 import { initialData } from './data/initialData';
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesWithArea } from './data/dentSizes';
-import { applyConditionsToBase } from './utils/priceCalc';
+import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice } from './utils/priceCalc';
 import ConditionsPanel from './components/ConditionsPanel.vue';
+import GraphicsWizard from './components/graphics/GraphicsWizard.vue';
 
 // Tabs & mode
 const currentTab = ref('calc');
 const calcMode = ref('standard');
-const graphicsStep = ref(1);
-/** Шаг визарда в режиме Графика: 'edit' — размещение вмятины, 'conditions' — выбор коэффициентов. Переход только по кнопке "ГОТОВО". */
-const graphicsWizardStep = ref('edit');
 
 const tabs = [
   { id: 'calc', label: 'Калькулятор', icon: '🧮' },
@@ -823,9 +575,6 @@ const graphicsData = {
   ]
 };
 
-/** Блокировка выбора типа авто и детали на шаге "Условия". */
-const isLockedSelection = computed(() => graphicsWizardStep.value === 'conditions');
-
 /** Список деталей для выбранного класса (для dropdown). */
 const graphicsPartsList = computed(() => {
   if (graphicsState.selectedClass?.id === 'crossover') {
@@ -842,6 +591,10 @@ watch([graphicsState.selectedClass, graphicsState.selectedPart], () => {
   if (graphicsState.selectedPart) graphicsSelectedPartId.value = graphicsState.selectedPart.id;
 }, { immediate: true });
 
+watch([graphicsSelectedClassId, graphicsSelectedPartId], () => {
+  ensureGraphicsSelection();
+}, { immediate: true });
+
 function ensureGraphicsSelection() {
   const classId = graphicsSelectedClassId.value || graphicsData.carClasses[0]?.id;
   const cls = graphicsData.carClasses.find((c) => c.id === classId) || graphicsData.carClasses[0];
@@ -854,92 +607,6 @@ function ensureGraphicsSelection() {
   if (part) graphicsSelectedPartId.value = part.id;
   if (cls) graphicsSelectedClassId.value = cls.id;
 }
-
-function onGraphicsClassChange() {
-  if (graphicsWizardStep.value === 'conditions') return;
-  const cls = graphicsData.carClasses.find((c) => c.id === graphicsSelectedClassId.value);
-  graphicsState.selectedClass = cls || null;
-  const list = graphicsPartsList.value;
-  graphicsState.selectedPart = list[0] || null;
-  graphicsSelectedPartId.value = graphicsState.selectedPart?.id || '';
-  nextTick(() => setTimeout(initKonvaEditor, 50));
-}
-
-function onGraphicsPartChange() {
-  if (graphicsWizardStep.value === 'conditions') return;
-  const part = graphicsPartsList.value.find((p) => p.id === graphicsSelectedPartId.value);
-  graphicsState.selectedPart = part || null;
-  nextTick(() => setTimeout(initKonvaEditor, 50));
-}
-
-const showSizeMenu = ref(false);
-const activeToolType = ref(null);
-const konvaContainer = ref(null);
-const graphicsRoot = ref(null);
-const editorZoom = ref(1);
-/** Выбранная вмятина: размеры в мм для панели «Размеры (мм)». null если ничего не выбрано. */
-const selectedDentSize = ref(null);
-const sizeWidthMm = ref(0);
-const sizeHeightMm = ref(0);
-let sizeApplyTimeout = null;
-
-/** Keyboard-aware: высота клавиатуры (px) для панели размеров на мобилке */
-const keyboardInset = ref(0);
-const isKeyboardOpen = computed(() => keyboardInset.value > 0);
-let keyboardInsetRaf = null;
-function updateKeyboardInset() {
-  if (keyboardInsetRaf) return;
-  keyboardInsetRaf = requestAnimationFrame(() => {
-    keyboardInsetRaf = null;
-    const vv = window.visualViewport;
-    if (!vv) {
-      keyboardInset.value = 0;
-      return;
-    }
-    const inset = window.innerHeight - vv.height - (vv.offsetTop || 0);
-    keyboardInset.value = Math.max(0, Math.round(inset));
-  });
-}
-let dimensionsScrollGuard = false;
-/** При фокусе на input размеров — плавно поднять поле в зону видимости (над клавиатурой), без множественных скачков */
-function onDimensionsInputFocus(event) {
-  const el = event?.target;
-  if (!el || !el.scrollIntoView) return;
-  if (dimensionsScrollGuard) return;
-  dimensionsScrollGuard = true;
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      setTimeout(() => { dimensionsScrollGuard = false; }, 600);
-    }, 150);
-  });
-}
-watch(selectedDentSize, (info) => {
-  if (info) {
-    sizeWidthMm.value = Math.round(info.widthMm * 10) / 10;
-    sizeHeightMm.value = Math.round(info.heightMm * 10) / 10;
-  }
-}, { immediate: true });
-
-watch([sizeWidthMm, sizeHeightMm], () => {
-  if (!selectedDentSize.value) return;
-  if (sizeApplyTimeout) clearTimeout(sizeApplyTimeout);
-  sizeApplyTimeout = setTimeout(() => {
-    const w = Number(sizeWidthMm.value);
-    const h = Number(sizeHeightMm.value);
-    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
-      sizeApplyTimeout = null;
-      return;
-    }
-    const cur = selectedDentSize.value;
-    if (cur && Math.abs(cur.widthMm - w) < 0.01 && Math.abs(cur.heightMm - h) < 0.01) {
-      sizeApplyTimeout = null;
-      return;
-    }
-    setSelectedDentSizeMm(w, h);
-    sizeApplyTimeout = null;
-  }, 150);
-});
 
 // Computed
 const currentSizeList = computed(() =>
@@ -955,34 +622,10 @@ const graphicsCircleSizes = computed(() => {
   return initialData.circleSizes;
 });
 
-/** Teleport target for size menu: inside graphicsRoot when in graphics mode */
-const sizeMenuPortalTarget = computed(() => {
-  if (calcMode.value === 'graphics' && graphicsRoot.value) return graphicsRoot.value;
-  return typeof document !== 'undefined' ? document.body : null;
-});
-
-/** В Графике условия (как в Стандарт/Время) применяются к базе от вмятин; используем общий form. */
-
-/** Стиль панели контролов при открытой клавиатуре: поднять над клавиатурой */
-const controlsAreaKeyboardStyle = computed(() => {
-  if (!isKeyboardOpen.value) return undefined;
-  const px = keyboardInset.value;
-  return {
-    paddingBottom: `calc(12px + env(safe-area-inset-bottom, 0px) + ${px}px)`
-  };
-});
-
-/** Режим свободного растяжения (неправильная форма) для выбранной вмятины */
-const freeStretchMode = ref(false);
-
-function onFreeStretchChange() {
-  setKeepRatio(!freeStretchMode.value);
-}
-
 const standardPrice = computed(() => {
   if (!form.sizeCode) return 0;
   const base = userSettings.prices[form.sizeCode] || 0;
-  return applyConditionsToBase(base, form, initialData, form.sizeCode, 500);
+  return applyConditionsToBase(base, form, initialData, form.sizeCode, 100);
 });
 
 const timePrice = computed(() => {
@@ -991,60 +634,19 @@ const timePrice = computed(() => {
   return applyConditionsToBase(laborBase, form, initialData, 'STRIP_DEFAULT', 100);
 });
 
-/** База от вмятин (как раньше: первая + 0.5 за каждую следующую). */
-const graphicsBasePrice = computed(() => {
-  if (graphicsState.dents.length === 0) return 0;
-  const sorted = [...graphicsState.dents].sort((a, b) => b.price - a.price);
-  let total = sorted[0].price;
-  for (let i = 1; i < sorted.length; i++) {
-    total += sorted[i].price * 0.5;
-  }
-  return total;
-});
+/** База от вмятин (первая + 0.5 за каждую следующую). Единый источник: priceCalc.calcBasePriceFromDents. */
+const graphicsBasePrice = computed(() => calcBasePriceFromDents(graphicsState.dents));
 
-/** Итоговая цена в Графике: база от вмятин + те же коэффициенты, что в Стандарт/Время. */
-const graphicsPrice = computed(() => {
-  const base = graphicsBasePrice.value;
-  if (base <= 0) return 0;
-  return applyConditionsToBase(base, form, initialData, 'STRIP_DEFAULT', 100);
-});
-
-/** Вмятина "сформирована": есть хотя бы одна. */
-const graphicsDentFormed = computed(() => graphicsState.dents.length >= 1);
-
-/** Можно перейти на шаг "Условия": есть хотя бы одна вмятина в сцене (валидна, в разрешённой области). */
-const canGoToConditions = computed(() => graphicsState.dents.length >= 1);
-
-/** Общая базовая цена всех вмятин (по размеру, без условий). Использует формулу: первая + 0.5×остальные. */
-const basePriceTotal = computed(() => graphicsBasePrice.value);
-
-const conditionsSectionRef = ref(null);
-const graphicsControlsAreaRef = ref(null);
-
-function goToConditionsStep() {
-  if (!canGoToConditions.value) return;
-  graphicsWizardStep.value = 'conditions';
-  nextTick(() => {
-    conditionsSectionRef.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
-  });
-}
-
-/** Возврат к редактированию: режим edit + сброс матрицы к начальному виду (fit по ширине, scale/position). */
-function backToEdit() {
-  graphicsWizardStep.value = 'edit';
-  nextTick(() => {
-    scheduleFit('back-to-edit');
-    editorZoom.value = getZoom();
-  });
-}
+/** Итоговая цена в Графике: база × коэффициенты. Единый источник: priceCalc.calcTotalPrice. */
+const graphicsPrice = computed(() =>
+  calcTotalPrice(graphicsState.dents, form, initialData, 'STRIP_DEFAULT', 100)
+);
 
 const totalPrice = computed(() => {
   if (currentTab.value !== 'calc') return 0;
   if (calcMode.value === 'standard') return standardPrice.value;
   if (calcMode.value === 'time') return timePrice.value;
-  if (calcMode.value === 'graphics') {
-    return graphicsWizardStep.value === 'conditions' ? graphicsPrice.value : Math.round(graphicsBasePrice.value / 100) * 100;
-  }
+  if (calcMode.value === 'graphics') return graphicsPrice.value;
   return 0;
 });
 
@@ -1066,9 +668,6 @@ const setMode = (mode) => {
   if (mode === 'graphics') {
     if (window.Telegram?.WebApp?.expand) window.Telegram.WebApp.expand();
     ensureGraphicsSelection();
-    graphicsStep.value = 3;
-    graphicsWizardStep.value = 'edit';
-    nextTick(() => setTimeout(initKonvaEditor, 100));
   }
 };
 
@@ -1126,108 +725,9 @@ const resetDefaults = () => {
 // Graphics
 const closeEditor = () => {
   calcMode.value = 'standard';
-  graphicsStep.value = 1;
-  graphicsWizardStep.value = 'edit';
   graphicsState.dents = [];
-  resetDents();
   haptic('selection');
 };
-
-/** Полный сброс графики и условий: вмятины, режим редактирования, все коэффициенты, HUD. */
-const resetGraphics = () => {
-  resetDents();
-  graphicsState.dents = [];
-  selectedDentSize.value = null;
-  graphicsWizardStep.value = 'edit';
-  form.repairCode = null;
-  form.riskCode = null;
-  form.materialCode = null;
-  form.carClassCode = null;
-  form.disassemblyCode = null;
-  freeStretchMode.value = false;
-  setKeepRatio(true);
-  showSizeMenu.value = false;
-  haptic('selection');
-};
-
-let resizeObserverKonva = null;
-let resizeObservedEl = null;
-/** Размер контейнера при последнем fit; не вызывать scheduleFit при мелких сдвигах (модалка, скроллбар) */
-let lastKonvaW = 0;
-let lastKonvaH = 0;
-const RESIZE_FIT_THRESHOLD_PX = 5;
-
-const initKonvaEditor = async () => {
-  if (!konvaContainer.value || !graphicsState.selectedPart) return;
-  if (resizeObserverKonva && resizeObservedEl) {
-    resizeObserverKonva.unobserve(resizeObservedEl);
-    resizeObserverKonva = null;
-    resizeObservedEl = null;
-  }
-  const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '';
-  await initKonva(
-    konvaContainer.value,
-    graphicsState.selectedPart,
-    userSettings.prices,
-    (dents) => { graphicsState.dents = dents; },
-    baseUrl,
-    (info) => { selectedDentSize.value = info; }
-  );
-  editorZoom.value = getZoom();
-  lastKonvaW = konvaContainer.value.offsetWidth || 0;
-  lastKonvaH = konvaContainer.value.offsetHeight || 0;
-  resizeObservedEl = konvaContainer.value;
-  resizeObserverKonva = new ResizeObserver(() => {
-    if (!konvaContainer.value) return;
-    const w = konvaContainer.value.offsetWidth || 0;
-    const h = konvaContainer.value.offsetHeight || 0;
-    const t = RESIZE_FIT_THRESHOLD_PX;
-    const widthChanged = lastKonvaW === 0 && lastKonvaH === 0 || Math.abs(w - lastKonvaW) > t;
-    if (widthChanged) {
-      lastKonvaW = w;
-      lastKonvaH = h;
-      scheduleFit('resize');
-    }
-  });
-  resizeObserverKonva.observe(resizeObservedEl);
-};
-
-const editorZoomInput = () => {
-  setZoomCentered(editorZoom.value);
-  editorZoom.value = getZoom();
-};
-const editorZoomIn = () => {
-  setZoomCentered(getZoom() + 0.1);
-  editorZoom.value = getZoom();
-};
-const editorZoomOut = () => {
-  setZoomCentered(getZoom() - 0.1);
-  editorZoom.value = getZoom();
-};
-
-const editorPan = (dx, dy) => {
-  if (getZoom() <= 1.01) return;
-  panBy(dx, dy);
-};
-
-const openSizeMenu = (type) => {
-  haptic('selection');
-  activeToolType.value = type;
-  showSizeMenu.value = true;
-};
-
-const confirmAddShape = (sizeCode) => {
-  if (!graphicsState.selectedPart) return;
-  haptic('selection');
-  showSizeMenu.value = false;
-  const type = activeToolType.value;
-  const sizes = type === 'circle' ? graphicsCircleSizes.value : initialData.stripSizes;
-  addDent(type, sizeCode, sizes);
-};
-
-const rotateLeft = () => rotateSelected(-15);
-const rotateRight = () => rotateSelected(15);
-const deleteCurrent = () => deleteSelected();
 
 // Telegram Main Button
 watch(totalPrice, (val) => {
@@ -1242,8 +742,7 @@ watch(totalPrice, (val) => {
 });
 
 const handleKeyDown = (e) => {
-  if (calcMode.value !== 'graphics' || graphicsStep.value !== 3) return;
-  if (graphicsWizardStep.value === 'conditions') return;
+  if (calcMode.value !== 'graphics') return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
     const active = document.activeElement;
     const isEditable = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (typeof active.isContentEditable === 'boolean' && active.isContentEditable));
@@ -1253,9 +752,6 @@ const handleKeyDown = (e) => {
   }
 };
 
-function onVisualViewportResize() { updateKeyboardInset(); }
-function onVisualViewportScroll() { updateKeyboardInset(); }
-
 onMounted(() => {
   if (window.Telegram?.WebApp) {
     window.Telegram.WebApp.ready();
@@ -1263,12 +759,6 @@ onMounted(() => {
     window.Telegram.WebApp.MainButton.setParams({ color: '#88E523', text_color: '#000000' });
   }
   window.addEventListener('keydown', handleKeyDown);
-  const vv = window.visualViewport;
-  if (vv) {
-    vv.addEventListener('resize', onVisualViewportResize);
-    vv.addEventListener('scroll', onVisualViewportScroll);
-    updateKeyboardInset();
-  }
 });
 
 watch(
@@ -1281,32 +771,8 @@ watch(
   { immediate: true }
 );
 
-/** При смене шага визарда в Графике: отключать/включать интерактивность канваса (режим "только просмотр" на шаге conditions). */
-watch(
-  graphicsWizardStep,
-  (step) => {
-    if (calcMode.value !== 'graphics') return;
-    nextTick(() => {
-      setEditorInteractive(step === 'edit');
-      if (step === 'conditions') setTimeout(() => scheduleFit('resize'), 150);
-    });
-  },
-  { immediate: true }
-);
-
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown);
-  const vv = window.visualViewport;
-  if (vv) {
-    vv.removeEventListener('resize', onVisualViewportResize);
-    vv.removeEventListener('scroll', onVisualViewportScroll);
-  }
-  if (resizeObserverKonva && resizeObservedEl) {
-    resizeObserverKonva.unobserve(resizeObservedEl);
-    resizeObserverKonva = null;
-    resizeObservedEl = null;
-  }
-  destroyKonva();
 });
 </script>
 
@@ -1316,15 +782,21 @@ onBeforeUnmount(() => {
 .bg-metric-green { background-color: #88e523; }
 .border-metric-green { border-color: #88e523; }
 /* A) Тёмный фон редактора: перебить любые bg-white/konva-bg (Konva bgRect — страховка в konvaEditor.js) */
+/* Матрица без отступов: padding 0, margin 0, width/height 100% */
 .canvas-editor-wrap,
 #canvas-wrapper,
 #konva-container {
   background-color: #0b0f14 !important;
   background-image: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 .canvas-editor-wrap.konva-bg { background-image: none !important; }
 
 /* Fullscreen: контейнер графики занимает весь экран (fixed), 100dvh, без прокрутки body */
+/* Safe area только на header и controls, НЕ на matrixArea */
 .graphics-fullscreen-wrapper {
   position: fixed;
   inset: 0;
@@ -1334,27 +806,37 @@ onBeforeUnmount(() => {
   height: 100dvh;
   min-height: 100dvh;
   max-height: 100dvh;
-  width: 100%;
+  width: 100vw;
+  max-width: 100vw;
   overflow: hidden;
-  padding-top: env(safe-area-inset-top, 0);
-  padding-left: env(safe-area-inset-left, 0);
-  padding-right: env(safe-area-inset-right, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
   background: #000;
 }
 
 .graphics-header {
   flex-shrink: 0;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
 }
 
 .graphics-stage-area {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
 }
 
 .graphics-controls-area {
   flex-shrink: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
 }
 
 /* Body без прокрутки при активной графике */
