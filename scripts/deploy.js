@@ -66,7 +66,7 @@ function deploy() {
     process.exit(1);
   }
 
-  console.log('Building...');
+  console.log('[deploy] Building...');
   run('npm run build');
 
   if (!existsSync(distPath)) {
@@ -74,40 +74,41 @@ function deploy() {
     process.exit(1);
   }
 
-  run('git fetch origin gh-pages:gh-pages');
+  run('git fetch origin gh-pages');
 
-  if (existsSync(worktreeDir)) {
-    try {
-      run(`git worktree remove -f "${worktreeDir}"`);
-    } catch {
-      rmSync(worktreeDir, { recursive: true, force: true });
+  const worktreeExists = existsSync(worktreeDir);
+  const hasLocalGhPages = runSilent('git branch --list gh-pages').trim().length > 0;
+  if (worktreeExists) {
+    console.log('[deploy] Reusing existing worktree');
+    run(`git -C "${worktreeDir}" reset --hard origin/gh-pages`);
+  } else {
+    console.log('[deploy] Creating worktree');
+    if (hasLocalGhPages) {
+      run(`git worktree add "${worktreeDir}" gh-pages`);
+      run(`git -C "${worktreeDir}" reset --hard origin/gh-pages`);
+    } else {
+      run(`git worktree add -b gh-pages "${worktreeDir}" origin/gh-pages`);
     }
   }
 
-  run(`git worktree add -f "${worktreeDir}" gh-pages`);
+  const entries = readdirSync(worktreeDir);
+  for (const e of entries) {
+    if (e === '.git') continue;
+    const p = join(worktreeDir, e);
+    rmSync(p, { recursive: true, force: true });
+  }
 
-  try {
-    const entries = readdirSync(worktreeDir);
-    for (const e of entries) {
-      if (e === '.git') continue;
-      const p = join(worktreeDir, e);
-      rmSync(p, { recursive: true, force: true });
-    }
+  cpSync(distPath, worktreeDir, { recursive: true });
+  writeFileSync(join(worktreeDir, '.nojekyll'), '');
 
-    cpSync(distPath, worktreeDir, { recursive: true });
-    writeFileSync(join(worktreeDir, '.nojekyll'), '');
-
-    run('git add -A', worktreeDir);
-    const status = runSilent('git status --porcelain', worktreeDir);
-    if (status) {
-      run('git commit -m "Deploy to GitHub Pages"', worktreeDir);
-      run('git push origin gh-pages', worktreeDir);
-      console.log('Deployed to gh-pages.');
-    } else {
-      console.log('No changes to deploy.');
-    }
-  } finally {
-    run(`git worktree remove -f "${worktreeDir}"`);
+  run('git add -A', worktreeDir);
+  const status = runSilent('git status --porcelain', worktreeDir);
+  if (status) {
+    run('git commit -m "Deploy to GitHub Pages"', worktreeDir);
+    run('git push origin gh-pages', worktreeDir);
+    console.log('[deploy] Done: commit created, pushed to origin/gh-pages');
+  } else {
+    console.log('[deploy] Done: no changes (dist unchanged, skip commit/push)');
   }
 }
 
