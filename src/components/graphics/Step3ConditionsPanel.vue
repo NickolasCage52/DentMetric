@@ -71,6 +71,8 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
     overflow-y: auto;
     min-height: 0;
     -webkit-overflow-scrolling: touch;
+    touch-action: manipulation;
+    pointer-events: auto;
   }
   .step3-calc-btn {
     flex-shrink: 0;

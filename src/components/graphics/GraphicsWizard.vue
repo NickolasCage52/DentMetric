@@ -16,7 +16,7 @@
     <!-- Stage: матрица width:100vw, flex:1, без max-width -->
     <div
       class="graphics-stage-area flex flex-col"
-      :class="wizardStep >= 3 ? 'graphics-stage-preview shrink-0' : 'flex-1 min-h-0'"
+      :class="wizardStep >= 3 ? 'graphics-stage-preview shrink-0 relative z-0' : 'flex-1 min-h-0'"
     >
       <div
         id="canvas-wrapper"
@@ -25,9 +25,10 @@
         style="background-color: #0b0f14"
       >
         <div ref="konvaContainer" id="konva-container" class="absolute inset-0 w-full h-full" style="background-color: #0b0f14; padding: 0; margin: 0"></div>
+        <!-- На шаге 3 overlay не перехватывает клики — pointer-events: none, чтобы не блокировать панель условий -->
         <div
           v-if="wizardStep >= 3"
-          class="absolute inset-0 z-10 cursor-default pointer-events-auto"
+          class="step3-preview-overlay absolute inset-0 z-10 cursor-default"
           aria-label="Режим просмотра"
         ></div>
         <div
@@ -64,11 +65,11 @@
         </button>
       </div>
     </div>
-    <!-- Controls -->
+    <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
       ref="controlsAreaRef"
       class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pb-[env(safe-area-inset-bottom,0px)]"
-      :class="wizardStep === 3 ? 'graphics-controls-step3 flex-1 min-h-0 flex flex-col' : ''"
+      :class="wizardStep === 3 ? 'graphics-controls-step3 flex-1 min-h-0 flex flex-col relative z-10' : ''"
       :style="controlsAreaKeyboardStyle"
     >
       <Step1PlacementPanel
@@ -510,11 +511,20 @@ onBeforeUnmount(() => {
     right: 8px;
     bottom: 8px;
   }
-  /* Этап 3 (параметры): превью меньше, чтобы влезали поля и кнопка */
+  /* Этап 3 (параметры): превью clamp, чтобы видно целиком и влезали поля */
   .graphics-stage-area.graphics-stage-preview .canvas-editor-wrap {
-    height: 28vh !important;
-    min-height: 140px;
-    max-height: 30vh;
+    height: clamp(160px, 26vh, 240px) !important;
+    min-height: 160px;
+    max-height: 240px;
+  }
+  /* Overlay и Konva не перехватывают клики — панель условий кликабельна */
+  .graphics-stage-area.graphics-stage-preview .step3-preview-overlay,
+  .graphics-stage-area.graphics-stage-preview #konva-container {
+    pointer-events: none;
+  }
+  /* Stage area: overflow чтобы превью не вылезало */
+  .graphics-stage-area.graphics-stage-preview {
+    overflow: hidden;
   }
   /* Controls area: flex-контейнер, Step3 заполняет и скроллит params */
   .graphics-controls-step3 {
