@@ -68,6 +68,7 @@
     <div
       ref="controlsAreaRef"
       class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pb-[env(safe-area-inset-bottom,0px)]"
+      :class="wizardStep === 3 ? 'graphics-controls-step3 flex-1 min-h-0 flex flex-col' : ''"
       :style="controlsAreaKeyboardStyle"
     >
       <Step1PlacementPanel
@@ -508,6 +509,22 @@ onBeforeUnmount(() => {
   .hud-delete-btn {
     right: 8px;
     bottom: 8px;
+  }
+  /* Этап 3 (параметры): превью меньше, чтобы влезали поля и кнопка */
+  .graphics-stage-area.graphics-stage-preview .canvas-editor-wrap {
+    height: 28vh !important;
+    min-height: 140px;
+    max-height: 30vh;
+  }
+  /* Controls area: flex-контейнер, Step3 заполняет и скроллит params */
+  .graphics-controls-step3 {
+    overflow: hidden;
+  }
+  .graphics-controls-step3 > * {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 }
 
