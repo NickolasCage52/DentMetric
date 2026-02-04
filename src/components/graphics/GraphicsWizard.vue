@@ -19,6 +19,7 @@
       :class="wizardStep >= 3 ? 'graphics-stage-preview shrink-0 relative z-0' : 'flex-1 min-h-0'"
     >
       <div
+        v-show="wizardStep !== 3"
         id="canvas-wrapper"
         class="canvas-editor-wrap relative overflow-hidden matrix-container"
         :class="wizardStep >= 3 ? 'h-[40vh] min-h-[200px] max-h-[45vh]' : 'flex-1 min-h-0'"
@@ -31,20 +32,21 @@
           class="step3-preview-overlay absolute inset-0 z-10 cursor-default"
           aria-label="Режим просмотра"
         ></div>
-        <div
-          v-if="wizardStep >= 3"
-          class="absolute top-2 left-2 z-20 px-2 py-1 rounded-md bg-black/60 border border-white/20 text-[10px] font-bold uppercase tracking-widest text-metric-silver pointer-events-none"
-        >
-          Просмотр
-        </div>
+        <!-- Подсказка этапа: сверху по центру, текст + цена в одном блоке без наложения -->
         <div
           v-if="wizardStep <= 2"
-          class="absolute top-2 right-2 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/55 backdrop-blur-sm border border-white/10 text-[11px] font-medium pointer-events-none"
+          class="step-hint-block absolute top-2 left-2 right-2 z-20 px-3 py-2.5 rounded-xl bg-black/70 backdrop-blur-sm border pointer-events-none"
+          :class="wizardStep === 1 ? 'border-metric-green/40' : 'border-metric-green/40'"
         >
-          <span class="text-gray-400">Предварительно:</span>
-          <span :class="basePrice > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
-            {{ basePrice > 0 ? formatCurrency(roundPrice(basePrice)) + ' ₽' : '—' }}
-          </span>
+          <p class="step-hint-text text-[13px] font-medium leading-snug text-gray-200 mb-1.5">
+            {{ stepHintText }}
+          </p>
+          <div class="flex items-center justify-between text-[12px]">
+            <span class="text-gray-400">Предварительно:</span>
+            <span :class="basePrice > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
+              {{ basePrice > 0 ? formatCurrency(roundPrice(basePrice)) + ' ₽' : '—' }}
+            </span>
+          </div>
         </div>
         <!-- Кнопка удаления вмятины на этапах 1–2 (HUD): активна только при выбранной вмятине -->
         <button
@@ -68,7 +70,7 @@
     <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
       ref="controlsAreaRef"
-      class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pb-[env(safe-area-inset-bottom,0px)]"
+      class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[env(safe-area-inset-bottom,0px)]"
       :class="wizardStep === 3 ? 'graphics-controls-step3 flex-1 min-h-0 flex flex-col relative z-10' : ''"
       :style="controlsAreaKeyboardStyle"
     >
@@ -82,11 +84,13 @@
       <Step2SizePanel
         v-else-if="wizardStep === 2"
         :selected-dent-size="selectedDentSize"
+        :shape-variant="selectedDentSize?.shapeVariant ?? (selectedDentSize?.type === 'circle' ? 'oval' : 'strip')"
         :size-width-mm="sizeWidthMm"
         :size-height-mm="sizeHeightMm"
         :free-stretch="freeStretchMode"
         :preview-price="roundPrice(basePrice)"
         :can-next="dentsValid"
+        @update:shape-variant="onShapeVariantChange"
         @update:free-stretch="onFreeStretchChange"
         @update:size-width-mm="sizeWidthMm = $event"
         @update:size-height-mm="sizeHeightMm = $event"
@@ -153,6 +157,7 @@ import {
   deleteSelected,
   scheduleFit,
   setSelectedDentSizeMm,
+  setDentShapeVariant,
   setKeepRatio,
   setEditable
 } from '../../graphics/konvaEditor';
@@ -185,7 +190,7 @@ const activeToolType = ref(null);
 const selectedDentSize = ref(null);
 const sizeWidthMm = ref(0);
 const sizeHeightMm = ref(0);
-const freeStretchMode = ref(false);
+const freeStretchMode = ref(true);
 const dents = ref([]);
 let sizeApplyTimeout = null;
 
@@ -244,10 +249,23 @@ const dentsValid = computed(() => {
   return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
 });
 
+const stepHintText = computed(() => {
+  switch (wizardStep.value) {
+    case 1:
+      return 'Выберите деталь кузова. Добавьте вмятины (круг или полосу) и перетащите их на нужное место.';
+    case 2:
+      return 'Укажите размеры вмятины в миллиметрах. При необходимости выберите форму: круг или овал, полоса или царапина.';
+    default:
+      return '';
+  }
+});
+
 watch(selectedDentSize, (info, oldInfo) => {
   if (info) {
-    sizeWidthMm.value = Math.round(info.widthMm * 10) / 10;
-    sizeHeightMm.value = Math.round(info.heightMm * 10) / 10;
+    const w = Number(info.widthMm);
+    const h = Number(info.heightMm);
+    sizeWidthMm.value = Number.isFinite(w) && w > 0 ? Math.round(w * 10) / 10 : 0;
+    sizeHeightMm.value = Number.isFinite(h) && h > 0 ? Math.round(h * 10) / 10 : 0;
   }
   const panelToggled = (info && !oldInfo) || (!info && oldInfo);
   if (panelToggled) nextTick(() => setTimeout(() => scheduleFit('controls-resize'), 50));
@@ -330,8 +348,8 @@ function resetAll() {
   sizeHeightMm.value = 0;
   dimensionsScrollGuard = false;
   activeToolType.value = null;
-  freeStretchMode.value = false;
-  setKeepRatio(true);
+  freeStretchMode.value = true;
+  setKeepRatio(false);
   showSizeMenu.value = false;
   props.form.repairCode = null;
   props.form.riskCode = null;
@@ -359,6 +377,10 @@ function deleteCurrent() {
   deleteSelected();
 }
 
+function onShapeVariantChange(variant) {
+  setDentShapeVariant(variant);
+}
+
 function onFreeStretchChange(checked) {
   setKeepRatio(!checked);
 }
@@ -379,6 +401,8 @@ const initKonvaEditor = async () => {
     baseUrl,
     (info) => { selectedDentSize.value = info; }
   );
+  /* Применить текущий шаг (draggable формы vs handle) после init */
+  setEditable(wizardStep.value <= 2, wizardStep.value);
   /* Повторный fit после layout: контейнер мог иметь 0 размер при init */
   nextTick(() => setTimeout(() => scheduleFit('init-layout'), 150));
 };
@@ -387,7 +411,11 @@ watch(
   () => wizardStep.value,
   (step) => {
     nextTick(() => {
-      setEditable(step <= 2);
+      setEditable(step <= 2, step);
+      if (step === 2) {
+        setKeepRatio(!freeStretchMode.value);
+        setTimeout(() => scheduleFit('step2-show'), 200);
+      }
       if (step >= 3) setTimeout(() => scheduleFit('resize'), 150);
     });
   },
@@ -481,6 +509,8 @@ onBeforeUnmount(() => {
 /* Нижняя панель: flex 0 0 auto */
 .graphics-controls-area {
   flex: 0 0 auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
 }
 
 /* Кнопка удаления вмятины на HUD (этап 1) */
@@ -552,5 +582,14 @@ onBeforeUnmount(() => {
 
 .hud-delete-btn--active:active {
   transform: scale(0.96);
+}
+
+/* Подсказка этапа: читабельный шрифт, без наложения */
+.step-hint-block {
+  max-width: calc(100% - 1rem);
+}
+.step-hint-text {
+  word-wrap: break-word;
+  hyphens: auto;
 }
 </style>

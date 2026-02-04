@@ -1,25 +1,28 @@
+import { normalizeNumber } from './validation';
+
 /** Шаг округления цен: все цены кратны 100 (без десятков, единиц, копеек). */
 export const PRICE_ROUND_STEP = 100;
 
 /** Округлить цену до шага 100. */
 export function roundPrice(v) {
-  return Math.round((v || 0) / PRICE_ROUND_STEP) * PRICE_ROUND_STEP;
+  return Math.round((normalizeNumber(v, 0)) / PRICE_ROUND_STEP) * PRICE_ROUND_STEP;
 }
 
 /**
  * Базовая цена от массива вмятин (первая — полная, каждая следующая — 0.5×).
+ * Защита от NaN/undefined в price.
  *
  * @param {Array<{ price: number }>} dents - массив вмятин с полем price
  * @returns {number} базовая сумма
  */
 export function calcBasePriceFromDents(dents) {
-  if (!dents || dents.length === 0) return 0;
-  const sorted = [...dents].sort((a, b) => (b.price || 0) - (a.price || 0));
-  let total = sorted[0].price || 0;
+  if (!dents || !Array.isArray(dents) || dents.length === 0) return 0;
+  const sorted = [...dents].sort((a, b) => (normalizeNumber(b?.price, 0)) - (normalizeNumber(a?.price, 0)));
+  let total = normalizeNumber(sorted[0]?.price, 0);
   for (let i = 1; i < sorted.length; i++) {
-    total += (sorted[i].price || 0) * 0.5;
+    total += normalizeNumber(sorted[i]?.price, 0) * 0.5;
   }
-  return total;
+  return Math.max(0, total);
 }
 
 /**

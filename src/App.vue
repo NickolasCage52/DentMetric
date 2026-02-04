@@ -556,7 +556,7 @@ if (saved) {
     if (p.prices) Object.assign(userSettings.prices, p.prices);
     if (p.masters) userSettings.masters = p.masters;
   } catch (e) {
-    console.error('Failed to load settings', e);
+    if (import.meta.env?.DEV) console.error('Failed to load settings', e);
   }
 }
 

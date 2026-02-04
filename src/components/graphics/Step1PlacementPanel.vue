@@ -4,7 +4,7 @@
     <div class="grid grid-cols-2 gap-2">
       <button
         @click="$emit('add-type', 'circle')"
-        class="card-metallic p-2.5 rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all"
+        class="card-metallic p-2.5 min-h-[44px] rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation"
       >
         <div class="w-5 h-5 rounded-full border-2 border-metric-green bg-metric-green/20 shrink-0"></div>
         <div class="text-left min-w-0">
@@ -14,7 +14,7 @@
       </button>
       <button
         @click="$emit('add-type', 'strip')"
-        class="card-metallic p-2.5 rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all"
+        class="card-metallic p-2.5 min-h-[44px] rounded-xl flex items-center gap-2 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation"
       >
         <div class="w-5 h-2 bg-metric-silver rotate-45 rounded-sm shrink-0"></div>
         <div class="text-left min-w-0">

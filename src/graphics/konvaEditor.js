@@ -1,4 +1,5 @@
 import Konva from 'konva';
+import { normalizeNumber, clamp } from '../utils/validation';
 
 const RIB_MULTIPLIER = 1.3;
 const CELL_MM = 30;
@@ -21,11 +22,10 @@ const REMOVE_WHITE_BACKGROUND = true;
 const WHITE_THRESHOLD = 245;
 /** E) Минимальный размер при ресайзе (px) — защита от инверсии и слишком мелких фигур. */
 const MIN_TRANSFORM_SIZE_PX = 10;
-/** B) Handle для перемещения вмятины: линия + крестик; смещён ниже центра вмятины, чтобы палец не закрывал фигуру. */
-const HANDLE_OFFSET_BELOW_PX = 26;
-const STEM_LEN_MIN = 20;
-const STEM_LEN_MAX = 36;
-const STEM_LEN_RATIO = 0.35;
+/** B) Handle для перемещения вмятины: линия + крестик; смещён гораздо ниже формы. */
+const HANDLE_OFFSET_MIN = 36;
+const HANDLE_OFFSET_MAX = 70;
+const HANDLE_OFFSET_RATIO = 0.4;
 const HANDLE_HIT_RADIUS = 16;
 const HANDLE_COLOR = '#88E523';
 const HANDLE_FILL = 'rgba(136,229,35,0.22)';
@@ -74,8 +74,6 @@ const FIT_SIZE_TOLERANCE_PX = 4;
 let heatZonesPx = [];
 /** Тёмный фон stage в режиме мм (под contentGroup) */
 let bgRect = null;
-/** Слой UI: логотип DentMetric слева сверху, listening: false */
-let logoLayer = null;
 /** B) Handle для перемещения выбранной вмятины (крестик снизу). Только в mm-режиме. */
 let handleGroup = null;
 let activeDent = null;
@@ -86,18 +84,24 @@ let transformerKeepRatio = true;
 let resizeObserverRef = null;
 let resizeObservedEl = null;
 let windowResizeHandler = null;
+/** Текущий шаг визарда: 1=Размещение (форма и handle draggable), 2+=редактирование. */
+let wizardStep = 2;
 
 function getActiveNode() {
   if (!tr) return null;
   const nodes = tr.nodes();
-  return nodes && nodes.length > 0 ? nodes[0] : null;
+  if (nodes && nodes.length > 0) return nodes[0];
+  /** На этапе 1 Transformer не привязан — используем activeDent для выбора и удаления. */
+  if (useMmMode && activeDent) return activeDent;
+  return null;
 }
 
-/** Выбрать одну фигуру, показать Transformer, перерисовать слой. B) В mm-режиме для dent показываем handle. */
+/** Выбрать одну фигуру. На этапе 1: только handle "плюс", без Transformer. На этапе 2+: Transformer + handle. */
 function selectNode(node) {
   if (!tr || !layerDents) return;
   tr.keepRatio(transformerKeepRatio);
-  tr.nodes([node]);
+  /** На этапе 1 не привязываем к Transformer (нет квадратов/ручек resize). */
+  tr.nodes(wizardStep === 1 ? [] : [node]);
   if (node && node.moveToTop) node.moveToTop();
   if (tr.getParent() === layerDents) tr.moveToTop();
   if (useMmMode) {
@@ -240,8 +244,9 @@ function updateHandleStyle() {
 }
 
 /**
- * B) positionHandle(dent) — ставит handle (линия + крестик) ниже центра вмятины на фиксированное расстояние,
- * чтобы палец не перекрывал саму вмятину. Координаты относительно родителя (layerDents).
+ * B) positionHandle(dent) — ставит handle (линия + крестик) ниже bbox формы.
+ * offset = clamp(rect.height * 0.18, 18, 34) — адаптивный отступ, палец не перекрывает вмятину.
+ * Координаты относительно родителя (layerDents). При перемещении вмятины плюс следует за ней.
  */
 function positionHandle(dent) {
   if (!handleGroup || !dent) return;
@@ -249,9 +254,9 @@ function positionHandle(dent) {
   const dentRect = dent.getClientRect({ relativeTo: parent });
   const anchorX = dentRect.x + dentRect.width / 2;
   const anchorY = dentRect.y + dentRect.height;
-  const stemLen = Math.max(HANDLE_OFFSET_BELOW_PX, Math.max(STEM_LEN_MIN, Math.min(STEM_LEN_MAX, dentRect.height * STEM_LEN_RATIO)));
+  const offset = Math.max(HANDLE_OFFSET_MIN, Math.min(HANDLE_OFFSET_MAX, dentRect.height * HANDLE_OFFSET_RATIO));
   const plusCenterX = anchorX;
-  const plusCenterY = anchorY + stemLen;
+  const plusCenterY = anchorY + offset;
 
   const children = handleGroup.getChildren ? handleGroup.getChildren() : [];
   const stemLine = children[0];
@@ -515,41 +520,6 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
   if (useMmMode) createHandleGroup();
   if (useMmMode && handleGroup) layerDents.add(handleGroup);
 
-  if (useMmMode) {
-    logoLayer = new Konva.Layer({ listening: false });
-    stage.add(logoLayer);
-    const base = (baseUrl || import.meta.env?.BASE_URL || '/').replace(/\/$/, '') || '';
-    // logo must be PNG/SVG with transparency for overlay without visible background
-    const logoPath = base ? `${window.location.origin}${base}/logo.png` : `${window.location.origin}/logo.png`;
-    const logoImg = new window.Image();
-    logoImg.crossOrigin = 'anonymous';
-    logoImg.onload = () => {
-      if (!logoLayer) return;
-      const stageW = stage.width();
-      const tenVw = stageW * 0.1;
-      const logoW = Math.round(Math.max(56, Math.min(92, tenVw)));
-      const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
-      const inset = stageW < 400 ? 8 : 10;
-      const logoNode = new Konva.Image({
-        image: logoImg,
-        x: inset,
-        y: inset,
-        width: logoW,
-        height: logoH,
-        opacity: 0.75,
-        listening: false,
-        shadowColor: 'black',
-        shadowBlur: 6,
-        shadowOffset: { x: 0, y: 2 },
-        shadowOpacity: 0.35
-      });
-      logoLayer.add(logoNode);
-      logoLayer.batchDraw();
-    };
-    logoImg.onerror = () => {};
-    logoImg.src = logoPath;
-  }
-
   stage.on('click tap', (e) => {
     const t = e.target;
     const isStage = t === stage;
@@ -572,13 +542,6 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
     }
   });
 
-  if (import.meta.env?.DEV) {
-    console.log('[Konva] stage listening', stage.listening());
-    stage.on('mousedown touchstart', (e) => {
-      const t = e.target;
-      console.log('[Konva] DOWN target=', t?.className, t?.name?.(), t?.getAttr?.('isBackground'));
-    });
-  }
   const drawLayer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
   if (drawLayer) drawLayer.batchDraw();
 
@@ -767,28 +730,48 @@ export function setKeepRatio(keepRatio) {
 /**
  * Включить/выключить интерактивность редактора (режим "только просмотр" на шаге "Условия").
  * Когда false: никакой drag, resize, rotate, выделения; stage не реагирует на клики/тапы.
+ * step: 1=Размещение (форма draggable, handle "плюс" тоже, без Transformer); 2+=полное редактирование.
  */
-export function setEditorInteractive(interactive) {
+export function setEditorInteractive(interactive, step = 2) {
   if (!stage) return;
+  wizardStep = step;
   stage.listening(!!interactive);
-  if (tr) tr.visible(!!interactive);
+  /** На этапе 1: Transformer скрыт (нет квадратов/ручек resize). На этапе 2+: показываем. */
+  if (tr) {
+    if (step === 1) {
+      tr.nodes([]);
+      tr.visible(false);
+    } else {
+      tr.visible(!!interactive);
+      if (!!interactive && activeDent) tr.nodes([activeDent]);
+    }
+  }
   if (handleGroup) handleGroup.visible(!!interactive && !!activeDent);
+  /** На этапе 1: сетка скрыта (чистое изображение детали). На этапах 2/3 — показываем. */
+  if (layerGrid) layerGrid.visible(step !== 1);
+  /** На этапах 1–2: форма draggable (и за саму вмятину, и за крестик). */
+  const shapeDraggable = !!interactive;
   const children = layerDents?.getChildren?.() || [];
   children.forEach((node) => {
     if (node !== tr && node !== handleGroup && node.getAttr?.('name') === 'dent') {
-      node.draggable(!!interactive);
+      node.draggable(shapeDraggable);
     }
   });
+  /** Handle "плюс": draggable только когда interactive (этапы 1–2). */
+  const plusGroup = handleGroup?.getChildren?.()?.[1];
+  if (plusGroup && plusGroup.getAttr?.('name') === 'handle-plus') plusGroup.draggable(!!interactive);
   const layer = layerDents?.getLayer ? layerDents.getLayer() : layerDents;
   if (layer) layer.batchDraw();
 }
 
 /**
- * Включить/выключить редактирование (alias для setEditorInteractive).
- * editable=true: можно двигать/resize/select; editable=false: только отрисовка.
+ * Включить/выключить редактирование.
+ * editable=true, step=1: форма draggable (и за крестик, и за саму вмятину).
+ * editable=true, step>=2: форма draggable (текущая логика).
+ * editable=false: только отрисовка.
  */
-export function setEditable(editable) {
-  setEditorInteractive(!!editable);
+export function setEditable(editable, step = 2) {
+  setEditorInteractive(!!editable, editable ? step : 2);
 }
 
 /**
@@ -919,14 +902,6 @@ async function initImagePart(stageW, stageH) {
     const natW = img.naturalWidth || img.width;
     const natH = img.naturalHeight || img.height;
     const bbox = computeAlphaBounds(img, 10);
-    if (import.meta.env?.DEV) {
-      console.log('[Konva] part image:', {
-        src,
-        originalSize: { w: natW, h: natH },
-        contourBbox: bbox,
-        contentSize: { w: bbox.width, h: bbox.height }
-      });
-    }
     dispW = bbox.width;
     dispH = bbox.height;
     pxPerMm = Math.min(dispW / realW, dispH / realH) || 0.1;
@@ -1070,18 +1045,26 @@ function getInterpolatedPriceByAreaMm2(areaMm2, type, sizesWithArea) {
   if (!sizesWithArea || sizesWithArea.length === 0) return 0;
   const sorted = [...sizesWithArea].sort((a, b) => a.areaMm2 - b.areaMm2);
   if (areaMm2 <= sorted[0].areaMm2) return prices[sorted[0].code] ?? 0;
-  if (areaMm2 >= sorted[sorted.length - 1].areaMm2) return prices[sorted[sorted.length - 1].code] ?? 0;
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const s1 = sorted[i];
-    const s2 = sorted[i + 1];
-    if (areaMm2 >= s1.areaMm2 && areaMm2 <= s2.areaMm2) {
-      const p1 = prices[s1.code] ?? 0;
-      const p2 = prices[s2.code] ?? 0;
-      const ratio = (areaMm2 - s1.areaMm2) / (s2.areaMm2 - s1.areaMm2);
-      return p1 + (p2 - p1) * ratio;
+  const last = sorted[sorted.length - 1];
+  const areaS11 = last.areaMm2 ?? 0;
+  const priceS11 = prices[last.code] ?? 15000;
+  if (areaMm2 <= areaS11) {
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const s1 = sorted[i];
+      const s2 = sorted[i + 1];
+      if (areaMm2 >= s1.areaMm2 && areaMm2 <= s2.areaMm2) {
+        const p1 = prices[s1.code] ?? 0;
+        const p2 = prices[s2.code] ?? 0;
+        const ratio = (areaMm2 - s1.areaMm2) / (s2.areaMm2 - s1.areaMm2);
+        return p1 + (p2 - p1) * ratio;
+      }
     }
+    return priceS11;
   }
-  return prices[sorted[0].code] ?? 0;
+  /** Площадь > S11: убираем потолок. Чем больше вмятина — тем меньше наценка на единицу площади (логарифмический рост). */
+  const extraArea = areaMm2 - areaS11;
+  const markup = 3500 * Math.log(1 + extraArea / 50000);
+  return priceS11 + markup;
 }
 
 function getInterpolatedPriceByAreaPx(areaPx, type, sizes) {
@@ -1145,9 +1128,9 @@ function getShapeRectLocal(shape) {
 function updateShapeCalc(shape, type, id, sizes) {
   if (!shape || !stage) return;
 
-  // Используем абсолютные значения scale для корректного расчёта площади
-  const scaleX = Math.abs(shape.scaleX()) || 1;
-  const scaleY = Math.abs(shape.scaleY()) || 1;
+  // Используем абсолютные значения scale для корректного расчёта площади (защита от NaN/undefined)
+  const scaleX = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleX(), 1)));
+  const scaleY = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleY(), 1)));
   let areaPx = 0;
   if (shape.className === 'Ellipse') {
     areaPx = Math.PI * Math.abs(shape.radiusX() * scaleX) * Math.abs(shape.radiusY() * scaleY);
@@ -1212,20 +1195,41 @@ function updateShapeCalc(shape, type, id, sizes) {
 /** Макс. размер по оси в мм для UI (защита от багов). */
 const SIZE_MM_MAX = 2000;
 const SIZE_MM_MIN = 0.1;
+/** Порог для авто-выбора круга: |width - height| < 2 мм → круг. */
+const CIRCLE_EQUAL_THRESHOLD_MM = 2;
+
+/** Авто shapeVariant: ширина ≈ высота → круг, иначе овал. Для strip: ширина ≥ высота → полоса, иначе царапина. */
+function inferShapeVariant(type, widthMm, heightMm) {
+  const w = normalizeNumber(widthMm, 0);
+  const h = normalizeNumber(heightMm, 0);
+  if (type === 'circle') {
+    return Math.abs(w - h) < CIRCLE_EQUAL_THRESHOLD_MM ? 'circle' : 'oval';
+  }
+  return w >= h ? 'strip' : 'scratch';
+}
 
 /**
  * Размеры выбранной вмятины в мм (единый источник: pxPerMm в konvaEditor).
- * null если ничего не выбрано или не mm-режим.
+ * shapeVariant вычисляется автоматически: круг если width≈height, иначе овал.
  */
 export function getSelectedDentSizeMm() {
   const node = getActiveNode();
   if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return null;
   const r = getShapeRectLocal(node);
+  const wPx = normalizeNumber(r?.width, 0);
+  const hPx = normalizeNumber(r?.height, 0);
+  const px = Math.max(0.01, pxPerMm);
+  const widthMm = clamp(wPx / px, SIZE_MM_MIN, SIZE_MM_MAX);
+  const heightMm = clamp(hPx / px, SIZE_MM_MIN, SIZE_MM_MAX);
+  const type = node._dentMeta.type;
+  const shapeVariant = inferShapeVariant(type, widthMm, heightMm);
+  node._dentMeta.shapeVariant = shapeVariant;
   return {
     id: node._dentMeta.id,
-    type: node._dentMeta.type,
-    widthMm: r.width / pxPerMm,
-    heightMm: r.height / pxPerMm
+    type,
+    shapeVariant,
+    widthMm,
+    heightMm
   };
 }
 
@@ -1236,8 +1240,8 @@ export function getSelectedDentSizeMm() {
 export function setSelectedDentSizeMm(widthMm, heightMm) {
   const node = getActiveNode();
   if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return;
-  const wMm = Math.max(SIZE_MM_MIN, Math.min(SIZE_MM_MAX, Number(widthMm) || SIZE_MM_MIN));
-  const hMm = Math.max(SIZE_MM_MIN, Math.min(SIZE_MM_MAX, Number(heightMm) || SIZE_MM_MIN));
+  const wMm = clamp(normalizeNumber(widthMm, SIZE_MM_MIN), SIZE_MM_MIN, SIZE_MM_MAX);
+  const hMm = clamp(normalizeNumber(heightMm, SIZE_MM_MIN), SIZE_MM_MIN, SIZE_MM_MAX);
   const wPx = wMm * pxPerMm;
   const hPx = hMm * pxPerMm;
   if (node.className === 'Ellipse') {
@@ -1253,6 +1257,64 @@ export function setSelectedDentSizeMm(widthMm, heightMm) {
   }
   if (useMmMode && imageNode) applyBounds(node);
   const meta = node._dentMeta;
+  updateShapeCalc(node, meta.type, meta.id, meta.sizes);
+  updateStroke(node);
+  updateHitArea(node);
+  if (useMmMode && handleGroup) positionHandle(node);
+  const layer = node.getLayer();
+  if (layer) layer.batchDraw();
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+}
+
+/**
+ * Установить вариант формы вмятины: circle/oval для type=circle, strip/scratch для type=strip.
+ * Сохраняет позицию, clamp размеров > 1.
+ */
+export function setDentShapeVariant(variant) {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return;
+  const meta = node._dentMeta;
+  const type = meta.type;
+  const r = getShapeRectLocal(node);
+  const minPx = Math.max(2, SIZE_MM_MIN * pxPerMm);
+  const cx = node.x();
+  const cy = node.y();
+
+  if (type === 'circle') {
+    const rx = Math.max(minPx / 2, r.width / 2);
+    const ry = Math.max(minPx / 2, r.height / 2);
+    if (variant === 'circle') {
+      const r0 = Math.min(rx, ry);
+      node.radiusX(r0);
+      node.radiusY(r0);
+      node.offsetX(r0);
+      node.offsetY(r0);
+    } else {
+      const rx2 = Math.max(minPx / 2, rx);
+      const ry2 = Math.max(minPx / 2, ry);
+      node.radiusX(rx2);
+      node.radiusY(ry2);
+      node.offsetX(rx2);
+      node.offsetY(ry2);
+    }
+  } else {
+    let w = Math.max(minPx, r.width);
+    let h = Math.max(minPx, r.height);
+    if (variant === 'strip' && h > w) {
+      [w, h] = [h, w];
+    } else if (variant === 'scratch' && w > h) {
+      [w, h] = [h, w];
+    }
+    node.width(w);
+    node.height(h);
+    node.scaleX(1);
+    node.scaleY(1);
+    node.offsetX(w / 2);
+    node.offsetY(h / 2);
+  }
+
+  meta.shapeVariant = variant;
+  if (useMmMode && imageNode) applyBounds(node);
   updateShapeCalc(node, meta.type, meta.id, meta.sizes);
   updateStroke(node);
   updateHitArea(node);
@@ -1339,7 +1401,10 @@ export function addDent(type, sizeCode, sizes) {
     shape.setAttr('type', 'strip');
   }
 
-  shape._dentMeta = { id, type, sizes };
+  const wMm = type === 'circle' ? (shape.radiusX?.() ?? 0) * 2 / (pxPerMm || 1) : (shape.width?.() ?? 0) / (pxPerMm || 1);
+  const hMm = type === 'circle' ? (shape.radiusY?.() ?? 0) * 2 / (pxPerMm || 1) : (shape.height?.() ?? 0) / (pxPerMm || 1);
+  const shapeVariant = inferShapeVariant(type, wMm, hMm);
+  shape._dentMeta = { id, type, sizes, shapeVariant };
 
   if (useMmMode && partBounds) {
     const r = getShapeRectLocal(shape);
@@ -1507,6 +1572,8 @@ export function addDent(type, sizeCode, sizes) {
   });
 
   layerDents.add(shape);
+  /** На этапах 1–2: форма draggable (и за вмятину, и за крестик). */
+  shape.draggable(wizardStep <= 2);
   if (handleGroup) handleGroup.moveToTop();
   updateStroke(shape);
   updateHitArea(shape);
@@ -1551,9 +1618,8 @@ export function resetDents() {
         keepRatio: transformerKeepRatio,
         /** Запрет инверсии (отрицательного scale) и минимальный размер при ресайзе. */
         boundBoxFunc: (oldBox, newBox) => {
-          if (newBox.width < MIN_TRANSFORM_SIZE_PX || newBox.height < MIN_TRANSFORM_SIZE_PX) {
-            return oldBox;
-          }
+          if (newBox.width < MIN_TRANSFORM_SIZE_PX || newBox.height < MIN_TRANSFORM_SIZE_PX) return oldBox;
+          if (newBox.width < 0 || newBox.height < 0) return oldBox;
           return newBox;
         }
       });
@@ -1620,7 +1686,6 @@ export function destroyKonva() {
   contentHeight = 0;
   heatZonesPx = [];
   bgRect = null;
-  logoLayer = null;
   handleGroup = null;
   activeDent = null;
   transformerKeepRatio = true;
