@@ -1,5 +1,5 @@
 <template>
-  <div class="step3-panel p-2 space-y-2">
+  <div class="step3-panel p-2 space-y-2 flex flex-col min-h-0 flex-1">
     <button
       type="button"
       @click="$emit('back-to-edit')"
@@ -8,7 +8,7 @@
       <span aria-hidden="true">✎</span>
       <span>Назад к редактированию</span>
     </button>
-    <div class="step3-params-wrap mx-0 space-y-3">
+    <div class="step3-params-wrap mx-0 space-y-3 flex-1 min-h-0 overflow-y-auto">
       <div class="rounded-xl bg-black/40 border border-white/10 px-3 py-2.5">
         <p class="text-[13px] font-medium leading-snug text-gray-200">
           Укажите технологию ремонта, сложность, материал и класс автомобиля. От этих параметров зависит итоговая стоимость.
@@ -63,16 +63,18 @@
         </div>
       </div>
     </div>
-    <button
-      type="button"
-      :disabled="!conditionsComplete"
-      @click="conditionsComplete && $emit('calculate')"
-      class="step3-calc-btn w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity shrink-0"
-      :class="conditionsComplete ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
-    >
-      <span>Рассчитать стоимость</span>
-    </button>
-    <p v-if="!conditionsComplete" class="text-[10px] text-gray-500 text-center">Выберите все параметры</p>
+    <div class="step3-footer shrink-0 pt-2 space-y-1">
+      <button
+        type="button"
+        :disabled="!conditionsComplete"
+        @click="conditionsComplete && $emit('calculate')"
+        class="step3-calc-btn w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity"
+        :class="conditionsComplete ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
+      >
+        <span>Рассчитать стоимость</span>
+      </button>
+      <p v-if="!conditionsComplete" class="text-[10px] text-gray-500 text-center">Выберите все параметры</p>
+    </div>
   </div>
 </template>
 
@@ -108,7 +110,7 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>
 
 <style scoped>
-/* Mobile: этап 3 — превью сверху, параметры прокручиваются, кнопка внизу */
+/* Mobile: этап 3 — параметры прокручиваются, кнопка всегда видна внизу */
 @media (max-width: 480px) {
   .step3-panel {
     display: flex;
@@ -122,14 +124,13 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
   }
   .step3-params-wrap {
     flex: 1;
-    overflow-y: auto;
     min-height: 0;
     -webkit-overflow-scrolling: touch;
     touch-action: manipulation;
-    pointer-events: auto;
   }
-  .step3-calc-btn {
+  .step3-footer {
     flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
   }
 }
 </style>

@@ -1,16 +1,16 @@
 <template>
   <div class="p-2 space-y-2">
-    <!-- Форма вмятины: круг/овал или полоса/царапина -->
-    <div v-if="selectedDentSize" class="space-y-1.5">
-      <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest">Форма</div>
+    <!-- Форма вмятины: компактная плашка -->
+    <div v-if="selectedDentSize" class="flex items-center gap-2">
+      <span class="text-[10px] uppercase font-bold text-metric-green tracking-widest shrink-0">Форма:</span>
       <div
         v-if="selectedDentSize.type === 'circle'"
-        class="flex gap-1 p-1 rounded-lg bg-black/35 border border-white/10"
+        class="flex gap-0.5 p-0.5 rounded-md bg-black/35 border border-white/10"
       >
         <button
           type="button"
           @click="$emit('update:shapeVariant', 'circle')"
-          class="flex-1 py-2.5 min-h-[44px] rounded-md text-[11px] font-medium transition-all touch-manipulation"
+          class="px-3 py-1.5 min-h-[36px] rounded text-[10px] font-medium transition-all touch-manipulation"
           :class="shapeVariant === 'circle' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
         >
           Круг
@@ -18,7 +18,7 @@
         <button
           type="button"
           @click="$emit('update:shapeVariant', 'oval')"
-          class="flex-1 py-2.5 min-h-[44px] rounded-md text-[11px] font-medium transition-all touch-manipulation"
+          class="px-3 py-1.5 min-h-[36px] rounded text-[10px] font-medium transition-all touch-manipulation"
           :class="shapeVariant === 'oval' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
         >
           Овал
@@ -26,12 +26,12 @@
       </div>
       <div
         v-else
-        class="flex gap-1 p-1 rounded-lg bg-black/35 border border-white/10"
+        class="flex gap-0.5 p-0.5 rounded-md bg-black/35 border border-white/10"
       >
         <button
           type="button"
           @click="$emit('update:shapeVariant', 'strip')"
-          class="flex-1 py-2.5 min-h-[44px] rounded-md text-[11px] font-medium transition-all touch-manipulation"
+          class="px-3 py-1.5 min-h-[36px] rounded text-[10px] font-medium transition-all touch-manipulation"
           :class="shapeVariant === 'strip' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
         >
           Полоса
@@ -39,16 +39,16 @@
         <button
           type="button"
           @click="$emit('update:shapeVariant', 'scratch')"
-          class="flex-1 py-2.5 min-h-[44px] rounded-md text-[11px] font-medium transition-all touch-manipulation"
+          class="px-3 py-1.5 min-h-[36px] rounded text-[10px] font-medium transition-all touch-manipulation"
           :class="shapeVariant === 'scratch' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
         >
           Царапина
         </button>
       </div>
     </div>
-    <!-- Свободное растяжение (неправильная форма) — отдельный переключатель -->
+    <!-- Свободное растяжение -->
     <div class="flex items-center gap-2">
-      <label class="flex items-center gap-2 cursor-pointer text-[10px] text-gray-400 min-h-[44px] touch-manipulation">
+      <label class="flex items-center gap-2 cursor-pointer text-[10px] text-gray-400 min-h-[36px] touch-manipulation">
         <input
           type="checkbox"
           :checked="freeStretch"

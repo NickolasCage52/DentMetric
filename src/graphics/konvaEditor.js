@@ -86,6 +86,8 @@ let resizeObservedEl = null;
 let windowResizeHandler = null;
 /** Текущий шаг визарда: 1=Размещение (форма и handle draggable), 2+=редактирование. */
 let wizardStep = 2;
+/** Скрыть сетку на мобильных (узкий экран). */
+let hideGridOnMobile = false;
 
 function getActiveNode() {
   if (!tr) return null;
@@ -747,8 +749,8 @@ export function setEditorInteractive(interactive, step = 2) {
     }
   }
   if (handleGroup) handleGroup.visible(!!interactive && !!activeDent);
-  /** На этапе 1: сетка скрыта (чистое изображение детали). На этапах 2/3 — показываем. */
-  if (layerGrid) layerGrid.visible(step !== 1);
+  /** На этапе 1: сетка скрыта. На этапах 2/3 — показываем, кроме мобильной версии. */
+  if (layerGrid) layerGrid.visible(step !== 1 && !hideGridOnMobile);
   /** На этапах 1–2: форма draggable (и за саму вмятину, и за крестик). */
   const shapeDraggable = !!interactive;
   const children = layerDents?.getChildren?.() || [];
@@ -772,6 +774,16 @@ export function setEditorInteractive(interactive, step = 2) {
  */
 export function setEditable(editable, step = 2) {
   setEditorInteractive(!!editable, editable ? step : 2);
+}
+
+/** Скрыть сетку на мобильных (ширина < 480px). Вызывать при resize. */
+export function setHideGridOnMobile(hide) {
+  hideGridOnMobile = !!hide;
+  if (layerGrid) {
+    layerGrid.visible(wizardStep !== 1 && !hideGridOnMobile);
+    const layer = layerGrid.getLayer ? layerGrid.getLayer() : null;
+    if (layer) layer.batchDraw();
+  }
 }
 
 /**
@@ -1061,9 +1073,9 @@ function getInterpolatedPriceByAreaMm2(areaMm2, type, sizesWithArea) {
     }
     return priceS11;
   }
-  /** Площадь > S11: убираем потолок. Чем больше вмятина — тем меньше наценка на единицу площади (логарифмический рост). */
+  /** Площадь > S11: убираем потолок. Условия считаются от фактической предварительной цены. */
   const extraArea = areaMm2 - areaS11;
-  const markup = 3500 * Math.log(1 + extraArea / 50000);
+  const markup = Math.max(500, 3500 * Math.log(1 + extraArea / 50000));
   return priceS11 + markup;
 }
 
@@ -1072,20 +1084,27 @@ function getInterpolatedPriceByAreaPx(areaPx, type, sizes) {
   const sorted = [...sizes].sort((a, b) => (a.area || 0) - (b.area || 0));
   if (sorted[0].area != null && areaPx <= sorted[0].area) return prices[sorted[0].code] ?? sorted[0].basePrice ?? 0;
   const last = sorted[sorted.length - 1];
-  if (last.area != null && areaPx >= last.area) return prices[last.code] ?? last.basePrice ?? 0;
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const s1 = sorted[i];
-    const s2 = sorted[i + 1];
-    const a1 = s1.area ?? 0;
-    const a2 = s2.area ?? 0;
-    if (a2 > a1 && areaPx >= a1 && areaPx <= a2) {
-      const p1 = prices[s1.code] ?? s1.basePrice ?? 0;
-      const p2 = prices[s2.code] ?? s2.basePrice ?? 0;
-      const ratio = (areaPx - a1) / (a2 - a1);
-      return p1 + (p2 - p1) * ratio;
+  const areaMax = last.area ?? 0;
+  const priceMax = prices[last.code] ?? last.basePrice ?? 42000;
+  if (areaPx <= areaMax) {
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const s1 = sorted[i];
+      const s2 = sorted[i + 1];
+      const a1 = s1.area ?? 0;
+      const a2 = s2.area ?? 0;
+      if (a2 > a1 && areaPx >= a1 && areaPx <= a2) {
+        const p1 = prices[s1.code] ?? s1.basePrice ?? 0;
+        const p2 = prices[s2.code] ?? s2.basePrice ?? 0;
+        const ratio = (areaPx - a1) / (a2 - a1);
+        return p1 + (p2 - p1) * ratio;
+      }
     }
+    return priceMax;
   }
-  return prices[sorted[0].code] ?? sorted[0].basePrice ?? 0;
+  /** Площадь > LS8: убираем потолок 42 000. Условия считаются от фактической предварительной цены. */
+  const extraArea = areaPx - areaMax;
+  const markup = Math.max(500, 5000 * Math.log(1 + extraArea / 50000));
+  return priceMax + markup;
 }
 
 function rectIntersectionArea(a, b) {
@@ -1689,4 +1708,5 @@ export function destroyKonva() {
   handleGroup = null;
   activeDent = null;
   transformerKeepRatio = true;
+  hideGridOnMobile = false;
 }

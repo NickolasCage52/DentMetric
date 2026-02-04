@@ -32,16 +32,16 @@
           class="step3-preview-overlay absolute inset-0 z-10 cursor-default"
           aria-label="Режим просмотра"
         ></div>
-        <!-- Подсказка этапа: сверху по центру, текст + цена в одном блоке без наложения -->
+        <!-- Подсказка этапа: компактно, не перекрывает элемент -->
         <div
           v-if="wizardStep <= 2"
-          class="step-hint-block absolute top-2 left-2 right-2 z-20 px-3 py-2.5 rounded-xl bg-black/70 backdrop-blur-sm border pointer-events-none"
+          class="step-hint-block absolute top-1.5 left-2 right-2 z-20 px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm border pointer-events-none max-h-[20%]"
           :class="wizardStep === 1 ? 'border-metric-green/40' : 'border-metric-green/40'"
         >
-          <p class="step-hint-text text-[13px] font-medium leading-snug text-gray-200 mb-1.5">
+          <p class="step-hint-text text-[12px] font-medium leading-tight text-gray-200 mb-1">
             {{ stepHintText }}
           </p>
-          <div class="flex items-center justify-between text-[12px]">
+          <div class="flex items-center justify-between text-[11px]">
             <span class="text-gray-400">Предварительно:</span>
             <span :class="basePrice > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
               {{ basePrice > 0 ? formatCurrency(roundPrice(basePrice)) + ' ₽' : '—' }}
@@ -159,7 +159,8 @@ import {
   setSelectedDentSizeMm,
   setDentShapeVariant,
   setKeepRatio,
-  setEditable
+  setEditable,
+  setHideGridOnMobile
 } from '../../graphics/konvaEditor';
 import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from '../../utils/priceCalc';
 import StepHeader from './StepHeader.vue';
@@ -252,9 +253,9 @@ const dentsValid = computed(() => {
 const stepHintText = computed(() => {
   switch (wizardStep.value) {
     case 1:
-      return 'Выберите деталь кузова. Добавьте вмятины (круг или полосу) и перетащите их на нужное место.';
+      return 'Выберите деталь. Добавьте вмятины и перетащите на место.';
     case 2:
-      return 'Укажите размеры вмятины в миллиметрах. При необходимости выберите форму: круг или овал, полоса или царапина.';
+      return 'Размеры в мм. Форма: круг/овал или полоса/царапина.';
     default:
       return '';
   }
@@ -403,15 +404,22 @@ const initKonvaEditor = async () => {
   );
   /* Применить текущий шаг (draggable формы vs handle) после init */
   setEditable(wizardStep.value <= 2, wizardStep.value);
+  updateMobileGrid();
   /* Повторный fit после layout: контейнер мог иметь 0 размер при init */
   nextTick(() => setTimeout(() => scheduleFit('init-layout'), 150));
 };
+
+function updateMobileGrid() {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 480;
+  setHideGridOnMobile(isMobile);
+}
 
 watch(
   () => wizardStep.value,
   (step) => {
     nextTick(() => {
       setEditable(step <= 2, step);
+      updateMobileGrid();
       if (step === 2) {
         setKeepRatio(!freeStretchMode.value);
         setTimeout(() => scheduleFit('step2-show'), 200);
@@ -432,6 +440,8 @@ watch(
 
 onMounted(() => {
   nextTick(() => setTimeout(initKonvaEditor, 100));
+  updateMobileGrid();
+  window.addEventListener('resize', updateMobileGrid);
   const vv = window.visualViewport;
   if (vv) {
     vv.addEventListener('resize', updateKeyboardInset);
@@ -441,6 +451,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateMobileGrid);
   const vv = window.visualViewport;
   if (vv) {
     vv.removeEventListener('resize', updateKeyboardInset);
