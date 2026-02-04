@@ -36,16 +36,11 @@ export function sanitizeDentState(dent) {
   return safe;
 }
 
-/** Безопасный пересчёт цены: не падает при пустых/некорректных значениях. */
+/** Безопасный пересчёт цены: сумма базовых цен вмятин (каждая считается отдельно). */
 export function safeRecalcPrice(state) {
   if (!state) return 0;
   const dents = Array.isArray(state.dents) ? state.dents : [];
   if (dents.length === 0) return 0;
-  let total = 0;
-  const sorted = [...dents].sort((a, b) => (b?.price ?? 0) - (a?.price ?? 0));
-  total = normalizeNumber(sorted[0]?.price, 0);
-  for (let i = 1; i < sorted.length; i++) {
-    total += normalizeNumber(sorted[i]?.price, 0) * 0.5;
-  }
+  const total = dents.reduce((sum, dent) => sum + normalizeNumber(dent?.price, 0), 0);
   return Math.max(0, total);
 }

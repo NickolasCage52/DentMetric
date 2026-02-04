@@ -1193,6 +1193,26 @@ function updateShapeCalc(shape, type, id, sizes) {
   }
   if (isComplex) price *= complexMult;
 
+  /** sizeCode для матрицы сложности: круг — ближайший по площади, полоса — STRIP_DEFAULT */
+  let sizeCode = 'STRIP_DEFAULT';
+  if (type === 'circle' && sizes && sizes.length > 0) {
+    const withArea = sizes.filter((s) => (s.areaMm2 ?? s.area) != null);
+    if (withArea.length > 0) {
+      const areaKey = withArea[0].areaMm2 != null ? 'areaMm2' : 'area';
+      const areaVal = areaMm2 ?? areaPx;
+      let closest = withArea[0];
+      let minDist = Math.abs((closest[areaKey] ?? 0) - areaVal);
+      for (const s of withArea) {
+        const d = Math.abs((s[areaKey] ?? 0) - areaVal);
+        if (d < minDist) {
+          minDist = d;
+          closest = s;
+        }
+      }
+      sizeCode = closest.code ?? 'S2';
+    }
+  }
+
   if (isComplex) {
     shape.stroke('#FF4444');
     shape.fill(type === 'circle' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 68, 68, 0.3)');
@@ -1204,6 +1224,7 @@ function updateShapeCalc(shape, type, id, sizes) {
   const dentData = {
     id,
     type,
+    sizeCode,
     areaPx,
     areaMm2: areaMm2 ?? undefined,
     cellsCount: cellsCount != null ? Math.round(cellsCount * 100) / 100 : undefined,

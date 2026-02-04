@@ -237,11 +237,12 @@ const sizeMenuPortalTarget = computed(() => {
 
 const basePrice = computed(() => calcBasePriceFromDents(dents.value));
 const totalPrice = computed(() =>
-  calcTotalPrice(dents.value, props.form, props.initialData, 'STRIP_DEFAULT', 100)
+  calcTotalPrice(dents.value, props.form, props.initialData, 100)
 );
-const breakdown = computed(() =>
-  buildBreakdown(basePrice.value, props.form, props.initialData, 'STRIP_DEFAULT')
-);
+const breakdown = computed(() => {
+  const sizeCode = dents.value?.[0]?.sizeCode ?? 'STRIP_DEFAULT';
+  return buildBreakdown(basePrice.value, props.form, props.initialData, sizeCode);
+});
 const dentsValid = computed(() => {
   if (dents.value.length === 0) return false;
   if (!selectedDentSize.value) return true;

@@ -9,7 +9,7 @@ export function roundPrice(v) {
 }
 
 /**
- * Базовая цена от массива вмятин (первая — полная, каждая следующая — 0.5×).
+ * Базовая цена от массива вмятин: сумма базовых цен (каждая вмятина считается отдельно).
  * Защита от NaN/undefined в price.
  *
  * @param {Array<{ price: number }>} dents - массив вмятин с полем price
@@ -17,39 +17,69 @@ export function roundPrice(v) {
  */
 export function calcBasePriceFromDents(dents) {
   if (!dents || !Array.isArray(dents) || dents.length === 0) return 0;
-  const sorted = [...dents].sort((a, b) => (normalizeNumber(b?.price, 0)) - (normalizeNumber(a?.price, 0)));
-  let total = normalizeNumber(sorted[0]?.price, 0);
-  for (let i = 1; i < sorted.length; i++) {
-    total += normalizeNumber(sorted[i]?.price, 0) * 0.5;
-  }
+  const total = dents.reduce((sum, dent) => sum + normalizeNumber(dent?.price, 0), 0);
   return Math.max(0, total);
 }
 
 /**
- * Итоговая цена: база от вмятин × коэффициенты.
+ * Расчёт цены одной вмятины по таблице коэффициентов (без разборки).
+ * Порядок: basePrice *= repairType *= complexity *= material.
+ * Разборка добавляется один раз к итогу в calcTotalPrice.
+ *
+ * @param {{ price: number, type?: string, sizeCode?: string }} dent - вмятина (price = база, sizeCode для матрицы)
+ * @param {{ repairCode, riskCode, materialCode, disassemblyCode }} conditions
+ * @param {object} initialData
+ * @returns {number}
+ */
+function calculateDentPrice(dent, conditions, initialData) {
+  const basePrice = normalizeNumber(dent?.price, 0);
+  if (basePrice <= 0) return 0;
+  if (!conditions || !initialData) return basePrice;
+
+  const repCoeff = initialData.repairTypes.find((r) => r.code === conditions.repairCode)?.mult ?? 1.0;
+  const matCoeff = initialData.materials.find((m) => m.code === conditions.materialCode)?.mult ?? 1.0;
+  const riskObj = initialData.risks.find((r) => r.code === conditions.riskCode);
+  const kKey = riskObj ? riskObj.matrixKey : 'K2';
+  const sizeCode = dent?.sizeCode ?? (dent?.type === 'circle' ? 'S2' : 'STRIP_DEFAULT');
+  const matrixRow = initialData.complexityMatrix?.[sizeCode] ?? initialData.complexityMatrix?.['STRIP_DEFAULT'] ?? { [kKey]: 1.0 };
+  const compCoeff = matrixRow[kKey] ?? 1.0;
+
+  let price = basePrice;
+  price *= repCoeff;
+  price *= compCoeff;
+  price *= matCoeff;
+  return Math.max(0, price);
+}
+
+/**
+ * Итоговая цена: каждая вмятина считается отдельно, затем суммируется.
  * Единый источник истины для режима Графика (HUD, Итого, MainButton).
  *
- * @param {Array<{ price: number }>} dents - массив вмятин
+ * @param {Array<{ price: number, type?: string, sizeCode?: string }>} dents - массив вмятин
  * @param {{ repairCode, riskCode, materialCode, carClassCode, disassemblyCode }} conditions - условия
  * @param {object} initialData - initialData
- * @param {string} [sizeCodeForMatrix='STRIP_DEFAULT']
  * @param {number} [roundStep=100]
  * @returns {number} итоговая цена
  */
-export function calcTotalPrice(dents, conditions, initialData, sizeCodeForMatrix = 'STRIP_DEFAULT', roundStep = 100) {
+export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) {
+  if (!dents || !Array.isArray(dents) || dents.length === 0) return 0;
   const base = calcBasePriceFromDents(dents);
   if (base <= 0) return 0;
+
   const hasConditions =
     conditions &&
     conditions.repairCode &&
     conditions.riskCode &&
     conditions.materialCode &&
-    conditions.carClassCode &&
     conditions.disassemblyCode;
   if (!hasConditions) {
     return Math.round(base / roundStep) * roundStep;
   }
-  return applyConditionsToBase(base, conditions, initialData, sizeCodeForMatrix, roundStep);
+
+  const dentsTotal = dents.reduce((sum, dent) => sum + calculateDentPrice(dent, conditions, initialData), 0);
+  const disCost = initialData.disassembly.find((d) => d.code === conditions.disassemblyCode)?.price ?? 0;
+  const total = dentsTotal + disCost;
+  return Math.round(total / roundStep) * roundStep;
 }
 
 /**
@@ -65,20 +95,23 @@ export function calcTotalPrice(dents, conditions, initialData, sizeCodeForMatrix
  */
 export function applyConditionsToBase(basePrice, conditions, initialData, sizeCodeForMatrix = 'STRIP_DEFAULT', roundStep = 100) {
   if (!conditions || !initialData || basePrice <= 0) return 0;
-  const { repairCode, riskCode, materialCode, carClassCode, disassemblyCode } = conditions;
-  if (!repairCode || !riskCode || !materialCode || !carClassCode || !disassemblyCode) return 0;
+  const { repairCode, riskCode, materialCode, disassemblyCode } = conditions;
+  if (!repairCode || !riskCode || !materialCode || !disassemblyCode) return 0;
 
+  const repCoeff = initialData.repairTypes.find((r) => r.code === repairCode)?.mult ?? 1.0;
+  const matCoeff = initialData.materials.find((m) => m.code === materialCode)?.mult ?? 1.0;
   const riskObj = initialData.risks.find((r) => r.code === riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
-  const matrixRow = initialData.complexityMatrix[sizeCodeForMatrix] ?? initialData.complexityMatrix['STRIP_DEFAULT'];
-  const compMult = matrixRow[kKey] ?? 1.0;
-  const repMult = initialData.repairTypes.find((r) => r.code === repairCode)?.mult ?? 1.0;
-  const matMult = initialData.materials.find((m) => m.code === materialCode)?.mult ?? 1.0;
-  const clsMult = initialData.carClasses.find((c) => c.code === carClassCode)?.mult ?? 1.0;
+  const matrixRow = initialData.complexityMatrix?.[sizeCodeForMatrix] ?? initialData.complexityMatrix?.['STRIP_DEFAULT'] ?? { [kKey]: 1.0 };
+  const compCoeff = matrixRow[kKey] ?? 1.0;
   const disCost = initialData.disassembly.find((d) => d.code === disassemblyCode)?.price ?? 0;
 
-  const total = basePrice * repMult * matMult * compMult * clsMult + disCost;
-  return Math.round(total / roundStep) * roundStep;
+  let price = basePrice;
+  price *= repCoeff;
+  price *= compCoeff;
+  price *= matCoeff;
+  price += disCost;
+  return Math.round(Math.max(0, price) / roundStep) * roundStep;
 }
 
 /**
@@ -93,19 +126,17 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   const items = [];
   if (!conditions || !initialData || basePrice <= 0) return items;
 
-  const { repairCode, riskCode, materialCode, carClassCode, disassemblyCode } = conditions;
-  if (!repairCode || !riskCode || !materialCode || !carClassCode || !disassemblyCode) return items;
+  const { repairCode, riskCode, materialCode, disassemblyCode } = conditions;
+  if (!repairCode || !riskCode || !materialCode || !disassemblyCode) return items;
 
   const riskObj = initialData.risks.find((r) => r.code === riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
-  const matrixRow = initialData.complexityMatrix[sizeCodeForMatrix] ?? initialData.complexityMatrix['STRIP_DEFAULT'];
+  const matrixRow = initialData.complexityMatrix?.[sizeCodeForMatrix] ?? initialData.complexityMatrix?.['STRIP_DEFAULT'] ?? { [kKey]: 1.0 };
   const compMult = matrixRow[kKey] ?? 1.0;
   const repObj = initialData.repairTypes.find((r) => r.code === repairCode);
   const repMult = repObj?.mult ?? 1.0;
   const matObj = initialData.materials.find((m) => m.code === materialCode);
   const matMult = matObj?.mult ?? 1.0;
-  const clsObj = initialData.carClasses.find((c) => c.code === carClassCode);
-  const clsMult = clsObj?.mult ?? 1.0;
   const disObj = initialData.disassembly.find((d) => d.code === disassemblyCode);
   const disCost = disObj?.price ?? 0;
 
@@ -113,7 +144,6 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   if (repObj) items.push({ name: repObj.name, value: `×${repMult}` });
   if (matObj) items.push({ name: matObj.name, value: `×${matMult}` });
   if (riskObj) items.push({ name: riskObj.name, value: `×${compMult}` });
-  if (clsObj) items.push({ name: clsObj.name, value: `×${clsMult}` });
   if (disCost > 0 && disObj) items.push({ name: disObj.name, value: `+${roundPrice(disCost).toLocaleString('ru-RU')} ₽` });
 
   return items;

@@ -643,12 +643,12 @@ const timePrice = computed(() => {
   return applyConditionsToBase(laborBase, form, initialData, 'STRIP_DEFAULT', 100);
 });
 
-/** База от вмятин (первая + 0.5 за каждую следующую). Единый источник: priceCalc.calcBasePriceFromDents. */
+/** База от вмятин: сумма базовых цен (каждая вмятина отдельно). Единый источник: priceCalc.calcBasePriceFromDents. */
 const graphicsBasePrice = computed(() => calcBasePriceFromDents(graphicsState.dents));
 
-/** Итоговая цена в Графике: база × коэффициенты. Единый источник: priceCalc.calcTotalPrice. */
+/** Итоговая цена в Графике: каждая вмятина отдельно, затем сумма. Единый источник: priceCalc.calcTotalPrice. */
 const graphicsPrice = computed(() =>
-  calcTotalPrice(graphicsState.dents, form, initialData, 'STRIP_DEFAULT', 100)
+  calcTotalPrice(graphicsState.dents, form, initialData, 100)
 );
 
 const totalPrice = computed(() => {
