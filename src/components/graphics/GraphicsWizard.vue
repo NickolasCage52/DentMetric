@@ -552,11 +552,12 @@ onBeforeUnmount(() => {
     right: 8px;
     bottom: 8px;
   }
-  /* Этап 3 (параметры): превью clamp, чтобы видно целиком и влезали поля */
-  .graphics-stage-area.graphics-stage-preview .canvas-editor-wrap {
-    height: clamp(160px, 26vh, 240px) !important;
-    min-height: 160px;
-    max-height: 240px;
+  /* Этап 3: скрываем превью (матрица скрыта) — панель условий на весь экран */
+  .graphics-stage-area.graphics-stage-preview {
+    flex: 0 0 0 !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    overflow: hidden;
   }
   /* Overlay и Konva не перехватывают клики — панель условий кликабельна */
   .graphics-stage-area.graphics-stage-preview .step3-preview-overlay,

@@ -442,7 +442,13 @@ export async function initKonva(containerEl, partData, priceMap, onDentChange, b
   }
   stageBounds = { x: 0, y: 0, width: w, height: h };
 
-  if (stage) stage.destroy();
+  if (stage) {
+    stage.destroy();
+    stage = null;
+  }
+  /** Сброс handleGroup — иначе при смене детали (капот→дверь→крыло) handle остаётся ссылкой на уничтоженный узел */
+  handleGroup = null;
+  activeDent = null;
 
   stage = new Konva.Stage({ container: containerEl, width: w, height: h });
 

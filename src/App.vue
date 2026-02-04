@@ -319,7 +319,7 @@
           :parts-list="graphicsPartsList"
           :selected-part="graphicsState.selectedPart"
           :circle-sizes="graphicsCircleSizes"
-          :strip-sizes="initialData.stripSizes"
+          :strip-sizes="graphicsStripSizes"
           @close="closeEditor"
           @dents-change="(d) => graphicsState.dents = d"
         />
@@ -507,7 +507,7 @@ import { deleteSelected } from './graphics/konvaEditor';
 import { initialData } from './data/initialData';
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
-import { circleSizesWithArea } from './data/dentSizes';
+import { circleSizesWithArea, stripSizesWithArea } from './data/dentSizes';
 import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice } from './utils/priceCalc';
 import ConditionsPanel from './components/ConditionsPanel.vue';
 import GraphicsWizard from './components/graphics/GraphicsWizard.vue';
@@ -613,13 +613,22 @@ const currentSizeList = computed(() =>
   form.shape === 'circle' ? initialData.circleSizes : initialData.stripSizes
 );
 
-/** В графике для круга: мм-размеры для кроссовера, иначе legacy circleSizes */
+/** В графике для круга: мм-размеры для кроссовера (капот, двери, крыло), иначе legacy */
 const graphicsCircleSizes = computed(() => {
   const part = graphicsState.selectedPart;
   if (part?.realSizeMm && part?.asset?.type === 'image') {
     return circleSizesWithArea;
   }
   return initialData.circleSizes;
+});
+
+/** В графике для полосы: мм-размеры для кроссовера — единая механика как на капоте */
+const graphicsStripSizes = computed(() => {
+  const part = graphicsState.selectedPart;
+  if (part?.realSizeMm && part?.asset?.type === 'image') {
+    return stripSizesWithArea;
+  }
+  return initialData.stripSizes;
 });
 
 const standardPrice = computed(() => {

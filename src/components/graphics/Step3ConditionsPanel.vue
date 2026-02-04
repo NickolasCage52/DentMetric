@@ -3,56 +3,57 @@
     <button
       type="button"
       @click="$emit('back-to-edit')"
-      class="step3-back-btn w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90 transition-opacity shrink-0"
+      class="step3-back-btn w-full py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 bg-metric-green text-black shadow-[0_0_12px_rgba(136,229,35,0.35)] hover:opacity-95 active:opacity-90 transition-opacity shrink-0"
     >
       <span aria-hidden="true">✎</span>
       <span>Назад к редактированию</span>
     </button>
-    <div class="step3-params-wrap mx-0 space-y-3 flex-1 min-h-0 overflow-y-auto">
-      <div class="rounded-xl bg-black/40 border border-white/10 px-3 py-2.5">
-        <p class="text-[13px] font-medium leading-snug text-gray-200">
-          Укажите технологию ремонта, сложность, материал и класс автомобиля. От этих параметров зависит итоговая стоимость.
+    <div class="step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 overflow-y-auto">
+      <div class="step3-hint rounded-lg bg-black/40 border border-white/10 px-2.5 py-1.5">
+        <p class="text-[11px] font-medium leading-tight text-gray-200 step3-hint-text">
+          <span class="step3-hint-full">Технология, сложность, материал и класс авто — влияют на итог.</span>
+          <span class="step3-hint-short">Параметры влияют на итог.</span>
         </p>
       </div>
       <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Условия и коэффициенты</div>
-      <div class="space-y-3">
+      <div class="space-y-2">
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Технология</label>
-          <select :value="model.repairCode" @change="update('repairCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-3 py-2.5 min-h-[44px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Технология</label>
+          <select :value="model.repairCode" @change="update('repairCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите технологию</option>
             <option v-for="r in initialData.repairTypes" :key="r.code" :value="r.code">{{ r.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Сложность</label>
-          <select :value="model.riskCode" @change="update('riskCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-3 py-2.5 min-h-[44px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Сложность</label>
+          <select :value="model.riskCode" @change="update('riskCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите сложность</option>
             <option v-for="risk in initialData.risks" :key="risk.code" :value="risk.code">{{ risk.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Материал</label>
-          <select :value="model.materialCode" @change="update('materialCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-3 py-2.5 min-h-[44px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Материал</label>
+          <select :value="model.materialCode" @change="update('materialCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите материал</option>
             <option v-for="m in initialData.materials" :key="m.code" :value="m.code">{{ m.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Класс авто</label>
-          <select :value="model.carClassCode" @change="update('carClassCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-3 py-2.5 min-h-[44px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Класс авто</label>
+          <select :value="model.carClassCode" @change="update('carClassCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите класс авто</option>
             <option v-for="c in initialData.carClasses" :key="c.code" :value="c.code">{{ c.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Арматурные работы</label>
-          <select :value="model.disassemblyCode" @change="update('disassemblyCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-3 py-2.5 min-h-[44px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Арматурные работы</label>
+          <select :value="model.disassemblyCode" @change="update('disassemblyCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите арматурные работы</option>
             <option v-for="d in initialData.disassembly" :key="d.code" :value="d.code">{{ d.name }}</option>
           </select>
         </div>
       </div>
-      <div class="rounded-xl bg-black/35 border border-white/10 p-3 space-y-1">
+      <div class="rounded-lg bg-black/35 border border-white/10 p-2 space-y-0.5">
         <div class="flex justify-between text-[11px]">
           <span class="text-gray-400">Базовая стоимость:</span>
           <span class="text-white font-medium">{{ formatPrice(basePrice) }} ₽</span>
@@ -63,12 +64,12 @@
         </div>
       </div>
     </div>
-    <div class="step3-footer shrink-0 pt-2 space-y-1">
+    <div class="step3-footer shrink-0 pt-1.5 pb-1 space-y-0.5">
       <button
         type="button"
         :disabled="!conditionsComplete"
         @click="conditionsComplete && $emit('calculate')"
-        class="step3-calc-btn w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity"
+        class="step3-calc-btn w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity"
         :class="conditionsComplete ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
       >
         <span>Рассчитать стоимость</span>
@@ -110,27 +111,63 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>
 
 <style scoped>
-/* Mobile: этап 3 — параметры прокручиваются, кнопка всегда видна внизу */
+.step3-hint-short {
+  display: none;
+}
+/* Mobile: компактнее — кнопка «Рассчитать стоимость» всегда видна */
 @media (max-width: 480px) {
   .step3-panel {
     display: flex;
     flex-direction: column;
     min-height: 0;
     flex: 1;
-    padding: 0.5rem;
+    padding: 0.3rem;
+    gap: 0.25rem;
   }
   .step3-back-btn {
     flex-shrink: 0;
+    padding: 0.25rem 0.4rem !important;
+    font-size: 0.6rem !important;
+    min-height: 28px;
+  }
+  .step3-hint {
+    padding: 0.2rem 0.4rem !important;
+    flex-shrink: 0;
+  }
+  .step3-hint-text {
+    font-size: 9px !important;
+    line-height: 1.2;
+  }
+  .step3-hint-full {
+    display: none;
+  }
+  .step3-hint-short {
+    display: inline;
   }
   .step3-params-wrap {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: manipulation;
   }
+  .step3-params-wrap .space-y-2 > * + * {
+    margin-top: 0.25rem;
+  }
+  .step3-select {
+    min-height: 34px !important;
+    padding: 0.25rem 0.4rem !important;
+    font-size: 0.8rem !important;
+  }
   .step3-footer {
     flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom, 8px);
+    padding-top: 0.25rem !important;
+    padding-bottom: max(0.3rem, env(safe-area-inset-bottom, 6px)) !important;
+  }
+  .step3-calc-btn {
+    min-height: 42px !important;
+    padding: 0.5rem 0.6rem !important;
+    font-size: 0.75rem !important;
   }
 }
 </style>
