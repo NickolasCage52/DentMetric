@@ -4,7 +4,18 @@
       <div class="step2-row">
         <!-- Форма вмятины: фиксированная высота, не меняется при выборе вмятины -->
         <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
-          <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Форма</div>
+          <div class="step2-form-head">
+            <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest">Форма</div>
+            <label class="step2-checkbox">
+              <input
+                type="checkbox"
+                :checked="freeStretch"
+                @change="$emit('update:freeStretch', $event.target.checked)"
+                class="rounded border-white/20 bg-[#151515] text-metric-green focus:ring-metric-green/50"
+              />
+              <span>Своб. растяж.</span>
+            </label>
+          </div>
           <div class="flex items-center min-h-[36px]">
             <template v-if="selectedDentSize">
               <div
@@ -50,21 +61,9 @@
                 </button>
               </div>
             </template>
-            <span v-else class="text-[11px] text-gray-500 leading-[36px]">Выберите вмятину на схеме</span>
+            <span v-else class="text-[10px] text-gray-500 leading-[36px]">Выберите вмятину</span>
           </div>
         </div>
-    <!-- Свободное растяжение -->
-    <div class="flex items-center gap-2">
-      <label class="flex items-center gap-2 cursor-pointer text-[10px] text-gray-400 min-h-[32px] touch-manipulation">
-        <input
-          type="checkbox"
-          :checked="freeStretch"
-          @change="$emit('update:freeStretch', $event.target.checked)"
-          class="rounded border-white/20 bg-[#151515] text-metric-green focus:ring-metric-green/50"
-        />
-        <span>Свободное растяжение (неправильная форма)</span>
-      </label>
-    </div>
         <!-- Размеры (мм) -->
         <div ref="sizesPanel" class="step2-block step2-sizes-block rounded-lg bg-black/35 border border-white/10 p-2">
           <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размеры (мм)</div>
@@ -81,7 +80,7 @@
                 inputmode="decimal"
                 :placeholder="selectedDentSize ? '' : '—'"
                 :disabled="!selectedDentSize"
-                class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
+                class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[44px] text-base text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
                 @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
               />
             </div>
@@ -97,7 +96,7 @@
                 inputmode="decimal"
                 :placeholder="selectedDentSize ? '' : '—'"
                 :disabled="!selectedDentSize"
-                class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
+                class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[44px] text-base text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
                 @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
               />
             </div>
@@ -187,12 +186,32 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
   flex-wrap: nowrap;
 }
 .step2-form-block {
-  flex: 0 0 46%;
-  min-width: 46%;
+  flex: 0 0 34%;
+  min-width: 34%;
 }
 .step2-sizes-block {
   flex: 1 1 auto;
   min-width: 0;
+}
+.step2-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+.step2-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 10px;
+  color: #9aa3ad;
+  cursor: pointer;
+  user-select: none;
+}
+.step2-checkbox input {
+  width: 16px;
+  height: 16px;
 }
 /* Мобильная версия: компактные плашки */
 @media (max-width: 480px) {
