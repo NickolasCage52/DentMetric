@@ -1,12 +1,5 @@
 <template>
   <header class="graphics-header shrink-0 flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-white/10 bg-black/60">
-    <button
-      @click="$emit('back')"
-      class="text-metric-silver hover:text-white p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded border border-white/10 shrink-0 touch-manipulation"
-      aria-label="Назад"
-    >
-      ←
-    </button>
     <img
       src="/logo.png"
       alt="DentMetric"
@@ -40,15 +33,6 @@
     >
       Сброс
     </button>
-    <!-- Точки этапов (справа сверху) -->
-    <div class="flex items-center gap-1 shrink-0">
-      <span
-        v-for="s in 4"
-        :key="s"
-        class="w-1.5 h-1.5 rounded-full transition-colors"
-        :class="currentStep >= s ? 'bg-metric-green' : 'bg-white/20'"
-      />
-    </div>
   </header>
 </template>
 
@@ -63,7 +47,7 @@ defineProps({
   currentStep: { type: Number, default: 1 }
 });
 
-defineEmits(['back', 'update:selectedClassId', 'update:selectedPartId', 'reset']);
+defineEmits(['update:selectedClassId', 'update:selectedPartId', 'reset']);
 </script>
 
 <style scoped>

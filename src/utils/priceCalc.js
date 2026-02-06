@@ -23,11 +23,11 @@ export function calcBasePriceFromDents(dents) {
 
 /**
  * Расчёт цены одной вмятины по таблице коэффициентов (без разборки).
- * Порядок: basePrice *= repairType *= complexity *= material.
+ * Порядок: basePrice *= repairType *= complexity *= material *= carClass.
  * Разборка добавляется один раз к итогу в calcTotalPrice.
  *
  * @param {{ price: number, type?: string, sizeCode?: string }} dent - вмятина (price = база, sizeCode для матрицы)
- * @param {{ repairCode, riskCode, materialCode, disassemblyCode }} conditions
+ * @param {{ repairCode, riskCode, materialCode, carClassCode, disassemblyCode }} conditions
  * @param {object} initialData
  * @returns {number}
  */
@@ -38,6 +38,7 @@ function calculateDentPrice(dent, conditions, initialData) {
 
   const repCoeff = initialData.repairTypes.find((r) => r.code === conditions.repairCode)?.mult ?? 1.0;
   const matCoeff = initialData.materials.find((m) => m.code === conditions.materialCode)?.mult ?? 1.0;
+  const carClassCoeff = initialData.carClasses.find((c) => c.code === conditions.carClassCode)?.mult ?? 1.0;
   const riskObj = initialData.risks.find((r) => r.code === conditions.riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
   const sizeCode = dent?.sizeCode ?? (dent?.type === 'circle' ? 'S2' : 'STRIP_DEFAULT');
@@ -48,6 +49,7 @@ function calculateDentPrice(dent, conditions, initialData) {
   price *= repCoeff;
   price *= compCoeff;
   price *= matCoeff;
+  price *= carClassCoeff;
   return Math.max(0, price);
 }
 
@@ -71,6 +73,7 @@ export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) 
     conditions.repairCode &&
     conditions.riskCode &&
     conditions.materialCode &&
+    conditions.carClassCode &&
     conditions.disassemblyCode;
   if (!hasConditions) {
     return Math.round(base / roundStep) * roundStep;
@@ -95,11 +98,12 @@ export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) 
  */
 export function applyConditionsToBase(basePrice, conditions, initialData, sizeCodeForMatrix = 'STRIP_DEFAULT', roundStep = 100) {
   if (!conditions || !initialData || basePrice <= 0) return 0;
-  const { repairCode, riskCode, materialCode, disassemblyCode } = conditions;
-  if (!repairCode || !riskCode || !materialCode || !disassemblyCode) return 0;
+  const { repairCode, riskCode, materialCode, carClassCode, disassemblyCode } = conditions;
+  if (!repairCode || !riskCode || !materialCode || !carClassCode || !disassemblyCode) return 0;
 
   const repCoeff = initialData.repairTypes.find((r) => r.code === repairCode)?.mult ?? 1.0;
   const matCoeff = initialData.materials.find((m) => m.code === materialCode)?.mult ?? 1.0;
+  const carClassCoeff = initialData.carClasses.find((c) => c.code === carClassCode)?.mult ?? 1.0;
   const riskObj = initialData.risks.find((r) => r.code === riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
   const matrixRow = initialData.complexityMatrix?.[sizeCodeForMatrix] ?? initialData.complexityMatrix?.['STRIP_DEFAULT'] ?? { [kKey]: 1.0 };
@@ -110,6 +114,7 @@ export function applyConditionsToBase(basePrice, conditions, initialData, sizeCo
   price *= repCoeff;
   price *= compCoeff;
   price *= matCoeff;
+  price *= carClassCoeff;
   price += disCost;
   return Math.round(Math.max(0, price) / roundStep) * roundStep;
 }
@@ -126,8 +131,8 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   const items = [];
   if (!conditions || !initialData || basePrice <= 0) return items;
 
-  const { repairCode, riskCode, materialCode, disassemblyCode } = conditions;
-  if (!repairCode || !riskCode || !materialCode || !disassemblyCode) return items;
+  const { repairCode, riskCode, materialCode, carClassCode, disassemblyCode } = conditions;
+  if (!repairCode || !riskCode || !materialCode || !carClassCode || !disassemblyCode) return items;
 
   const riskObj = initialData.risks.find((r) => r.code === riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
@@ -137,6 +142,8 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   const repMult = repObj?.mult ?? 1.0;
   const matObj = initialData.materials.find((m) => m.code === materialCode);
   const matMult = matObj?.mult ?? 1.0;
+  const carClassObj = initialData.carClasses.find((c) => c.code === carClassCode);
+  const carClassMult = carClassObj?.mult ?? 1.0;
   const disObj = initialData.disassembly.find((d) => d.code === disassemblyCode);
   const disCost = disObj?.price ?? 0;
 
@@ -144,6 +151,7 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   if (repObj) items.push({ name: repObj.name, value: `×${repMult}` });
   if (matObj) items.push({ name: matObj.name, value: `×${matMult}` });
   if (riskObj) items.push({ name: riskObj.name, value: `×${compMult}` });
+  if (carClassObj) items.push({ name: carClassObj.name, value: `×${carClassMult}` });
   if (disCost > 0 && disObj) items.push({ name: disObj.name, value: `+${roundPrice(disCost).toLocaleString('ru-RU')} ₽` });
 
   return items;

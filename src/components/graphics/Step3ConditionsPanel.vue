@@ -1,13 +1,5 @@
 <template>
   <div class="step3-panel p-2 space-y-2 flex flex-col min-h-0 flex-1">
-    <button
-      type="button"
-      @click="$emit('back-to-edit')"
-      class="step3-back-btn w-full py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 bg-metric-green text-black shadow-[0_0_12px_rgba(136,229,35,0.35)] hover:opacity-95 active:opacity-90 transition-opacity shrink-0"
-    >
-      <span aria-hidden="true">✎</span>
-      <span>Назад к редактированию</span>
-    </button>
     <div class="step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 overflow-y-auto">
       <div class="step3-hint rounded-lg bg-black/40 border border-white/10 px-2.5 py-1.5">
         <p class="text-[11px] font-medium leading-tight text-gray-200 step3-hint-text">
@@ -65,15 +57,24 @@
       </div>
     </div>
     <div class="step3-footer shrink-0 pt-1.5 pb-1 space-y-0.5">
-      <button
-        type="button"
-        :disabled="!conditionsComplete"
-        @click="conditionsComplete && $emit('calculate')"
-        class="step3-calc-btn w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity"
-        :class="conditionsComplete ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
-      >
-        <span>Рассчитать стоимость</span>
-      </button>
+      <div class="flex items-center gap-2 w-full">
+        <button
+          type="button"
+          @click="$emit('back')"
+          class="step-nav-back-btn shrink-0 py-2.5 px-3 rounded-xl text-xs font-medium text-gray-400 hover:text-white border border-white/15 hover:border-white/25 transition-all touch-manipulation min-h-[44px]"
+        >
+          Назад
+        </button>
+        <button
+          type="button"
+          :disabled="!conditionsComplete"
+          @click="conditionsComplete && $emit('calculate')"
+          class="step3-calc-btn flex-1 py-2.5 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity min-h-[44px]"
+          :class="conditionsComplete ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
+        >
+          <span>Рассчитать стоимость</span>
+        </button>
+      </div>
       <p v-if="!conditionsComplete" class="text-[10px] text-gray-500 text-center">Выберите все параметры</p>
     </div>
   </div>
@@ -89,7 +90,7 @@ const props = defineProps({
   totalPrice: { type: Number, default: 0 }
 });
 
-defineEmits(['back-to-edit', 'calculate']);
+defineEmits(['back', 'calculate']);
 
 const conditionsComplete = computed(() => {
   const m = props.model;
@@ -123,12 +124,6 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
     flex: 1;
     padding: 0.3rem;
     gap: 0.25rem;
-  }
-  .step3-back-btn {
-    flex-shrink: 0;
-    padding: 0.25rem 0.4rem !important;
-    font-size: 0.6rem !important;
-    min-height: 28px;
   }
   .step3-hint {
     padding: 0.2rem 0.4rem !important;

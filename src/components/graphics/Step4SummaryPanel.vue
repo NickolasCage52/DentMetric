@@ -13,17 +13,26 @@
       </div>
     </div>
     <div class="flex flex-col gap-2">
-      <button
-        type="button"
-        @click="$emit('back-to-edit')"
-        class="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90 transition-opacity"
-      >
-        <span>Вернуться к редактированию</span>
-      </button>
+      <div class="flex items-center gap-2 w-full">
+        <button
+          type="button"
+          @click="$emit('back')"
+          class="step-nav-back-btn shrink-0 py-2.5 px-3 rounded-xl text-xs font-medium text-gray-400 hover:text-white border border-white/15 hover:border-white/25 transition-all touch-manipulation min-h-[44px]"
+        >
+          Назад
+        </button>
+        <button
+          type="button"
+          @click="$emit('back-to-edit')"
+          class="flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90 transition-opacity min-h-[44px]"
+        >
+          <span>Вернуться к редактированию</span>
+        </button>
+      </div>
       <button
         type="button"
         @click="$emit('reset')"
-        class="w-full py-3 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center gap-2"
+        class="w-full py-3 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation min-h-[44px]"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
         <span>Сброс</span>
@@ -38,7 +47,7 @@ defineProps({
   totalPrice: { type: Number, default: 0 }
 });
 
-defineEmits(['back-to-edit', 'reset']);
+defineEmits(['back', 'back-to-edit', 'reset']);
 
 const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>

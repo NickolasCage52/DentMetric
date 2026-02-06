@@ -8,46 +8,36 @@
       :lock-selection="wizardStep >= 3"
       :show-reset="true"
       :current-step="wizardStep"
-      @back="goBack"
       @update:selected-class-id="$emit('update:selectedClassId', $event)"
       @update:selected-part-id="$emit('update:selectedPartId', $event)"
       @reset="resetAll"
     />
-    <!-- Stage: матрица width:100vw, flex:1, без max-width -->
-    <div
-      class="graphics-stage-area flex flex-col"
-      :class="wizardStep >= 3 ? 'graphics-stage-preview shrink-0 relative z-0' : 'flex-1 min-h-0'"
-    >
+    <!-- Hint: фиксированная высота, не влияет на позицию матрицы -->
+    <div class="graphics-hint-area">
       <div
-        v-show="wizardStep !== 3"
+        v-if="wizardStep <= 2"
+        class="step-hint-block w-full px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm border pointer-events-none"
+        :class="wizardStep === 1 ? 'border-metric-green/40' : 'border-metric-green/40'"
+      >
+        <p class="step-hint-text text-[12px] font-medium leading-tight text-gray-200 mb-1">
+          {{ stepHintText }}
+        </p>
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="text-gray-400">Предварительно:</span>
+          <span :class="basePrice > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
+            {{ basePrice > 0 ? formatCurrency(roundPrice(basePrice)) + ' ₽' : '—' }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Stage: матрица всегда в одном месте, фиксированная позиция на всех этапах -->
+    <div class="graphics-stage-area flex flex-col flex-1 min-h-0">
+      <div
         id="canvas-wrapper"
-        class="canvas-editor-wrap relative overflow-hidden matrix-container"
-        :class="wizardStep >= 3 ? 'h-[40vh] min-h-[200px] max-h-[45vh]' : 'flex-1 min-h-0'"
+        class="canvas-editor-wrap relative overflow-hidden matrix-container flex-1 min-h-0 w-full"
         style="background-color: #0b0f14"
       >
         <div ref="konvaContainer" id="konva-container" class="absolute inset-0 w-full h-full" style="background-color: #0b0f14; padding: 0; margin: 0"></div>
-        <!-- На шаге 3 overlay не перехватывает клики — pointer-events: none, чтобы не блокировать панель условий -->
-        <div
-          v-if="wizardStep >= 3"
-          class="step3-preview-overlay absolute inset-0 z-10 cursor-default"
-          aria-label="Режим просмотра"
-        ></div>
-        <!-- Подсказка этапа: компактно, не перекрывает элемент -->
-        <div
-          v-if="wizardStep <= 2"
-          class="step-hint-block absolute top-1.5 left-2 right-2 z-20 px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm border pointer-events-none max-h-[20%]"
-          :class="wizardStep === 1 ? 'border-metric-green/40' : 'border-metric-green/40'"
-        >
-          <p class="step-hint-text text-[12px] font-medium leading-tight text-gray-200 mb-1">
-            {{ stepHintText }}
-          </p>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-400">Предварительно:</span>
-            <span :class="basePrice > 0 ? 'text-metric-green font-bold' : 'text-gray-500'">
-              {{ basePrice > 0 ? formatCurrency(roundPrice(basePrice)) + ' ₽' : '—' }}
-            </span>
-          </div>
-        </div>
         <!-- Кнопка удаления вмятины на этапах 1–2 (HUD): активна только при выбранной вмятине -->
         <button
           v-if="wizardStep <= 2"
@@ -67,11 +57,21 @@
         </button>
       </div>
     </div>
+    <!-- Индикаторы этапов: фиксированная зона ниже матрицы -->
+    <div class="graphics-progress-area">
+      <div class="progress-dots">
+        <span
+          v-for="s in 4"
+          :key="s"
+          class="progress-dot"
+          :class="wizardStep >= s ? 'progress-dot--active' : 'progress-dot--idle'"
+        />
+      </div>
+    </div>
     <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
       ref="controlsAreaRef"
       class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[env(safe-area-inset-bottom,0px)]"
-      :class="wizardStep === 3 ? 'graphics-controls-step3 flex-1 min-h-0 flex flex-col relative z-10' : ''"
       :style="controlsAreaKeyboardStyle"
     >
       <Step1PlacementPanel
@@ -80,6 +80,7 @@
         :can-next="dents.length >= 1"
         @add-type="openSizeMenu"
         @next="() => goToStep(2)"
+        @back="goBack"
       />
       <Step2SizePanel
         v-else-if="wizardStep === 2"
@@ -96,6 +97,7 @@
         @update:size-height-mm="sizeHeightMm = $event"
         @dimensions-focus="onDimensionsInputFocus"
         @next="() => goToStep(3)"
+        @back="goBack"
       />
       <Step3ConditionsPanel
         v-else-if="wizardStep === 3"
@@ -103,13 +105,14 @@
         :initial-data="initialData"
         :base-price="roundPrice(basePrice)"
         :total-price="totalPrice"
-        @back-to-edit="() => goToStep(2)"
+        @back="goBack"
         @calculate="() => goToStep(4)"
       />
       <Step4SummaryPanel
         v-else-if="wizardStep === 4"
         :breakdown="breakdown"
         :total-price="totalPrice"
+        @back="goBack"
         @back-to-edit="() => goToStep(2)"
         @reset="resetAll"
       />
@@ -433,7 +436,12 @@ watch(
 
 watch(
   () => [props.selectedClassId, props.selectedPartId, props.selectedPart],
-  () => {
+  (newVal, oldVal) => {
+    /* При смене элемента кузова или класса — полный сброс, новый расчёт */
+    const partChanged = oldVal && (newVal[1] !== oldVal[1] || newVal[0] !== oldVal[0]);
+    if (partChanged) {
+      resetAll();
+    }
     nextTick(() => setTimeout(initKonvaEditor, 50));
   },
   { deep: true }
@@ -489,16 +497,62 @@ onBeforeUnmount(() => {
   padding-right: env(safe-area-inset-right, 0);
 }
 
-/* Матрица: flex 1 1 auto, min-height: 0 обязательно */
+/* Подсказка: фиксированная высота, отдельный слой над матрицей */
+.graphics-hint-area {
+  flex: 0 0 60px;
+  min-height: 60px;
+  max-height: 60px;
+  display: flex;
+  align-items: center;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+
+/* Индикаторы этапов: фиксированная зона между матрицей и управлением */
+.graphics-progress-area {
+  flex: 0 0 32px;
+  min-height: 32px;
+  max-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+
+.progress-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.progress-dot--active {
+  background: #8aff2a;
+  transform: scale(1.2);
+}
+
+.progress-dot--idle {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Матрица: фиксированная доля экрана, не меняется между этапами */
 .graphics-stage-area {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  width: 100vw;
+  width: 100%;
   max-width: none;
   padding: 0;
   margin: 0;
+  overflow: hidden;
 }
 
 /* Контейнер Konva: width 100vw, без max-width, padding 0 */
@@ -510,17 +564,15 @@ onBeforeUnmount(() => {
 }
 
 .graphics-stage-area .canvas-editor-wrap {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 120px;
 }
 
-.graphics-stage-area.graphics-stage-preview .canvas-editor-wrap {
-  flex: none;
-}
-
-/* Нижняя панель: flex 0 0 auto */
+/* Нижняя панель: фиксированная доля экрана — одинаковая высота на этапах 1 и 2, без прыжков матрицы */
 .graphics-controls-area {
-  flex: 0 0 auto;
+  flex: 0 0 38%;
+  min-height: 160px;
+  max-height: 45%;
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
 }
@@ -553,31 +605,11 @@ onBeforeUnmount(() => {
     right: 8px;
     bottom: 8px;
   }
-  /* Этап 3: скрываем превью (матрица скрыта) — панель условий на весь экран */
-  .graphics-stage-area.graphics-stage-preview {
-    flex: 0 0 0 !important;
-    min-height: 0 !important;
-    height: 0 !important;
-    overflow: hidden;
-  }
-  /* Overlay и Konva не перехватывают клики — панель условий кликабельна */
-  .graphics-stage-area.graphics-stage-preview .step3-preview-overlay,
-  .graphics-stage-area.graphics-stage-preview #konva-container {
-    pointer-events: none;
-  }
-  /* Stage area: overflow чтобы превью не вылезало */
-  .graphics-stage-area.graphics-stage-preview {
-    overflow: hidden;
-  }
-  /* Controls area: flex-контейнер, Step3 заполняет и скроллит params */
-  .graphics-controls-step3 {
-    overflow: hidden;
-  }
-  .graphics-controls-step3 > * {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+  /* Мобильные: фиксированная доля для стабильной высоты матрицы */
+  .graphics-controls-area {
+    flex: 0 0 40%;
+    min-height: 140px;
+    max-height: 45%;
   }
 }
 
