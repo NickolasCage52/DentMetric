@@ -65,14 +65,7 @@
     </div>
     <!-- Индикаторы этапов: фиксированная зона ниже матрицы -->
     <div class="graphics-progress-area">
-      <div class="progress-dots">
-        <span
-          v-for="s in 4"
-          :key="s"
-          class="progress-dot"
-          :class="wizardStep >= s ? 'progress-dot--active' : 'progress-dot--idle'"
-        />
-      </div>
+      <StepDots :current-step="wizardStep" :total-steps="4" />
     </div>
     <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
@@ -83,6 +76,7 @@
       <Step1PlacementPanel
         v-if="wizardStep === 1"
         :preview-price="roundPrice(basePrice)"
+        :total-price="roundPrice(totalPrice)"
         :can-next="dents.length >= 1"
         @add-type="openSizeMenu"
         @next="() => goToStep(2)"
@@ -95,6 +89,7 @@
         :size-width-mm="sizeWidthMm"
         :size-height-mm="sizeHeightMm"
         :free-stretch="freeStretchMode"
+        :total-price="roundPrice(totalPrice)"
         :can-next="dentsValid"
         @update:shape-variant="onShapeVariantChange"
         @update:free-stretch="onFreeStretchChange"
@@ -176,6 +171,7 @@ import Step1PlacementPanel from './Step1PlacementPanel.vue';
 import Step2SizePanel from './Step2SizePanel.vue';
 import Step3ConditionsPanel from './Step3ConditionsPanel.vue';
 import Step4SummaryPanel from './Step4SummaryPanel.vue';
+import StepDots from './StepDots.vue';
 
 const props = defineProps({
   form: { type: Object, required: true },
@@ -205,7 +201,6 @@ const dents = ref([]);
 let sizeApplyTimeout = null;
 
 const keyboardInset = ref(0);
-const isKeyboardOpen = computed(() => keyboardInset.value > 0);
 let keyboardInsetRaf = null;
 
 const MIN_SAFE_TOP = 60;
@@ -231,32 +226,48 @@ function updateKeyboardInset() {
   keyboardInsetRaf = requestAnimationFrame(() => {
     keyboardInsetRaf = null;
     const vv = window.visualViewport;
+    const vvh = vv ? vv.height * 0.01 : window.innerHeight * 0.01;
     if (!vv) {
       keyboardInset.value = 0;
+      graphicsRoot.value?.style?.setProperty('--vvh', `${vvh}px`);
+      graphicsRoot.value?.style?.setProperty('--keyboard-offset', '0px');
       return;
     }
     const inset = window.innerHeight - vv.height - (vv.offsetTop || 0);
-    keyboardInset.value = Math.max(0, Math.round(inset));
+    const nextInset = Math.max(0, Math.round(inset));
+    keyboardInset.value = nextInset;
+    graphicsRoot.value?.style?.setProperty('--vvh', `${vvh}px`);
+    graphicsRoot.value?.style?.setProperty('--keyboard-offset', `${nextInset}px`);
   });
 }
 let dimensionsScrollGuard = false;
-function onDimensionsInputFocus(event) {
-  const el = event?.target;
+function onDimensionsInputFocus(panelEl) {
+  const el = panelEl?.scrollIntoView ? panelEl : panelEl?.$el;
   if (!el?.scrollIntoView) return;
   if (dimensionsScrollGuard) return;
   dimensionsScrollGuard = true;
   requestAnimationFrame(() => {
     setTimeout(() => {
       el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      setTimeout(() => { dimensionsScrollGuard = false; }, 600);
+      setTimeout(() => {
+        const headerEl = graphicsRoot.value?.querySelector('.graphics-header');
+        const hintEl = hintRef.value;
+        const actionBarEl = graphicsRoot.value?.querySelector('.graphics-action-bar');
+        const headerH = headerEl?.getBoundingClientRect().height || 0;
+        const hintH = hintEl?.getBoundingClientRect().height || 0;
+        const actionBarH = actionBarEl?.getBoundingClientRect().height || 0;
+        const keyboardH = keyboardInset.value || 0;
+        const offset = Math.round(headerH + hintH + actionBarH + Math.max(12, keyboardH * 0.6));
+        window.scrollBy({ top: -offset, left: 0, behavior: 'smooth' });
+      }, 180);
+      setTimeout(() => { dimensionsScrollGuard = false; }, 900);
     }, 150);
   });
 }
 
-const controlsAreaKeyboardStyle = computed(() => {
-  if (!isKeyboardOpen.value) return undefined;
-  return { paddingBottom: `calc(12px + env(safe-area-inset-bottom, 0px) + ${keyboardInset.value}px)` };
-});
+const controlsAreaKeyboardStyle = computed(() => ({
+  '--keyboard-offset': `${keyboardInset.value}px`
+}));
 
 const sizeMenuPortalTarget = computed(() => {
   if (graphicsRoot.value) return graphicsRoot.value;
@@ -496,6 +507,7 @@ onMounted(() => {
     vv.addEventListener('scroll', updateKeyboardInset);
     updateKeyboardInset();
   }
+  updateKeyboardInset();
   updateMatrixSafeTop();
 });
 
@@ -534,6 +546,8 @@ onBeforeUnmount(() => {
   background: #000;
   --bottomH: 34%;
   --matrixSafeTop: 60px;
+  --matrixHeight: auto;
+  --actionbar-height: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Верхняя панель: flex 0 0 auto, safe area */
@@ -566,28 +580,6 @@ onBeforeUnmount(() => {
   padding-right: max(0.5rem, env(safe-area-inset-right));
 }
 
-.progress-dots {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.progress-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  transition: transform 0.2s ease, background-color 0.2s ease;
-}
-
-.progress-dot--active {
-  background: #8aff2a;
-  transform: scale(1.2);
-}
-
-.progress-dot--idle {
-  background: rgba(255, 255, 255, 0.25);
-}
-
 /* Матрица: фиксированная доля экрана, не меняется между этапами */
 .graphics-stage-area {
   flex: 1 1 0;
@@ -618,10 +610,12 @@ onBeforeUnmount(() => {
 
 /* Нижняя панель: фиксированная доля экрана — одинаковая высота на этапах 1 и 2, без прыжков матрицы */
 .graphics-controls-area {
-  flex: 0 0 var(--bottomH);
-  min-height: 150px;
-  max-height: var(--bottomH);
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Кнопка удаления вмятины на HUD (этап 1) */
@@ -692,8 +686,9 @@ onBeforeUnmount(() => {
 
 .graphics-step-1 .graphics-controls-area,
 .graphics-step-2 .graphics-controls-area {
-  flex-basis: var(--bottomH);
-  max-height: var(--bottomH);
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .graphics-step-3 .graphics-stage-area {
@@ -708,9 +703,6 @@ onBeforeUnmount(() => {
   border-top: none;
 }
 
-.graphics-step-3 .graphics-progress-area {
-  display: none;
-}
 
 .graphics-step-3 .graphics-hint-area {
   flex: 0 0 0;
@@ -732,14 +724,48 @@ onBeforeUnmount(() => {
   height: auto;
 }
 
-.graphics-step-4 .graphics-progress-area {
-  display: none;
-}
 
 .graphics-step-4 .graphics-hint-area {
   flex: 0 0 0;
   min-height: 0;
   max-height: 0;
   padding: 0;
+}
+
+:deep(.graphics-panel-content) {
+  padding-bottom: var(--actionbar-height);
+}
+
+:deep(.graphics-action-bar) {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(10, 12, 16, 0.85);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:deep(.actionbar-total-btn) {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: opacity 0.2s ease;
+}
+
+:deep(.actionbar-total-btn--active) {
+  background: #88e523;
+  color: #000;
+  box-shadow: 0 0 15px rgba(136, 229, 35, 0.35);
+}
+
+:deep(.actionbar-total-btn--idle) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #9aa3ad;
+  cursor: default;
 }
 </style>

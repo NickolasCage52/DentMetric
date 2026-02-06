@@ -1,6 +1,6 @@
 <template>
-  <div class="step3-panel p-2 space-y-2 flex flex-col min-h-0 flex-1">
-    <div class="step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 overflow-y-auto">
+  <div class="step3-panel flex flex-col min-h-0 flex-1">
+    <div class="graphics-panel-content step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 overflow-y-auto p-2">
       <div class="step3-hint rounded-lg bg-black/40 border border-white/10 px-2.5 py-1.5">
         <p class="text-[11px] font-medium leading-tight text-gray-200 step3-hint-text">
           <span class="step3-hint-full">Технология, сложность, материал и класс авто — влияют на итог.</span>
@@ -56,7 +56,7 @@
         </div>
       </div>
     </div>
-    <div class="step3-footer shrink-0 pt-1.5 pb-1 space-y-0.5">
+    <div class="graphics-action-bar space-y-2">
       <div class="flex items-center gap-2 w-full">
         <button
           type="button"
@@ -76,6 +76,14 @@
         </button>
       </div>
       <p v-if="!conditionsComplete" class="text-[10px] text-gray-500 text-center">Выберите все параметры</p>
+      <button
+        type="button"
+        class="actionbar-total-btn"
+        :class="totalPrice > 0 ? 'actionbar-total-btn--active' : 'actionbar-total-btn--idle'"
+        :disabled="totalPrice <= 0"
+      >
+        <span>ИТОГО: {{ totalPrice > 0 ? formatPrice(totalPrice) + ' ₽' : '—' }}</span>
+      </button>
     </div>
   </div>
 </template>
@@ -129,41 +137,38 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
     flex-direction: column;
     min-height: 0;
     flex: 1;
-    padding: 0.3rem;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
   .step3-hint {
-    padding: 0.2rem 0.4rem !important;
+    padding: 0.4rem 0.6rem !important;
     flex-shrink: 0;
   }
   .step3-hint-text {
-    font-size: 9px !important;
-    line-height: 1.2;
+    font-size: 10px !important;
+    line-height: 1.3;
   }
   .step3-hint-full {
-    display: none;
+    display: inline;
   }
   .step3-hint-short {
-    display: inline;
+    display: none;
   }
   .step3-params-wrap {
     flex: 1;
     min-height: 0;
   }
-  .step3-select {
-    min-height: 34px !important;
-    padding: 0.25rem 0.4rem !important;
-    font-size: 0.8rem !important;
+  .step3-fields-grid > * + * {
+    margin-top: 0.75rem;
   }
-  .step3-footer {
-    flex-shrink: 0;
-    padding-top: 0.25rem !important;
-    padding-bottom: max(0.3rem, env(safe-area-inset-bottom, 6px)) !important;
+  .step3-select {
+    min-height: 46px !important;
+    padding: 0.5rem 0.65rem !important;
+    font-size: 0.9rem !important;
   }
   .step3-calc-btn {
-    min-height: 42px !important;
-    padding: 0.5rem 0.6rem !important;
-    font-size: 0.75rem !important;
+    min-height: 46px !important;
+    padding: 0.6rem 0.7rem !important;
+    font-size: 0.8rem !important;
   }
 }
 </style>

@@ -742,6 +742,10 @@ const closeEditor = () => {
 watch(totalPrice, (val) => {
   const btn = window.Telegram?.WebApp?.MainButton;
   if (!btn) return;
+  if (calcMode.value === 'graphics') {
+    btn.hide();
+    return;
+  }
   if (val > 0) {
     btn.setText(`ИТОГО: ${formatCurrency(val)} ₽`);
     btn.show();
@@ -776,6 +780,8 @@ watch(
     if (typeof document === 'undefined') return;
     document.body.classList.toggle('graphics-fullscreen-active', isGraphics);
     if (isGraphics && window.Telegram?.WebApp?.expand) window.Telegram.WebApp.expand();
+    const btn = window.Telegram?.WebApp?.MainButton;
+    if (isGraphics && btn) btn.hide();
   },
   { immediate: true }
 );

@@ -1,7 +1,8 @@
 <template>
-  <div class="step2-panel p-2 space-y-1.5">
-    <!-- Форма вмятины: фиксированная высота, не меняется при выборе вмятины -->
-    <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
+  <div class="step2-panel flex flex-col min-h-0">
+    <div class="graphics-panel-content p-2 space-y-1.5">
+      <!-- Форма вмятины: фиксированная высота, не меняется при выборе вмятины -->
+      <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
       <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Форма</div>
       <div class="flex items-center min-h-[36px]">
         <template v-if="selectedDentSize">
@@ -64,7 +65,7 @@
       </label>
     </div>
     <!-- Размеры (мм) -->
-    <div class="step2-block rounded-lg bg-black/35 border border-white/10 p-2">
+    <div ref="sizesPanel" class="step2-block rounded-lg bg-black/35 border border-white/10 p-2">
       <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размеры (мм)</div>
       <div class="grid grid-cols-2 gap-2">
         <div>
@@ -80,7 +81,7 @@
             :placeholder="selectedDentSize ? '' : '—'"
             :disabled="!selectedDentSize"
             class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
-            @focus="selectedDentSize && $emit('dimensions-focus')"
+            @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
           />
         </div>
         <div>
@@ -96,36 +97,46 @@
             :placeholder="selectedDentSize ? '' : '—'"
             :disabled="!selectedDentSize"
             class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
-            @focus="selectedDentSize && $emit('dimensions-focus')"
+            @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
           />
         </div>
       </div>
     </div>
-    <!-- Кнопки навигации: [ Назад ] [ Продолжить ] -->
-    <div class="flex items-center gap-2 w-full">
+    <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Размеры должны быть больше 0</p>
+    </div>
+    <div class="graphics-action-bar space-y-2">
+      <div class="flex items-center gap-2 w-full">
+        <button
+          type="button"
+          @click="$emit('back')"
+          class="step-nav-back-btn shrink-0 py-2.5 px-3 rounded-xl text-xs font-medium text-gray-400 hover:text-white border border-white/15 hover:border-white/25 transition-all touch-manipulation min-h-[44px]"
+        >
+          Назад
+        </button>
+        <button
+          type="button"
+          @click="$emit('next')"
+          :disabled="!canNext"
+          class="flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 min-h-[44px]"
+          :class="canNext ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
+        >
+          <span>Продолжить → Условия</span>
+        </button>
+      </div>
       <button
         type="button"
-        @click="$emit('back')"
-        class="step-nav-back-btn shrink-0 py-2.5 px-3 rounded-xl text-xs font-medium text-gray-400 hover:text-white border border-white/15 hover:border-white/25 transition-all touch-manipulation min-h-[44px]"
+        class="actionbar-total-btn"
+        :class="totalPrice > 0 ? 'actionbar-total-btn--active' : 'actionbar-total-btn--idle'"
+        :disabled="totalPrice <= 0"
       >
-        Назад
-      </button>
-      <button
-        type="button"
-        @click="$emit('next')"
-        :disabled="!canNext"
-        class="flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 min-h-[44px]"
-        :class="canNext ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
-      >
-        <span>Продолжить → Условия</span>
+        <span>ИТОГО: {{ totalPrice > 0 ? formatPrice(totalPrice) + ' ₽' : '—' }}</span>
       </button>
     </div>
-    <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Размеры должны быть больше 0</p>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   selectedDentSize: { type: Object, default: null },
@@ -133,10 +144,12 @@ const props = defineProps({
   sizeWidthMm: { type: Number, default: 0 },
   sizeHeightMm: { type: Number, default: 0 },
   freeStretch: { type: Boolean, default: false },
+  totalPrice: { type: Number, default: 0 },
   canNext: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['update:shapeVariant', 'update:freeStretch', 'update:sizeWidthMm', 'update:sizeHeightMm', 'dimensions-focus', 'next', 'back']);
+const sizesPanel = ref(null);
 
 /** Отображаемое значение: NaN/undefined/0 → пустая строка. */
 const displayWidthVal = computed(() => {
@@ -159,6 +172,8 @@ function onWidthInput(e) {
 function onHeightInput(e) {
   emit('update:sizeHeightMm', sanitizeInput(e?.target?.value));
 }
+
+const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 
 </script>
 

@@ -1,18 +1,20 @@
 <template>
-  <div class="summary-panel p-2 space-y-3">
-    <!-- Breakdown -->
-    <div class="summary-card rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
-      <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Расчёт стоимости</div>
-      <div v-for="(item, idx) in breakdown" :key="idx" class="flex justify-between text-[11px]">
-        <span class="text-gray-400">{{ item.name }}:</span>
-        <span class="text-white font-medium">{{ item.value }}</span>
-      </div>
-      <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
-        <span class="text-metric-green font-bold text-sm">Итог:</span>
-        <span class="text-metric-green font-bold text-lg">{{ formatPrice(totalPrice) }} ₽</span>
+  <div class="summary-panel flex flex-col min-h-0">
+    <div class="graphics-panel-content p-2 space-y-3">
+      <!-- Breakdown -->
+      <div class="summary-card rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
+        <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Расчёт стоимости</div>
+        <div v-for="(item, idx) in breakdown" :key="idx" class="flex justify-between text-[11px]">
+          <span class="text-gray-400">{{ item.name }}:</span>
+          <span class="text-white font-medium">{{ item.value }}</span>
+        </div>
+        <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
+          <span class="text-metric-green font-bold text-sm">Итог:</span>
+          <span class="text-metric-green font-bold text-lg">{{ formatPrice(totalPrice) }} ₽</span>
+        </div>
       </div>
     </div>
-    <div class="flex flex-col gap-2">
+    <div class="graphics-action-bar space-y-2">
       <div class="flex items-center gap-2 w-full">
         <button
           type="button"
@@ -36,6 +38,14 @@
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
         <span>Сброс</span>
+      </button>
+      <button
+        type="button"
+        class="actionbar-total-btn"
+        :class="totalPrice > 0 ? 'actionbar-total-btn--active' : 'actionbar-total-btn--idle'"
+        :disabled="totalPrice <= 0"
+      >
+        <span>ИТОГО: {{ totalPrice > 0 ? formatPrice(totalPrice) + ' ₽' : '—' }}</span>
       </button>
     </div>
   </div>
