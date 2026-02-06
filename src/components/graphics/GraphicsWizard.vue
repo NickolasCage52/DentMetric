@@ -1,5 +1,10 @@
 <template>
-  <div ref="graphicsRoot" class="graphics-fullscreen-wrapper">
+  <div
+    ref="graphicsRoot"
+    class="graphics-fullscreen-wrapper"
+    :class="`graphics-step-${wizardStep}`"
+    :style="matrixSafeTopStyle"
+  >
     <StepHeader
       :selected-class-id="selectedClassId"
       :selected-part-id="selectedPartId"
@@ -16,6 +21,7 @@
     <div class="graphics-hint-area">
       <div
         v-if="wizardStep <= 2"
+        ref="hintRef"
         class="step-hint-block w-full px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm border pointer-events-none"
         :class="wizardStep === 1 ? 'border-metric-green/40' : 'border-metric-green/40'"
       >
@@ -71,7 +77,7 @@
     <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
       ref="controlsAreaRef"
-      class="graphics-controls-area shrink-0 overflow-y-auto border-t border-white/10 bg-black/80 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[env(safe-area-inset-bottom,0px)]"
+      class="graphics-controls-area shrink-0 border-t border-white/10 bg-black/80 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[env(safe-area-inset-bottom,0px)]"
       :style="controlsAreaKeyboardStyle"
     >
       <Step1PlacementPanel
@@ -89,7 +95,6 @@
         :size-width-mm="sizeWidthMm"
         :size-height-mm="sizeHeightMm"
         :free-stretch="freeStretchMode"
-        :preview-price="roundPrice(basePrice)"
         :can-next="dentsValid"
         @update:shape-variant="onShapeVariantChange"
         @update:free-stretch="onFreeStretchChange"
@@ -189,6 +194,7 @@ const wizardStep = ref(1);
 const graphicsRoot = ref(null);
 const konvaContainer = ref(null);
 const controlsAreaRef = ref(null);
+const hintRef = ref(null);
 const showSizeMenu = ref(false);
 const activeToolType = ref(null);
 const selectedDentSize = ref(null);
@@ -201,6 +207,25 @@ let sizeApplyTimeout = null;
 const keyboardInset = ref(0);
 const isKeyboardOpen = computed(() => keyboardInset.value > 0);
 let keyboardInsetRaf = null;
+
+const MIN_SAFE_TOP = 60;
+const SAFE_OVERLAP = 12;
+const matrixSafeTop = ref(MIN_SAFE_TOP);
+const matrixSafeTopStyle = computed(() => ({
+  '--matrixSafeTop': `${matrixSafeTop.value}px`
+}));
+let hintObserver = null;
+
+function updateMatrixSafeTop() {
+  const hintEl = hintRef.value;
+  if (!hintEl) {
+    matrixSafeTop.value = Math.max(matrixSafeTop.value, MIN_SAFE_TOP);
+    return;
+  }
+  const height = hintEl.getBoundingClientRect().height || 0;
+  const next = Math.max(MIN_SAFE_TOP, Math.round(height - SAFE_OVERLAP));
+  if (next !== matrixSafeTop.value) matrixSafeTop.value = next;
+}
 function updateKeyboardInset() {
   if (keyboardInsetRaf) return;
   keyboardInsetRaf = requestAnimationFrame(() => {
@@ -422,6 +447,7 @@ watch(
   () => wizardStep.value,
   (step) => {
     nextTick(() => {
+      updateMatrixSafeTop();
       setEditable(step <= 2, step);
       updateMobileGrid();
       if (step === 2) {
@@ -433,6 +459,18 @@ watch(
   },
   { immediate: true }
 );
+
+watch(hintRef, (el) => {
+  if (hintObserver) {
+    hintObserver.disconnect();
+    hintObserver = null;
+  }
+  if (el) {
+    hintObserver = new ResizeObserver(() => updateMatrixSafeTop());
+    hintObserver.observe(el);
+  }
+  nextTick(() => updateMatrixSafeTop());
+});
 
 watch(
   () => [props.selectedClassId, props.selectedPartId, props.selectedPart],
@@ -451,20 +489,27 @@ onMounted(() => {
   nextTick(() => setTimeout(initKonvaEditor, 100));
   updateMobileGrid();
   window.addEventListener('resize', updateMobileGrid);
+  window.addEventListener('resize', updateMatrixSafeTop);
   const vv = window.visualViewport;
   if (vv) {
     vv.addEventListener('resize', updateKeyboardInset);
     vv.addEventListener('scroll', updateKeyboardInset);
     updateKeyboardInset();
   }
+  updateMatrixSafeTop();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateMobileGrid);
+  window.removeEventListener('resize', updateMatrixSafeTop);
   const vv = window.visualViewport;
   if (vv) {
     vv.removeEventListener('resize', updateKeyboardInset);
     vv.removeEventListener('scroll', updateKeyboardInset);
+  }
+  if (hintObserver) {
+    hintObserver.disconnect();
+    hintObserver = null;
   }
   destroyKonva();
 });
@@ -487,6 +532,8 @@ onBeforeUnmount(() => {
   padding: 0;
   margin: 0;
   background: #000;
+  --bottomH: 34%;
+  --matrixSafeTop: 60px;
 }
 
 /* Верхняя панель: flex 0 0 auto, safe area */
@@ -499,13 +546,12 @@ onBeforeUnmount(() => {
 
 /* Подсказка: фиксированная высота, отдельный слой над матрицей */
 .graphics-hint-area {
-  flex: 0 0 60px;
-  min-height: 60px;
-  max-height: 60px;
-  display: flex;
-  align-items: center;
-  padding-left: max(0.5rem, env(safe-area-inset-left));
-  padding-right: max(0.5rem, env(safe-area-inset-right));
+  position: relative;
+  flex: 0 0 0;
+  min-height: 0;
+  max-height: 0;
+  padding: 0;
+  z-index: 20;
 }
 
 /* Индикаторы этапов: фиксированная зона между матрицей и управлением */
@@ -553,6 +599,8 @@ onBeforeUnmount(() => {
   padding: 0;
   margin: 0;
   overflow: hidden;
+  padding-top: var(--matrixSafeTop);
+  box-sizing: border-box;
 }
 
 /* Контейнер Konva: width 100vw, без max-width, padding 0 */
@@ -570,11 +618,10 @@ onBeforeUnmount(() => {
 
 /* Нижняя панель: фиксированная доля экрана — одинаковая высота на этапах 1 и 2, без прыжков матрицы */
 .graphics-controls-area {
-  flex: 0 0 38%;
-  min-height: 160px;
-  max-height: 45%;
-  -webkit-overflow-scrolling: touch;
-  overflow-y: auto;
+  flex: 0 0 var(--bottomH);
+  min-height: 150px;
+  max-height: var(--bottomH);
+  overflow: hidden;
 }
 
 /* Кнопка удаления вмятины на HUD (этап 1) */
@@ -607,9 +654,9 @@ onBeforeUnmount(() => {
   }
   /* Мобильные: фиксированная доля для стабильной высоты матрицы */
   .graphics-controls-area {
-    flex: 0 0 40%;
+    flex: 0 0 var(--bottomH);
     min-height: 140px;
-    max-height: 45%;
+    max-height: var(--bottomH);
   }
 }
 
@@ -631,10 +678,68 @@ onBeforeUnmount(() => {
 
 /* Подсказка этапа: читабельный шрифт, без наложения */
 .step-hint-block {
-  max-width: calc(100% - 1rem);
+  max-width: min(90%, 520px);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
 }
 .step-hint-text {
   word-wrap: break-word;
   hyphens: auto;
+}
+
+.graphics-step-1 .graphics-controls-area,
+.graphics-step-2 .graphics-controls-area {
+  flex-basis: var(--bottomH);
+  max-height: var(--bottomH);
+}
+
+.graphics-step-3 .graphics-stage-area {
+  display: none;
+}
+
+.graphics-step-3 .graphics-controls-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  border-top: none;
+}
+
+.graphics-step-3 .graphics-progress-area {
+  display: none;
+}
+
+.graphics-step-3 .graphics-hint-area {
+  flex: 0 0 0;
+  min-height: 0;
+  max-height: 0;
+  padding: 0;
+}
+
+.graphics-step-4 .graphics-stage-area {
+  flex: 0 0 30%;
+  min-height: 120px;
+  max-height: 30%;
+}
+
+.graphics-step-4 .graphics-controls-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+}
+
+.graphics-step-4 .graphics-progress-area {
+  display: none;
+}
+
+.graphics-step-4 .graphics-hint-area {
+  flex: 0 0 0;
+  min-height: 0;
+  max-height: 0;
+  padding: 0;
 }
 </style>

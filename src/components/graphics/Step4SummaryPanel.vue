@@ -1,7 +1,7 @@
 <template>
-  <div class="p-2 space-y-3">
+  <div class="summary-panel p-2 space-y-3">
     <!-- Breakdown -->
-    <div class="rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
+    <div class="summary-card rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
       <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Расчёт стоимости</div>
       <div v-for="(item, idx) in breakdown" :key="idx" class="flex justify-between text-[11px]">
         <span class="text-gray-400">{{ item.name }}:</span>
@@ -51,3 +51,20 @@ defineEmits(['back', 'back-to-edit', 'reset']);
 
 const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>
+
+<style scoped>
+@media (max-width: 480px) {
+  .summary-panel {
+    padding: 0.35rem !important;
+  }
+  .summary-panel > * + * {
+    margin-top: 0.5rem !important;
+  }
+  .summary-card {
+    padding: 0.5rem !important;
+  }
+  .summary-card .text-[11px] {
+    font-size: 10px !important;
+  }
+}
+</style>

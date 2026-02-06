@@ -52,11 +52,9 @@
 
 <script setup>
 const props = defineProps({
-  previewPrice: { type: Number, default: 0 },
   canNext: { type: Boolean, default: false }
 });
 
 defineEmits(['add-type', 'next', 'back']);
 
-const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>

@@ -101,10 +101,6 @@
         </div>
       </div>
     </div>
-    <!-- Предварительная цена -->
-    <div class="text-center text-[11px] text-gray-400">
-      Предварительно: {{ previewPrice > 0 ? '~ ' + formatPrice(previewPrice) + ' ₽' : '—' }}
-    </div>
     <!-- Кнопки навигации: [ Назад ] [ Продолжить ] -->
     <div class="flex items-center gap-2 w-full">
       <button
@@ -137,7 +133,6 @@ const props = defineProps({
   sizeWidthMm: { type: Number, default: 0 },
   sizeHeightMm: { type: Number, default: 0 },
   freeStretch: { type: Boolean, default: false },
-  previewPrice: { type: Number, default: 0 },
   canNext: { type: Boolean, default: false }
 });
 
@@ -165,7 +160,6 @@ function onHeightInput(e) {
   emit('update:sizeHeightMm', sanitizeInput(e?.target?.value));
 }
 
-const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>
 
 <style scoped>

@@ -8,7 +8,7 @@
         </p>
       </div>
       <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Условия и коэффициенты</div>
-      <div class="space-y-2">
+      <div class="step3-fields-grid">
         <div>
           <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Технология</label>
           <select :value="model.repairCode" @change="update('repairCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
@@ -115,6 +115,13 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 .step3-hint-short {
   display: none;
 }
+.step3-fields-grid {
+  display: flex;
+  flex-direction: column;
+}
+.step3-fields-grid > * + * {
+  margin-top: 0.5rem;
+}
 /* Mobile: компактнее — кнопка «Рассчитать стоимость» всегда видна */
 @media (max-width: 480px) {
   .step3-panel {
@@ -142,12 +149,6 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
   .step3-params-wrap {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    touch-action: manipulation;
-  }
-  .step3-params-wrap .space-y-2 > * + * {
-    margin-top: 0.25rem;
   }
   .step3-select {
     min-height: 34px !important;
