@@ -203,8 +203,8 @@ let sizeApplyTimeout = null;
 const keyboardInset = ref(0);
 let keyboardInsetRaf = null;
 
-const MIN_SAFE_TOP = 60;
-const SAFE_OVERLAP = 12;
+const MIN_SAFE_TOP = 44;
+const SAFE_OVERLAP = 24;
 const matrixSafeTop = ref(MIN_SAFE_TOP);
 const matrixSafeTopStyle = computed(() => ({
   '--matrixSafeTop': `${matrixSafeTop.value}px`
@@ -212,6 +212,10 @@ const matrixSafeTopStyle = computed(() => ({
 let hintObserver = null;
 
 function updateMatrixSafeTop() {
+  if (wizardStep.value <= 2) {
+    if (matrixSafeTop.value !== MIN_SAFE_TOP) matrixSafeTop.value = MIN_SAFE_TOP;
+    return;
+  }
   const hintEl = hintRef.value;
   if (!hintEl) {
     matrixSafeTop.value = Math.max(matrixSafeTop.value, MIN_SAFE_TOP);
@@ -548,6 +552,7 @@ onBeforeUnmount(() => {
   --matrixSafeTop: 60px;
   --matrixHeight: auto;
   --actionbar-height: calc(112px + env(safe-area-inset-bottom, 0px));
+  --controlsMaxH: clamp(230px, 28vh, 340px);
 }
 
 /* Верхняя панель: flex 0 0 auto, safe area */
@@ -610,6 +615,7 @@ onBeforeUnmount(() => {
 
 /* Нижняя панель: фиксированная доля экрана — одинаковая высота на этапах 1 и 2, без прыжков матрицы */
 .graphics-controls-area {
+  position: relative;
   flex: 0 0 auto;
   min-height: 0;
   max-height: none;
@@ -688,7 +694,16 @@ onBeforeUnmount(() => {
 .graphics-step-2 .graphics-controls-area {
   flex: 0 0 auto;
   min-height: 0;
+  height: var(--controlsMaxH);
+  max-height: var(--controlsMaxH);
+}
+
+.graphics-step-1 :deep(.graphics-panel-content),
+.graphics-step-2 :deep(.graphics-panel-content) {
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: none;
+  overflow: visible;
 }
 
 .graphics-step-3 .graphics-stage-area {
@@ -701,6 +716,13 @@ onBeforeUnmount(() => {
   max-height: none;
   height: auto;
   border-top: none;
+}
+
+.graphics-step-3 :deep(.graphics-panel-content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
 }
 
 
@@ -737,7 +759,9 @@ onBeforeUnmount(() => {
 }
 
 :deep(.graphics-action-bar) {
-  position: sticky;
+  position: absolute;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 30;
   padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));

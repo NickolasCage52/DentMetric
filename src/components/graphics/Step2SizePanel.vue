@@ -1,57 +1,58 @@
 <template>
   <div class="step2-panel flex flex-col min-h-0">
     <div class="graphics-panel-content p-2 space-y-1.5">
-      <!-- Форма вмятины: фиксированная высота, не меняется при выборе вмятины -->
-      <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
-      <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Форма</div>
-      <div class="flex items-center min-h-[36px]">
-        <template v-if="selectedDentSize">
-          <div
-            v-if="selectedDentSize.type === 'circle'"
-            class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
-          >
-            <button
-              type="button"
-              @click="$emit('update:shapeVariant', 'circle')"
-              class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
-              :class="shapeVariant === 'circle' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
-            >
-              Круг
-            </button>
-            <button
-              type="button"
-              @click="$emit('update:shapeVariant', 'oval')"
-              class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
-              :class="shapeVariant === 'oval' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
-            >
-              Овал
-            </button>
+      <div class="step2-row">
+        <!-- Форма вмятины: фиксированная высота, не меняется при выборе вмятины -->
+        <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
+          <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Форма</div>
+          <div class="flex items-center min-h-[36px]">
+            <template v-if="selectedDentSize">
+              <div
+                v-if="selectedDentSize.type === 'circle'"
+                class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
+              >
+                <button
+                  type="button"
+                  @click="$emit('update:shapeVariant', 'circle')"
+                  class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
+                  :class="shapeVariant === 'circle' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
+                >
+                  Круг
+                </button>
+                <button
+                  type="button"
+                  @click="$emit('update:shapeVariant', 'oval')"
+                  class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
+                  :class="shapeVariant === 'oval' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
+                >
+                  Овал
+                </button>
+              </div>
+              <div
+                v-else
+                class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
+              >
+                <button
+                  type="button"
+                  @click="$emit('update:shapeVariant', 'strip')"
+                  class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
+                  :class="shapeVariant === 'strip' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
+                >
+                  Полоса
+                </button>
+                <button
+                  type="button"
+                  @click="$emit('update:shapeVariant', 'scratch')"
+                  class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
+                  :class="shapeVariant === 'scratch' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
+                >
+                  Царапина
+                </button>
+              </div>
+            </template>
+            <span v-else class="text-[11px] text-gray-500 leading-[36px]">Выберите вмятину на схеме</span>
           </div>
-          <div
-            v-else
-            class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
-          >
-            <button
-              type="button"
-              @click="$emit('update:shapeVariant', 'strip')"
-              class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
-              :class="shapeVariant === 'strip' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
-            >
-              Полоса
-            </button>
-            <button
-              type="button"
-              @click="$emit('update:shapeVariant', 'scratch')"
-              class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium transition-all touch-manipulation"
-              :class="shapeVariant === 'scratch' ? 'bg-metric-green text-black' : 'text-gray-400 hover:text-white'"
-            >
-              Царапина
-            </button>
-          </div>
-        </template>
-        <span v-else class="text-[11px] text-gray-500 leading-[36px]">Выберите вмятину на схеме</span>
-      </div>
-    </div>
+        </div>
     <!-- Свободное растяжение -->
     <div class="flex items-center gap-2">
       <label class="flex items-center gap-2 cursor-pointer text-[10px] text-gray-400 min-h-[32px] touch-manipulation">
@@ -64,44 +65,45 @@
         <span>Свободное растяжение (неправильная форма)</span>
       </label>
     </div>
-    <!-- Размеры (мм) -->
-    <div ref="sizesPanel" class="step2-block rounded-lg bg-black/35 border border-white/10 p-2">
-      <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размеры (мм)</div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="block text-[10px] text-gray-500 mb-0.5">{{ selectedDentSize?.type === 'circle' ? 'Ширина' : 'Длина' }}</label>
-          <input
-            :value="displayWidthVal"
-            @input="onWidthInput"
-            type="number"
-            min="0.1"
-            max="2000"
-            step="0.5"
-            inputmode="decimal"
-            :placeholder="selectedDentSize ? '' : '—'"
-            :disabled="!selectedDentSize"
-            class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
-            @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
-          />
-        </div>
-        <div>
-          <label class="block text-[10px] text-gray-500 mb-0.5">{{ selectedDentSize?.type === 'circle' ? 'Высота' : 'Ширина' }}</label>
-          <input
-            :value="displayHeightVal"
-            @input="onHeightInput"
-            type="number"
-            min="0.1"
-            max="2000"
-            step="0.5"
-            inputmode="decimal"
-            :placeholder="selectedDentSize ? '' : '—'"
-            :disabled="!selectedDentSize"
-            class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
-            @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
-          />
+        <!-- Размеры (мм) -->
+        <div ref="sizesPanel" class="step2-block step2-sizes-block rounded-lg bg-black/35 border border-white/10 p-2">
+          <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размеры (мм)</div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] text-gray-500 mb-0.5">{{ selectedDentSize?.type === 'circle' ? 'Ширина' : 'Длина' }}</label>
+              <input
+                :value="displayWidthVal"
+                @input="onWidthInput"
+                type="number"
+                min="0.1"
+                max="2000"
+                step="0.5"
+                inputmode="decimal"
+                :placeholder="selectedDentSize ? '' : '—'"
+                :disabled="!selectedDentSize"
+                class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
+                @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] text-gray-500 mb-0.5">{{ selectedDentSize?.type === 'circle' ? 'Высота' : 'Ширина' }}</label>
+              <input
+                :value="displayHeightVal"
+                @input="onHeightInput"
+                type="number"
+                min="0.1"
+                max="2000"
+                step="0.5"
+                inputmode="decimal"
+                :placeholder="selectedDentSize ? '' : '—'"
+                :disabled="!selectedDentSize"
+                class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[40px] text-sm text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
+                @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
+              />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
     <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Размеры должны быть больше 0</p>
     </div>
     <div class="graphics-action-bar space-y-2">
@@ -178,6 +180,20 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>
 
 <style scoped>
+.step2-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+.step2-form-block {
+  flex: 0 0 46%;
+  min-width: 46%;
+}
+.step2-sizes-block {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 /* Мобильная версия: компактные плашки */
 @media (max-width: 480px) {
   .step2-panel {

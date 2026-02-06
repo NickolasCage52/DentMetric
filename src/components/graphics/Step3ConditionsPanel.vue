@@ -1,6 +1,6 @@
 <template>
   <div class="step3-panel flex flex-col min-h-0 flex-1">
-    <div class="graphics-panel-content step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 overflow-y-auto p-2">
+    <div class="graphics-panel-content step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 p-2">
       <div class="step3-hint rounded-lg bg-black/40 border border-white/10 px-2.5 py-1.5">
         <p class="text-[11px] font-medium leading-tight text-gray-200 step3-hint-text">
           <span class="step3-hint-full">Технология, сложность, материал и класс авто — влияют на итог.</span>
