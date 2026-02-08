@@ -32,6 +32,11 @@ const HANDLE_FILL = 'rgba(136,229,35,0.22)';
 const HANDLE_STROKE = 'rgba(136,229,35,0.9)';
 const HANDLE_RING_STROKE = 'rgba(136,229,35,0.4)';
 const HANDLE_VISUAL_RADIUS = 8;
+/** Freeform edit handles */
+const FREEFORM_POINT_RADIUS = 4;
+const FREEFORM_POINT_HIT_RADIUS = 12;
+const FREEFORM_ADD_MAX_DIST = 14;
+const FREEFORM_LONG_PRESS_MS = 450;
 
 let stage = null;
 let containerRef = null;
@@ -78,6 +83,10 @@ let bgRect = null;
 let handleGroup = null;
 let activeDent = null;
 let lastPlusPos = { x: 0, y: 0 };
+/** Freeform edit mode */
+let freeformEditMode = false;
+let freeformEditGroup = null;
+let freeformEditTarget = null;
 /** Режим свободного растяжения (не keepRatio) для выбранной вмятины. */
 let transformerKeepRatio = true;
 /** ResizeObserver и window resize — для подстройки Stage под контейнер. */
@@ -110,13 +119,15 @@ function selectNode(node) {
   if (!tr || !layerDents) return;
   tr.keepRatio(transformerKeepRatio);
   /** На этапе 1 не привязываем к Transformer (нет квадратов/ручек resize). */
-  tr.nodes(wizardStep === 1 ? [] : [node]);
+  const meta = node?._dentMeta;
+  const hideTransformer = wizardStep === 1 || node?.className === 'Line' || meta?.freeformEnabled;
+  tr.nodes(hideTransformer ? [] : [node]);
   if (node && node.moveToTop) node.moveToTop();
   if (tr.getParent() === layerDents) tr.moveToTop();
   if (useMmMode) {
     activeDent = node && node.getAttr?.('name') === 'dent' ? node : null;
     if (handleGroup) {
-      if (activeDent) {
+      if (activeDent && !meta?.freeformEnabled) {
         handleGroup.visible(true);
         positionHandle(activeDent);
       } else {
@@ -124,6 +135,8 @@ function selectNode(node) {
       }
     }
   }
+  if (freeformEditMode) updateFreeformEditHandles(node);
+  debugFreeformState('select');
   const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
   if (layer) layer.batchDraw();
   if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
@@ -137,6 +150,7 @@ function clearSelection() {
     activeDent = null;
     if (handleGroup) handleGroup.visible(false);
   }
+  clearFreeformEditHandles();
   const layer = layerDents ? (layerDents.getLayer ? layerDents.getLayer() : layerDents) : null;
   if (layer) layer.batchDraw();
   if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(null);
@@ -633,6 +647,10 @@ function applyBounds(node, opts = {}) {
 /** Меньшая сторона фигуры в px (в координатах stage) для hit/stroke. Использует Math.abs. */
 function getDentMinSizePx(shape) {
   if (!shape) return 20;
+  if (shape.className === 'Line') {
+    const rect = shape.getClientRect({ relativeTo: shape.getParent() });
+    return Math.min(rect.width || 0, rect.height || 0) || 20;
+  }
   const scaleX = Math.max(0.01, Math.abs(shape.scaleX()));
   const scaleY = Math.max(0.01, Math.abs(shape.scaleY()));
   let sizePx;
@@ -731,6 +749,8 @@ function applyTransform() {
     });
   }
   updateHandleStyle();
+  if (freeformEditMode && freeformEditTarget) updateFreeformEditHandles(freeformEditTarget);
+  debugFreeformState('fit');
   const layer = contentGroup.getLayer();
   if (layer) layer.batchDraw();
 }
@@ -761,7 +781,15 @@ export function setEditorInteractive(interactive, step = 2) {
       if (!!interactive && activeDent) tr.nodes([activeDent]);
     }
   }
-  if (handleGroup) handleGroup.visible(!!interactive && !!activeDent);
+  if (handleGroup) {
+    const hideHandle = !!activeDent?._dentMeta?.freeformEnabled;
+    handleGroup.visible(!!interactive && !!activeDent && !hideHandle);
+  }
+  if (!interactive) {
+    clearFreeformEditHandles();
+  } else if (freeformEditMode) {
+    updateFreeformEditHandles(getActiveNode());
+  }
   /** На этапе 1: сетка скрыта. На этапах 2/3 — показываем, кроме мобильной версии. */
   if (layerGrid) layerGrid.visible(step !== 1 && !hideGridOnMobile);
   /** На этапах 1–2: форма draggable (и за саму вмятину, и за крестик). */
@@ -1130,17 +1158,250 @@ function rectIntersectionArea(a, b) {
   return w * h;
 }
 
+function polygonArea(points) {
+  if (!points || points.length < 6) return 0;
+  let sum = 0;
+  for (let i = 0; i < points.length; i += 2) {
+    const x1 = points[i];
+    const y1 = points[i + 1];
+    const j = (i + 2) % points.length;
+    const x2 = points[j];
+    const y2 = points[j + 1];
+    sum += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(sum) / 2;
+}
+
+function getLineLocalBounds(line) {
+  const pts = line?.points?.() || [];
+  if (pts.length < 2) return { minX: 0, minY: 0, width: 0, height: 0 };
+  let minX = pts[0];
+  let minY = pts[1];
+  let maxX = pts[0];
+  let maxY = pts[1];
+  for (let i = 2; i < pts.length; i += 2) {
+    const x = pts[i];
+    const y = pts[i + 1];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, width: Math.max(0, maxX - minX), height: Math.max(0, maxY - minY) };
+}
+
+function normalizeLinePointsToTopLeft(line) {
+  if (!line) return;
+  const pts = line.points?.() || [];
+  if (pts.length < 2) return;
+  const bounds = getLineLocalBounds(line);
+  if (bounds.minX === 0 && bounds.minY === 0) return;
+  const next = [];
+  for (let i = 0; i < pts.length; i += 2) {
+    next.push(pts[i] - bounds.minX, pts[i + 1] - bounds.minY);
+  }
+  line.points(next);
+  line.position({ x: line.x() + bounds.minX, y: line.y() + bounds.minY });
+}
+
+function ensureFreeformEditGroup() {
+  if (!layerDents) return;
+  if (freeformEditGroup) return;
+  freeformEditGroup = new Konva.Group({ name: 'freeform-edit', listening: true });
+  layerDents.add(freeformEditGroup);
+}
+
+function clearFreeformEditHandles() {
+  if (!freeformEditGroup) return;
+  freeformEditGroup.destroyChildren();
+  freeformEditGroup.visible(false);
+  freeformEditTarget = null;
+}
+
+function updateFreeformEditHandles(line) {
+  if (!freeformEditMode || !line || line.className !== 'Line' || !line._dentMeta?.freeformEnabled) {
+    clearFreeformEditHandles();
+    return;
+  }
+  ensureFreeformEditGroup();
+  freeformEditTarget = line;
+  freeformEditGroup.visible(true);
+  freeformEditGroup.position(line.position());
+  const pts = line.points?.() || [];
+  const handleScale = contentGroup ? 1 / Math.max(0.01, contentGroup.scaleX()) : 1;
+  freeformEditGroup.destroyChildren();
+  for (let i = 0; i < pts.length; i += 2) {
+    const idx = i / 2;
+    const isActive = line._dentMeta?.activeFreeformPointIndex === idx;
+    const handle = new Konva.Circle({
+      x: pts[i],
+      y: pts[i + 1],
+      radius: FREEFORM_POINT_RADIUS,
+      fill: isActive ? '#88E523' : 'rgba(255,255,255,0.6)',
+      stroke: '#88E523',
+      strokeWidth: 1,
+      hitStrokeWidth: FREEFORM_POINT_HIT_RADIUS,
+      draggable: true,
+      name: 'freeform-point'
+    });
+    handle.scale({ x: handleScale, y: handleScale });
+    let pressTimer = null;
+    handle.on('mousedown touchstart', (e) => {
+      e.cancelBubble = true;
+      if (contentGroup) contentGroup.draggable(false);
+      if (line._dentMeta) line._dentMeta.activeFreeformPointIndex = idx;
+      updateFreeformEditHandles(line);
+      pressTimer = setTimeout(() => {
+        if (pressTimer) {
+          pressTimer = null;
+          deleteFreeformPointAtIndex(line, idx);
+        }
+      }, FREEFORM_LONG_PRESS_MS);
+    });
+    handle.on('dragstart', (e) => {
+      e.cancelBubble = true;
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    });
+    handle.on('dragmove', () => {
+      if (!line) return;
+      const cur = line.points?.() || [];
+      cur[i] = handle.x();
+      cur[i + 1] = handle.y();
+      line.points(cur);
+      updateShapeCalc(line, line._dentMeta.baseType, line._dentMeta.id, line._dentMeta.sizes);
+      if (useMmMode && handleGroup) positionHandle(line);
+      const layer = layerDents?.getLayer ? layerDents.getLayer() : layerDents;
+      if (layer) layer.batchDraw();
+    });
+    handle.on('dragend', () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+      normalizeLinePointsToTopLeft(line);
+      updateFreeformEditHandles(line);
+      updateShapeCalc(line, line._dentMeta.baseType, line._dentMeta.id, line._dentMeta.sizes);
+      if (useMmMode && handleGroup) positionHandle(line);
+    });
+    handle.on('click tap', (e) => {
+      e.cancelBubble = true;
+      if (line._dentMeta) line._dentMeta.activeFreeformPointIndex = idx;
+      updateFreeformEditHandles(line);
+    });
+    freeformEditGroup.add(handle);
+  }
+  const layer = layerDents?.getLayer ? layerDents.getLayer() : layerDents;
+  if (layer) layer.batchDraw();
+}
+
+function distancePointToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  if (dx === 0 && dy === 0) return { dist: Math.hypot(px - x1, py - y1), t: 0 };
+  const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+  const clamped = Math.max(0, Math.min(1, t));
+  const cx = x1 + clamped * dx;
+  const cy = y1 + clamped * dy;
+  return { dist: Math.hypot(px - cx, py - cy), t: clamped, x: cx, y: cy };
+}
+
+function insertPointAtPointer(line, pointer) {
+  if (!line || !pointer) return;
+  const pts = line.points?.() || [];
+  if (pts.length < 6) return;
+  const localX = pointer.x - line.x();
+  const localY = pointer.y - line.y();
+  let best = { dist: Infinity, insertIndex: -1, x: 0, y: 0 };
+  const count = pts.length / 2;
+  for (let i = 0; i < count; i++) {
+    const i2 = (i + 1) % count;
+    const x1 = pts[i * 2];
+    const y1 = pts[i * 2 + 1];
+    const x2 = pts[i2 * 2];
+    const y2 = pts[i2 * 2 + 1];
+    const hit = distancePointToSegment(localX, localY, x1, y1, x2, y2);
+    if (hit.dist < best.dist) {
+      best = { dist: hit.dist, insertIndex: i2, x: hit.x, y: hit.y };
+    }
+  }
+  if (best.dist > FREEFORM_ADD_MAX_DIST) return;
+  const next = [];
+  for (let i = 0; i < count; i++) {
+    if (i === best.insertIndex) {
+      next.push(best.x, best.y);
+    }
+    next.push(pts[i * 2], pts[i * 2 + 1]);
+  }
+  line.points(next);
+  if (line._dentMeta) line._dentMeta.activeFreeformPointIndex = best.insertIndex;
+  updateShapeCalc(line, line._dentMeta.baseType, line._dentMeta.id, line._dentMeta.sizes);
+  updateFreeformEditHandles(line);
+}
+
+function deleteFreeformPointAtIndex(line, index) {
+  if (!line) return;
+  const pts = line.points?.() || [];
+  const count = pts.length / 2;
+  if (count <= 3) return;
+  if (index < 0 || index >= count) return;
+  const next = [];
+  for (let i = 0; i < count; i++) {
+    if (i === index) continue;
+    next.push(pts[i * 2], pts[i * 2 + 1]);
+  }
+  line.points(next);
+  if (line._dentMeta) line._dentMeta.activeFreeformPointIndex = null;
+  normalizeLinePointsToTopLeft(line);
+  updateShapeCalc(line, line._dentMeta.baseType, line._dentMeta.id, line._dentMeta.sizes);
+  updateFreeformEditHandles(line);
+}
+
+export function setFreeformEditMode(enabled) {
+  freeformEditMode = !!enabled;
+  const node = getActiveNode();
+  if (freeformEditMode && node && node.className === 'Line' && node._dentMeta?.freeformEnabled) {
+    updateFreeformEditHandles(node);
+  } else {
+    clearFreeformEditHandles();
+  }
+}
+
+export function deleteActiveFreeformPoint() {
+  const node = getActiveNode();
+  if (!node || node.className !== 'Line' || !node._dentMeta) return;
+  const idx = node._dentMeta.activeFreeformPointIndex;
+  if (typeof idx !== 'number') return;
+  deleteFreeformPointAtIndex(node, idx);
+}
+
+function debugFreeformState(label) {
+  if (!import.meta.env?.DEV) return;
+  const node = getActiveNode();
+  if (!node || node.className !== 'Line' || !node._dentMeta?.freeformEnabled) return;
+  const pts = node.points?.() || [];
+  const bounds = getLineLocalBounds(node);
+  console.debug('[freeform]', label, {
+    id: node._dentMeta.id,
+    pos: node.position(),
+    points: pts.length,
+    bounds
+  });
+}
+
 /** Возвращает локальный rect фигуры; всегда положительные width/height (через Math.abs). */
 function getShapeRectLocal(shape) {
   const scaleX = Math.abs(shape.scaleX()) || 1;
   const scaleY = Math.abs(shape.scaleY()) || 1;
   if (shape.className === 'Line') {
-    const rect = shape.getClientRect({ relativeTo: shape.getParent() });
+    const bounds = getLineLocalBounds(shape);
     return {
-      x: rect.x,
-      y: rect.y,
-      width: rect.width,
-      height: rect.height
+      x: shape.x() + bounds.minX,
+      y: shape.y() + bounds.minY,
+      width: bounds.width,
+      height: bounds.height
     };
   }
   if (shape.className === 'Ellipse') {
@@ -1168,20 +1429,24 @@ function getShapeRectLocal(shape) {
 /** Пересчёт площади и цены вмятины; использует Math.abs для защиты от инверсии. */
 function updateShapeCalc(shape, type, id, sizes) {
   if (!shape || !stage) return;
+  const meta = shape._dentMeta || {};
+  const baseType = meta.baseType || type;
+  const isFreeform = !!meta.freeformEnabled;
 
   // Используем абсолютные значения scale для корректного расчёта площади (защита от NaN/undefined)
   const scaleX = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleX(), 1)));
   const scaleY = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleY(), 1)));
   let areaPx = 0;
-  if (type === 'freeform') {
-    const rect = getShapeRectLocal(shape);
-    areaPx = Math.PI * Math.abs(rect.width / 2) * Math.abs(rect.height / 2);
+  if (isFreeform) {
+    const pts = shape.points ? shape.points() : [];
+    areaPx = polygonArea(pts);
   } else if (shape.className === 'Ellipse') {
     areaPx = Math.PI * Math.abs(shape.radiusX() * scaleX) * Math.abs(shape.radiusY() * scaleY);
   } else {
     areaPx = Math.abs(shape.width() * scaleX) * Math.abs(shape.height() * scaleY);
   }
 
+  const bbox = getShapeRectLocal(shape);
   let areaMm2 = null;
   let cellsCount = null;
   if (useMmMode && pxPerMm != null && pxPerMm > 0) {
@@ -1205,16 +1470,17 @@ function updateShapeCalc(shape, type, id, sizes) {
   }
 
   let price;
+  const typeForPrice = baseType;
   if (useMmMode && areaMm2 != null && sizes && sizes[0] && sizes[0].areaMm2 != null) {
-    price = getInterpolatedPriceByAreaMm2(areaMm2, type, sizes);
+    price = getInterpolatedPriceByAreaMm2(areaMm2, typeForPrice, sizes);
   } else {
-    price = getInterpolatedPriceByAreaPx(areaPx, type, sizes);
+    price = getInterpolatedPriceByAreaPx(areaPx, typeForPrice, sizes);
   }
   if (isComplex) price *= complexMult;
 
   /** sizeCode для матрицы сложности: круг — ближайший по площади, полоса — STRIP_DEFAULT */
   let sizeCode = 'STRIP_DEFAULT';
-  const typeForMatrix = type === 'freeform' ? 'circle' : type;
+  const typeForMatrix = baseType === 'circle' ? 'circle' : 'strip';
   if (typeForMatrix === 'circle' && sizes && sizes.length > 0) {
     const withArea = sizes.filter((s) => (s.areaMm2 ?? s.area) != null);
     if (withArea.length > 0) {
@@ -1241,16 +1507,25 @@ function updateShapeCalc(shape, type, id, sizes) {
     shape.fill(typeForMatrix === 'circle' ? 'rgba(136, 229, 35, 0.3)' : 'rgba(200, 200, 200, 0.3)');
   }
 
+  if (isFreeform && shape.points) {
+    meta.freeformPoints = [...shape.points()];
+  }
+
   const dentData = {
     id,
-    type,
+    type: baseType,
     sizeCode,
     areaPx,
     areaMm2: areaMm2 ?? undefined,
+    bboxPx: { width: bbox?.width ?? 0, height: bbox?.height ?? 0 },
+    bboxMm: useMmMode && pxPerMm ? { width: (bbox?.width ?? 0) / pxPerMm, height: (bbox?.height ?? 0) / pxPerMm } : undefined,
     cellsCount: cellsCount != null ? Math.round(cellsCount * 100) / 100 : undefined,
     isComplex,
     price,
-    rotation: shape.rotation ? shape.rotation() : 0
+    rotation: shape.rotation ? shape.rotation() : 0,
+    shapeKind: meta.shapeKind,
+    freeformEnabled: meta.freeformEnabled,
+    freeformPoints: meta.freeformPoints
   };
   dentsMap.set(id, dentData);
   if (onDentChangeCallback) {
@@ -1275,6 +1550,16 @@ function inferShapeVariant(type, widthMm, heightMm) {
   return w >= h ? 'strip' : 'scratch';
 }
 
+function normalizeFreeformPoints(line, rect) {
+  if (!line || !rect || rect.width <= 0 || rect.height <= 0) return [];
+  const pts = line.points ? line.points() : [];
+  const norm = [];
+  for (let i = 0; i < pts.length; i += 2) {
+    norm.push((pts[i] || 0) / rect.width, (pts[i + 1] || 0) / rect.height);
+  }
+  return norm;
+}
+
 /**
  * Размеры выбранной вмятины в мм (единый источник: pxPerMm в konvaEditor).
  * shapeVariant вычисляется автоматически: круг если width≈height, иначе овал.
@@ -1288,15 +1573,23 @@ export function getSelectedDentSizeMm() {
   const px = Math.max(0.01, pxPerMm);
   const widthMm = clamp(wPx / px, SIZE_MM_MIN, SIZE_MM_MAX);
   const heightMm = clamp(hPx / px, SIZE_MM_MIN, SIZE_MM_MAX);
-  const type = node._dentMeta.type;
+  const meta = node._dentMeta;
+  const type = meta.baseType || meta.type;
   const shapeVariant = inferShapeVariant(type, widthMm, heightMm);
-  node._dentMeta.shapeVariant = shapeVariant;
+  meta.shapeVariant = shapeVariant;
+  const areaPx = node.className === 'Line' ? polygonArea(node.points?.() || []) : null;
+  const areaMm2 = areaPx != null ? areaPx / (px * px) : null;
   return {
-    id: node._dentMeta.id,
+    id: meta.id,
     type,
     shapeVariant,
     widthMm,
-    heightMm
+    heightMm,
+    freeformEnabled: !!meta.freeformEnabled,
+    shapeKind: meta.shapeKind,
+    areaMm2: areaMm2 ?? undefined,
+    freeformPointCount: node.className === 'Line' ? Math.floor((node.points?.() || []).length / 2) : undefined,
+    activeFreeformPointIndex: meta.activeFreeformPointIndex ?? null
   };
 }
 
@@ -1315,18 +1608,20 @@ export function setSelectedDentSizeMm(widthMm, heightMm) {
     node.radiusX(wPx / 2);
     node.radiusY(hPx / 2);
   } else if (node.className === 'Line') {
-    const rect = node.getClientRect({ relativeTo: node.getParent() });
-    const cx = rect.x + rect.width / 2;
-    const cy = rect.y + rect.height / 2;
-    const scaleX = rect.width > 0 ? wPx / rect.width : 1;
-    const scaleY = rect.height > 0 ? hPx / rect.height : 1;
-    node.scaleX(node.scaleX() * scaleX);
-    node.scaleY(node.scaleY() * scaleY);
-    const rectAfter = node.getClientRect({ relativeTo: node.getParent() });
-    const cxAfter = rectAfter.x + rectAfter.width / 2;
-    const cyAfter = rectAfter.y + rectAfter.height / 2;
-    node.x(node.x() + (cx - cxAfter));
-    node.y(node.y() + (cy - cyAfter));
+    const meta = node._dentMeta;
+    normalizeLinePointsToTopLeft(node);
+    const bounds = getLineLocalBounds(node);
+    const curW = Math.max(1, bounds.width);
+    const curH = Math.max(1, bounds.height);
+    const sx = wPx / curW;
+    const sy = hPx / curH;
+    const curPts = node.points?.() || [];
+    const next = [];
+    for (let i = 0; i < curPts.length; i += 2) {
+      next.push(curPts[i] * sx, curPts[i + 1] * sy);
+    }
+    node.points(next);
+    node._dentMeta.freeformPoints = [...next];
   } else {
     node.width(wPx);
     node.height(hPx);
@@ -1405,6 +1700,126 @@ export function setDentShapeVariant(variant) {
   if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
 }
 
+function buildFreeformLine(meta, rect) {
+  const w = rect.width || 1;
+  const h = rect.height || 1;
+  let pts = Array.isArray(meta.freeformPoints) && meta.freeformPoints.length > 3
+    ? meta.freeformPoints
+    : [0, 0, w, 0, w, h, 0, h];
+  const maxVal = Math.max(...pts.map((v) => Math.abs(v)));
+  if (maxVal <= 1.01) {
+    const scaled = [];
+    for (let i = 0; i < pts.length; i += 2) {
+      scaled.push((pts[i] || 0) * w, (pts[i + 1] || 0) * h);
+    }
+    pts = scaled;
+  }
+  const line = new Konva.Line({
+    points: [...pts],
+    closed: true,
+    fill: 'rgba(136, 229, 35, 0.2)',
+    stroke: '#88E523',
+    strokeWidth: 1.2,
+    lineCap: 'round',
+    lineJoin: 'round',
+    name: 'dent',
+    listening: true,
+    draggable: true
+  });
+  line.position({ x: rect.x, y: rect.y });
+  line.setAttr('type', meta.baseType || meta.type);
+  return line;
+}
+
+export function setSelectedDentFreeformEnabled(enabled) {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta) return;
+  const meta = node._dentMeta;
+  if (enabled && meta.freeformEnabled) return;
+  if (!enabled && !meta.freeformEnabled) return;
+
+  const baseType = meta.baseType || meta.type;
+  const rect = node.getClientRect({ relativeTo: node.getParent() });
+  const id = meta.id;
+  const sizes = meta.sizes;
+
+  if (enabled) {
+    const nextMeta = {
+      ...meta,
+      type: baseType,
+      baseType,
+      freeformEnabled: true,
+      shapeKind: baseType === 'circle' ? 'freeform-oval' : 'freeform-stripe',
+      freeformPoints: Array.isArray(meta.freeformPoints) && meta.freeformPoints.length > 3
+        ? meta.freeformPoints
+        : [0, 0, rect.width || 1, 0, rect.width || 1, rect.height || 1, 0, rect.height || 1]
+    };
+    const line = buildFreeformLine(nextMeta, rect);
+    line._dentMeta = nextMeta;
+    node.destroy();
+    setupDentInteractions(line, baseType, id, sizes);
+    if (freeformEditMode) updateFreeformEditHandles(line);
+    if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+    return;
+  }
+
+  const isCircle = baseType === 'circle';
+  const w = rect.width || 10;
+  const h = rect.height || 10;
+  let shape;
+  if (isCircle) {
+    const rx = Math.max(2, w / 2);
+    const ry = Math.max(2, h / 2);
+    shape = new Konva.Ellipse({
+      x: rect.x + w / 2,
+      y: rect.y + h / 2,
+      radiusX: rx,
+      radiusY: ry,
+      offsetX: rx,
+      offsetY: ry,
+      fill: 'rgba(136, 229, 35, 0.3)',
+      stroke: '#88E523',
+      strokeWidth: 1,
+      draggable: true,
+      listening: true,
+      name: 'dent',
+      id: String(id)
+    });
+    shape.setAttr('type', 'circle');
+  } else {
+    shape = new Konva.Rect({
+      x: rect.x + w / 2,
+      y: rect.y + h / 2,
+      width: w,
+      height: h,
+      offsetX: w / 2,
+      offsetY: h / 2,
+      cornerRadius: 5,
+      fill: 'rgba(200, 200, 200, 0.3)',
+      stroke: '#A0AEC0',
+      strokeWidth: 1,
+      draggable: true,
+      listening: true,
+      name: 'dent',
+      id: String(id)
+    });
+    shape.setAttr('type', 'strip');
+  }
+  const nextMeta = {
+    ...meta,
+    type: baseType,
+    baseType,
+    freeformEnabled: false,
+    shapeKind: baseType === 'circle' ? 'oval' : 'stripe',
+    freeformPoints: null
+  };
+  shape._dentMeta = nextMeta;
+  node.destroy();
+  setupDentInteractions(shape, baseType, id, sizes);
+  clearFreeformEditHandles();
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+}
+
 function setupDentInteractions(shape, type, id, sizes) {
   const MIN_SCALE = 0.1;
   /** Сохраняем последнее корректное состояние (scale всегда положительный). */
@@ -1439,6 +1854,7 @@ function setupDentInteractions(shape, type, id, sizes) {
 
   const updateHandler = () => {
     updateShapeCalc(shape, type, id, sizes);
+    if (freeformEditMode && shape.className === 'Line') updateFreeformEditHandles(shape);
     if (useMmMode && partBounds) {
       const r = getShapeRectLocal(shape);
       if (isRectInside(r, partBounds)) storeLastGoodTransform();
@@ -1541,6 +1957,10 @@ function setupDentInteractions(shape, type, id, sizes) {
     e.cancelBubble = true;
     if (useMmMode) activeDent = shape;
     selectNode(shape);
+    if (freeformEditMode && shape.className === 'Line' && shape._dentMeta?.freeformEnabled) {
+      const p = getPointerPosRelativeToLayer();
+      if (p) insertPointAtPointer(shape, p);
+    }
   });
 
   layerDents.add(shape);
@@ -1564,9 +1984,9 @@ function getPointerPosRelativeToLayer() {
   return transform.point(pos);
 }
 
-export function beginFreeformDent(sizes) {
-  if (!stage || !layerDents) return;
-  freeformSizes = sizes || [];
+function startFreeformDrawingSession(targetLine, meta) {
+  if (!stage || !layerDents || !targetLine || !meta) return;
+  freeformSizes = meta.sizes || [];
   freeformDrawing = true;
   freeformPoints = [];
   freeformLine = null;
@@ -1590,7 +2010,7 @@ export function beginFreeformDent(sizes) {
       fill: 'rgba(136, 229, 35, 0.2)',
       name: 'dent',
       listening: true,
-      draggable: true
+      draggable: false
     });
     layerDents.add(freeformLine);
   };
@@ -1614,13 +2034,26 @@ export function beginFreeformDent(sizes) {
       freeformPoints = [];
       return;
     }
-    const id = Date.now();
-    const wMm = getShapeRectLocal(freeformLine).width / (pxPerMm || 1);
-    const hMm = getShapeRectLocal(freeformLine).height / (pxPerMm || 1);
-    const shapeVariant = inferShapeVariant('freeform', wMm, hMm);
-    freeformLine.setAttr('type', 'freeform');
-    freeformLine._dentMeta = { id, type: 'freeform', sizes: freeformSizes, shapeVariant };
-    setupDentInteractions(freeformLine, 'freeform', id, freeformSizes);
+    let minX = freeformPoints[0];
+    let minY = freeformPoints[1];
+    for (let i = 2; i < freeformPoints.length; i += 2) {
+      minX = Math.min(minX, freeformPoints[i]);
+      minY = Math.min(minY, freeformPoints[i + 1]);
+    }
+    const localPts = [];
+    for (let i = 0; i < freeformPoints.length; i += 2) {
+      localPts.push(freeformPoints[i] - minX, freeformPoints[i + 1] - minY);
+    }
+    targetLine.position({ x: minX, y: minY });
+    targetLine.points(localPts);
+    meta.freeformPoints = [...localPts];
+    meta.freeformEnabled = true;
+    meta.shapeKind = meta.baseType === 'circle' ? 'freeform-oval' : 'freeform-stripe';
+    updateShapeCalc(targetLine, meta.baseType, meta.id, meta.sizes);
+    updateStroke(targetLine);
+    updateHitArea(targetLine);
+    if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+    if (freeformLine) freeformLine.destroy();
     freeformLine = null;
     freeformPoints = [];
   };
@@ -1634,13 +2067,19 @@ export function beginFreeformDent(sizes) {
   });
 }
 
+export function startFreeformRedrawForSelectedDent() {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta) return;
+  if (!node._dentMeta.freeformEnabled) {
+    setSelectedDentFreeformEnabled(true);
+  }
+  const target = getActiveNode();
+  if (!target || target.className !== 'Line' || !target._dentMeta) return;
+  startFreeformDrawingSession(target, target._dentMeta);
+}
+
 export function addDent(type, sizeCode, sizes) {
   if (!stage || !layerDents || !tr) return;
-
-  if (type === 'freeform') {
-    beginFreeformDent(sizes);
-    return;
-  }
 
   const sizeObj = sizes.find((s) => s.code === sizeCode);
   if (!sizeObj) return;
@@ -1719,7 +2158,16 @@ export function addDent(type, sizeCode, sizes) {
   const wMm = type === 'circle' ? (shape.radiusX?.() ?? 0) * 2 / (pxPerMm || 1) : (shape.width?.() ?? 0) / (pxPerMm || 1);
   const hMm = type === 'circle' ? (shape.radiusY?.() ?? 0) * 2 / (pxPerMm || 1) : (shape.height?.() ?? 0) / (pxPerMm || 1);
   const shapeVariant = inferShapeVariant(type, wMm, hMm);
-  shape._dentMeta = { id, type, sizes, shapeVariant };
+  shape._dentMeta = {
+    id,
+    type,
+    baseType: type,
+    sizes,
+    shapeVariant,
+    shapeKind: type === 'circle' ? 'oval' : 'stripe',
+    freeformEnabled: false,
+    freeformPoints: null
+  };
 
   if (useMmMode && partBounds) {
     const r = getShapeRectLocal(shape);
@@ -1762,6 +2210,7 @@ export function deleteSelected() {
     activeDent = null;
     if (handleGroup) handleGroup.visible(false);
   }
+  clearFreeformEditHandles();
   node.destroy();
   const layer = layerDents ? layerDents.getLayer() : null;
   if (layer) layer.batchDraw();
@@ -1778,6 +2227,8 @@ export function resetDents() {
     freeformLine = null;
     freeformPoints = [];
     freeformListenersBound = false;
+    freeformEditGroup = null;
+    freeformEditTarget = null;
     if (stage && layerDents) {
       tr = new Konva.Transformer({
         anchorStroke: '#88E523',
@@ -1867,4 +2318,7 @@ export function destroyKonva() {
   freeformLine = null;
   freeformPoints = [];
   freeformListenersBound = false;
+  freeformEditMode = false;
+  freeformEditGroup = null;
+  freeformEditTarget = null;
 }

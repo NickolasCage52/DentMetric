@@ -80,24 +80,35 @@
         :preview-price="roundPrice(basePrice)"
         :total-price="roundPrice(totalPrice)"
         :can-next="dents.length >= 1"
+        :selected-dent-size="selectedDentSize"
         @add-type="openSizeMenu"
+        @client="showClientInfo = true"
+        @draw-freeform="onStartFreeformRedraw"
         @next="() => goToStep(2)"
         @back="goBack"
       />
       <Step2SizePanel
         v-else-if="wizardStep === 2"
         :selected-dent-size="selectedDentSize"
-        :shape-variant="selectedDentSize?.shapeVariant ?? (selectedDentSize?.type === 'circle' ? 'oval' : (selectedDentSize?.type === 'freeform' ? 'freeform' : 'strip'))"
+        :shape-variant="selectedDentSize?.shapeVariant ?? (selectedDentSize?.type === 'circle' ? 'oval' : 'strip')"
         :size-width-mm="sizeWidthMm"
         :size-height-mm="sizeHeightMm"
         :free-stretch="freeStretchMode"
+        :freeform-enabled="selectedDentSize?.freeformEnabled ?? false"
+        :freeform-edit-mode="freeformEditMode"
+        :active-freeform-point-index="selectedDentSize?.activeFreeformPointIndex ?? null"
+        :freeform-point-count="selectedDentSize?.freeformPointCount ?? 0"
+        :area-mm2="selectedDentSize?.areaMm2 ?? null"
         :total-price="roundPrice(totalPrice)"
         :can-next="dentsValid"
         @update:shape-variant="onShapeVariantChange"
         @update:free-stretch="onFreeStretchChange"
-        @update:size-width-mm="sizeWidthMm = $event"
-        @update:size-height-mm="sizeHeightMm = $event"
+        @update:freeform-enabled="onFreeformToggle"
+        @update:size-width-mm="onSizeWidthInput"
+        @update:size-height-mm="onSizeHeightInput"
         @dimensions-focus="onDimensionsInputFocus"
+        @toggle-freeform-edit="onToggleFreeformEdit"
+        @delete-freeform-point="onDeleteFreeformPoint"
         @next="() => goToStep(3)"
         @back="goBack"
       />
@@ -114,10 +125,14 @@
         v-else-if="wizardStep === 4"
         :breakdown="breakdown"
         :total-price="totalPrice"
+        :freeform-used="freeformUsed"
+        :freeform-area-mm2="freeformAreaMm2"
+        :history-saving="historySaving"
         :comment="estimateDraft.comment"
         @update:comment="estimateDraft.comment = $event"
         @back="goBack"
         @back-to-edit="() => goToStep(2)"
+        @save="emit('save-history')"
         @reset="resetAll"
       />
     </div>
@@ -178,12 +193,13 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
 
-const emit = defineEmits(['update:selectedClassId', 'update:selectedPartId', 'close', 'dents-change', 'home']);
+const emit = defineEmits(['update:selectedClassId', 'update:selectedPartId', 'close', 'dents-change', 'home', 'save-history']);
 import {
   initKonva,
   destroyKonva,
   addDent,
-  beginFreeformDent,
+  setSelectedDentFreeformEnabled,
+  startFreeformRedrawForSelectedDent,
   resetDents,
   deleteSelected,
   scheduleFit,
@@ -191,7 +207,9 @@ import {
   setDentShapeVariant,
   setKeepRatio,
   setEditable,
-  setHideGridOnMobile
+  setHideGridOnMobile,
+  setFreeformEditMode,
+  deleteActiveFreeformPoint
 } from '../../graphics/konvaEditor';
 import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from '../../utils/priceCalc';
 import StepHeader from './StepHeader.vue';
@@ -212,7 +230,8 @@ const props = defineProps({
   selectedPart: { type: Object, default: null },
   circleSizes: { type: Array, default: () => [] },
   stripSizes: { type: Array, default: () => [] },
-  estimateDraft: { type: Object, required: true }
+  estimateDraft: { type: Object, required: true },
+  historySaving: { type: Boolean, default: false }
 });
 
 const wizardStep = ref(1);
@@ -228,7 +247,9 @@ const sizeWidthMm = ref(0);
 const sizeHeightMm = ref(0);
 const freeStretchMode = ref(true);
 const dents = ref([]);
+const freeformEditMode = ref(false);
 let sizeApplyTimeout = null;
+let sizeEditByUser = false;
 
 const keyboardInset = ref(0);
 let keyboardInsetRaf = null;
@@ -318,6 +339,12 @@ const breakdown = computed(() => {
   props.estimateDraft.breakdown = items;
   return items;
 });
+const freeformUsed = computed(() => dents.value?.some((d) => d?.freeformEnabled));
+const freeformAreaMm2 = computed(() => dents.value.reduce((sum, d) => {
+  if (!d?.freeformEnabled) return sum;
+  const area = Number(d?.areaMm2);
+  return sum + (Number.isFinite(area) ? area : 0);
+}, 0));
 const dentsValid = computed(() => {
   if (dents.value.length === 0) return false;
   if (!selectedDentSize.value) return true;
@@ -344,26 +371,35 @@ watch(selectedDentSize, (info, oldInfo) => {
     sizeWidthMm.value = Number.isFinite(w) && w > 0 ? Math.round(w * 10) / 10 : 0;
     sizeHeightMm.value = Number.isFinite(h) && h > 0 ? Math.round(h * 10) / 10 : 0;
   }
+  sizeEditByUser = false;
+  if (!info?.freeformEnabled) {
+    freeformEditMode.value = false;
+    setFreeformEditMode(false);
+  }
   const panelToggled = (info && !oldInfo) || (!info && oldInfo);
   if (panelToggled) nextTick(() => setTimeout(() => scheduleFit('controls-resize'), 50));
 }, { immediate: true });
 
 watch([sizeWidthMm, sizeHeightMm], () => {
   if (!selectedDentSize.value) return;
+  if (!sizeEditByUser) return;
   if (sizeApplyTimeout) clearTimeout(sizeApplyTimeout);
   sizeApplyTimeout = setTimeout(() => {
     const w = Number(sizeWidthMm.value);
     const h = Number(sizeHeightMm.value);
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+      sizeEditByUser = false;
       sizeApplyTimeout = null;
       return;
     }
     const cur = selectedDentSize.value;
     if (cur && Math.abs(cur.widthMm - w) < 0.01 && Math.abs(cur.heightMm - h) < 0.01) {
+      sizeEditByUser = false;
       sizeApplyTimeout = null;
       return;
     }
     setSelectedDentSizeMm(w, h);
+    sizeEditByUser = false;
     sizeApplyTimeout = null;
   }, 150);
 });
@@ -438,10 +474,6 @@ function resetAll() {
 }
 
 function openSizeMenu(type) {
-  if (type === 'freeform') {
-    beginFreeformDent(props.circleSizes);
-    return;
-  }
   activeToolType.value = type;
   showSizeMenu.value = true;
 }
@@ -464,6 +496,38 @@ function onShapeVariantChange(variant) {
 
 function onFreeStretchChange(checked) {
   setKeepRatio(!checked);
+}
+
+function onFreeformToggle(enabled) {
+  setSelectedDentFreeformEnabled(!!enabled);
+  if (!enabled) {
+    freeformEditMode.value = false;
+    setFreeformEditMode(false);
+  }
+}
+
+function onStartFreeformRedraw() {
+  startFreeformRedrawForSelectedDent();
+}
+
+function onSizeWidthInput(val) {
+  sizeEditByUser = true;
+  sizeWidthMm.value = val;
+}
+
+function onSizeHeightInput(val) {
+  sizeEditByUser = true;
+  sizeHeightMm.value = val;
+}
+
+function onToggleFreeformEdit() {
+  if (!selectedDentSize.value?.freeformEnabled) return;
+  freeformEditMode.value = !freeformEditMode.value;
+  setFreeformEditMode(freeformEditMode.value);
+}
+
+function onDeleteFreeformPoint() {
+  deleteActiveFreeformPoint();
 }
 
 const formatCurrency = (v) => new Intl.NumberFormat('ru-RU').format(v);
@@ -504,6 +568,10 @@ watch(
       if (step === 2) {
         setKeepRatio(!freeStretchMode.value);
         setTimeout(() => scheduleFit('step2-show'), 200);
+      }
+      if (step >= 3) {
+        freeformEditMode.value = false;
+        setFreeformEditMode(false);
       }
       if (step >= 3) setTimeout(() => scheduleFit('resize'), 150);
     });
@@ -581,7 +649,7 @@ onBeforeUnmount(() => {
   width: 100vw;
   max-width: none;
   overflow: hidden;
-  padding: 0;
+  padding: 0 0 var(--app-footer-height, 0px) 0;
   margin: 0;
   background: #000;
   --bottomH: 34%;

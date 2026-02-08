@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-md mx-auto relative h-screen flex flex-col bg-black text-white pb-[env(safe-area-inset-bottom)]">
+  <div class="app-root max-w-md mx-auto relative h-screen flex flex-col bg-black text-white pb-[env(safe-area-inset-bottom)]">
     <!-- Home -->
     <div v-if="currentSection === 'home'" class="flex flex-col h-full px-4 pt-5 pb-24">
       <div class="flex items-start justify-between">
@@ -18,7 +18,7 @@
       </div>
       <div class="grid grid-cols-2 gap-3 pt-2">
         <button
-          @click="switchSection('metric')"
+          @click="openMetricMenu"
           class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-metric-green/40 shadow-neon"
         >
           <div class="text-xl">🧮</div>
@@ -35,11 +35,11 @@
         </button>
         <button
           @click="switchSection('history')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 opacity-70"
+          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-white/10"
         >
           <div class="text-xl">🗂️</div>
-          <div class="text-sm font-bold">История оценок 🔒</div>
-          <div class="text-[10px] text-gray-500">В разработке</div>
+          <div class="text-sm font-bold">История оценок</div>
+          <div class="text-[10px] text-gray-500">Сохранённые расчёты</div>
         </button>
         <button
           @click="switchSection('journal')"
@@ -50,29 +50,66 @@
           <div class="text-[10px] text-gray-500">В разработке</div>
         </button>
       </div>
-      <div class="mt-auto pt-6 flex items-center justify-center gap-2">
+      <div class="mt-auto pt-6"></div>
+    </div>
+
+    <!-- Section: Metric Menu -->
+    <div v-else-if="currentSection === 'metric-menu'" class="flex flex-col h-full px-4 pt-5 pb-24">
+      <div class="flex items-start justify-between">
         <button
           type="button"
-          @click="switchSection('settings')"
-          class="text-[10px] uppercase tracking-widest text-gray-500 hover:text-white transition-colors"
+          @click="goHome"
+          class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px] flex items-center gap-1"
         >
-          Настройки
+          <span>←</span>
+          <span>Домой</span>
         </button>
-        <span class="text-gray-700">•</span>
+        <div class="flex-1"></div>
         <button
           type="button"
-          @click="switchSection('info')"
-          class="text-[10px] uppercase tracking-widest text-gray-500 hover:text-white transition-colors"
+          @click="goHome"
+          class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px]"
         >
-          Инфо
+          ✕
+        </button>
+      </div>
+      <div class="flex items-center justify-center pb-3 pt-2">
+        <div class="px-5 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] shadow-lg">
+          <span class="text-[10px] font-bold uppercase text-metric-green tracking-widest">Метрика</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button
+          @click="selectMetricMode('standard')"
+          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-metric-green/40 shadow-neon"
+        >
+          <div class="text-xl">⚡</div>
+          <div class="text-sm font-bold">Быстрый расчёт</div>
+          <div class="text-[10px] text-gray-500">Короткий расчёт</div>
+        </button>
+        <button
+          @click="selectMetricMode('graphics')"
+          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-white/10 hover:border-metric-green/40 transition-colors"
+        >
+          <div class="text-xl">🎨</div>
+          <div class="text-sm font-bold">Детализация</div>
+          <div class="text-[10px] text-gray-500">Графический режим</div>
+        </button>
+        <button
+          @click="selectMetricMode('time')"
+          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 opacity-70"
+        >
+          <div class="text-xl">⏱️</div>
+          <div class="text-sm font-bold">ГРАД 🔒</div>
+          <div class="text-[10px] text-gray-500">В разработке</div>
         </button>
       </div>
     </div>
 
     <!-- Section: Metric -->
     <div v-else-if="currentSection === 'metric'" class="flex flex-col h-full">
-      <div v-if="calcMode !== 'graphics'" class="p-4 space-y-4 shrink-0 z-20 bg-black">
-        <div class="flex items-center justify-between">
+      <div v-if="calcMode !== 'graphics'" class="p-4 space-y-3 shrink-0 z-20 bg-black">
+        <div class="flex items-center justify-between gap-2">
           <button
             type="button"
             @click="goHome"
@@ -81,43 +118,14 @@
             <span>←</span>
             <span>Домой</span>
           </button>
-          <img src="/logo.png" alt="DentMetric" class="h-8 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
-          <div class="w-[70px]"></div>
-        </div>
-        <div class="card-metallic rounded-2xl p-4 relative overflow-hidden text-center">
-          <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-          <div
-            class="text-5xl font-black transition-all duration-300"
-            :class="totalPrice > 0 ? 'text-metric-green drop-shadow-[0_0_15px_rgba(136,229,35,0.3)]' : 'text-gray-600'"
-          >
-            {{ totalPrice > 0 ? formatCurrency(totalPrice) : '---' }}
-            <span v-if="totalPrice > 0" class="text-2xl align-top">₽</span>
-          </div>
-          <div
-            class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-4 blur-xl transition-all duration-300"
-            :class="totalPrice > 0 ? 'bg-metric-green/10' : 'bg-transparent'"
-          ></div>
-        </div>
-        <div class="flex space-x-1 bg-[#151515] p-1 rounded-xl border border-[#333]">
+          <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
           <button
-            @click="setMode('standard')"
-            class="flex-1 py-3 text-[10px] font-bold rounded-lg transition-all uppercase tracking-wide"
-            :class="calcMode === 'standard' ? 'bg-metric-green text-black shadow-neon' : 'text-gray-400 hover:text-white'"
+            type="button"
+            @click="openMetricMenu"
+            class="text-xs text-gray-300 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px] flex items-center gap-1"
           >
-            Быстрый расчёт
-          </button>
-          <button
-            @click="setMode('time')"
-            class="flex-1 py-3 text-[10px] font-bold rounded-lg transition-all uppercase tracking-wide text-gray-500 cursor-not-allowed"
-          >
-            Град 🔒
-          </button>
-          <button
-            @click="setMode('graphics')"
-            class="flex-1 py-3 text-[10px] font-bold rounded-lg transition-all uppercase tracking-wide"
-            :class="calcMode === 'graphics' ? 'bg-metric-green text-black shadow-neon' : 'text-gray-400 hover:text-white'"
-          >
-            Детализация
+            <span>Метрика</span>
+            <span>▾</span>
           </button>
         </div>
       </div>
@@ -340,6 +348,14 @@
               class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-sm shadow-inner focus:border-metric-green/50 outline-none resize-none"
             ></textarea>
           </div>
+          <button
+            v-if="totalPrice > 0"
+            @click="saveCurrentEstimate('quick')"
+            class="w-full py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="isSavingHistory"
+          >
+            {{ isSavingHistory ? 'Сохранение...' : 'Сохранить в историю' }}
+          </button>
         </div>
 
         <!-- Time mode (locked) -->
@@ -364,10 +380,178 @@
           :circle-sizes="graphicsCircleSizes"
           :strip-sizes="graphicsStripSizes"
         :estimate-draft="estimateDraft"
+        :history-saving="isSavingHistory"
         @home="goHome"
           @close="closeEditor"
           @dents-change="(d) => graphicsState.dents = d"
+        @save-history="saveCurrentEstimate('detail')"
         />
+      </div>
+    </div>
+
+    <!-- Section: Settings -->
+    <div v-else-if="currentSection === 'history'" class="p-4 space-y-4 overflow-y-auto pb-24">
+      <div class="flex items-center justify-between">
+        <button
+          type="button"
+          @click="goHome"
+          class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px] flex items-center gap-1"
+        >
+          <span>←</span>
+          <span>Домой</span>
+        </button>
+        <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
+        <button
+          type="button"
+          @click="clearHistoryConfirm"
+          class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px]"
+          :disabled="historyItems.length === 0"
+        >
+          Очистить
+        </button>
+      </div>
+
+      <div v-if="selectedHistory" class="space-y-3">
+        <div class="card-metallic rounded-2xl p-4 space-y-2">
+          <div class="text-xs text-gray-400 uppercase tracking-widest">Сохранённая оценка</div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-400">Дата:</span>
+            <span class="text-white font-medium">{{ formatDateTime(selectedHistory.createdAt) }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-400">Режим:</span>
+            <span class="text-white font-medium">{{ selectedHistory.mode === 'detail' ? 'Детализация' : 'Быстрый расчёт' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-400">Элемент:</span>
+            <span class="text-white font-medium">{{ selectedHistory.element || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-400">Итог:</span>
+            <span class="text-metric-green font-bold">{{ formatCurrency(selectedHistory.total || 0) }} ₽</span>
+          </div>
+        </div>
+
+        <div v-if="!isEditingHistory" class="card-metallic rounded-2xl p-4 space-y-2">
+          <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Клиент</div>
+          <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+            <div>Имя: <span class="text-white">{{ selectedHistory.client?.name || '—' }}</span></div>
+            <div>Компания: <span class="text-white">{{ selectedHistory.client?.company || '—' }}</span></div>
+            <div>Тел: <span class="text-white">{{ selectedHistory.client?.phone || '—' }}</span></div>
+            <div>Марка: <span class="text-white">{{ selectedHistory.client?.brand || '—' }}</span></div>
+            <div>Модель: <span class="text-white">{{ selectedHistory.client?.model || '—' }}</span></div>
+            <div>Дата: <span class="text-white">{{ selectedHistory.client?.date || '—' }}</span></div>
+            <div>Время: <span class="text-white">{{ selectedHistory.client?.time || '—' }}</span></div>
+          </div>
+        </div>
+
+        <div v-else class="card-metallic rounded-2xl p-4 space-y-3">
+          <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Редактирование</div>
+          <div class="grid grid-cols-2 gap-2">
+            <input v-model="historyEditDraft.clientName" placeholder="Имя" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="historyEditDraft.clientCompany" placeholder="Компания" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="historyEditDraft.clientPhone" placeholder="Тел" inputmode="tel" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="historyEditDraft.carBrand" placeholder="Марка" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="historyEditDraft.carModel" placeholder="Модель" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="historyEditDraft.inspectDate" type="date" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="historyEditDraft.inspectTime" type="time" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+          </div>
+          <textarea
+            v-model="historyEditDraft.comment"
+            rows="3"
+            placeholder="Комментарий (необязательно)"
+            class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm shadow-inner focus:border-metric-green/50 outline-none resize-none"
+          ></textarea>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              @click="cancelHistoryEdit"
+              class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 rounded-xl min-h-[44px]"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              @click="saveHistoryEdit"
+              class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isUpdatingHistory"
+            >
+              {{ isUpdatingHistory ? 'Сохранение...' : 'Сохранить' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="selectedHistory.dents?.items?.length" class="card-metallic rounded-2xl p-4 space-y-2">
+          <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Вмятины</div>
+          <div v-for="dent in selectedHistory.dents.items" :key="dent.id" class="text-[11px] text-gray-400 flex justify-between">
+            <span>{{ dent.type }} · {{ dent.bboxMm?.width?.toFixed?.(1) || '—' }}×{{ dent.bboxMm?.height?.toFixed?.(1) || '—' }} мм</span>
+            <span v-if="dent.areaMm2" class="text-white">{{ Math.round(dent.areaMm2) }} мм²</span>
+          </div>
+        </div>
+
+        <div v-if="selectedHistory.breakdown?.length" class="card-metallic rounded-2xl p-4 space-y-2">
+          <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Расчёт</div>
+          <div v-for="(item, idx) in selectedHistory.breakdown" :key="idx" class="flex justify-between text-[11px]">
+            <span class="text-gray-400">{{ item.name }}:</span>
+            <span class="text-white font-medium">{{ item.value }}</span>
+          </div>
+        </div>
+
+        <div v-if="selectedHistory.comment && !isEditingHistory" class="card-metallic rounded-2xl p-4 space-y-2">
+          <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Комментарий</div>
+          <div class="text-sm text-gray-300">{{ selectedHistory.comment }}</div>
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            @click="selectedHistoryId = null"
+            class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 rounded-xl min-h-[44px]"
+          >
+            Назад к списку
+          </button>
+          <button
+            v-if="!isEditingHistory"
+            type="button"
+            @click="startHistoryEdit"
+            class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl min-h-[44px]"
+          >
+            Редактировать
+          </button>
+          <button
+            type="button"
+            @click="deleteHistoryConfirm(selectedHistory.id)"
+            class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-red-400 border border-red-500/40 rounded-xl min-h-[44px]"
+          >
+            Удалить
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="space-y-3">
+        <div v-if="historyItems.length === 0" class="card-metallic rounded-2xl p-6 text-center text-gray-400">
+          <div class="text-2xl mb-2">🗂️</div>
+          <div class="text-sm">История пуста</div>
+        </div>
+        <button
+          v-for="item in historyItems"
+          :key="item.id"
+          @click="selectedHistoryId = item.id"
+          class="card-metallic rounded-2xl p-4 text-left border border-white/10 hover:border-metric-green/40 transition-colors"
+        >
+          <div class="flex justify-between items-center">
+            <div>
+              <div class="text-sm font-bold text-white">{{ item.element || 'Без элемента' }}</div>
+              <div class="text-[10px] text-gray-500">
+                {{ formatDateTime(item.createdAt) }} · {{ item.mode === 'detail' ? 'Детализация' : 'Быстрый' }}
+              </div>
+            </div>
+            <div class="text-metric-green font-bold">{{ formatCurrency(item.total || 0) }} ₽</div>
+          </div>
+          <div class="mt-2 text-[11px] text-gray-400">
+            {{ item.client?.phone || item.client?.name || 'Без клиента' }}
+          </div>
+        </button>
       </div>
     </div>
 
@@ -474,7 +658,7 @@
         </summary>
         <div class="px-5 pb-5 pt-0 text-sm text-gray-400 leading-relaxed border-t border-white/5 mt-2 pt-4">
           <ol class="space-y-3 list-decimal pl-4 marker:text-metric-green marker:font-bold">
-            <li>Выберите режим расчета (сверху).</li>
+            <li>Выберите режим расчета в меню «Метрика».</li>
             <li>Укажите тип повреждения (Круг/Овал или Полоса).</li>
             <li>Выберите размер или укажите длину/ширину в мм.</li>
             <li>Настройте коэффициенты (Сложность, Материал, Класс, Разборка).</li>
@@ -572,17 +756,55 @@
     </div>
 
     <!-- Bottom tabs -->
-    <div class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
+    <div class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center pb-[env(safe-area-inset-bottom)] z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
       <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        @click="switchSection(tab.id)"
+        @click="switchSection('history')"
         class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-        :class="currentSection === tab.id ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+        :class="currentSection === 'history' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
       >
-        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">{{ tab.icon }}</span>
-        <span class="text-[9px] font-bold uppercase tracking-widest">{{ tab.label }}</span>
+        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">🗂️</span>
+        <span class="text-[9px] font-bold uppercase tracking-widest">История</span>
       </button>
+      <button
+        @click="switchSection('settings')"
+        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
+        :class="currentSection === 'settings' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+      >
+        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">⚙️</span>
+        <span class="text-[9px] font-bold uppercase tracking-widest">Настройки</span>
+      </button>
+      <button
+        @click="openMetricMenu"
+        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
+        :class="currentSection === 'metric' || currentSection === 'metric-menu' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+      >
+        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">🧮</span>
+        <span class="text-[9px] font-bold uppercase tracking-widest">Метрика</span>
+      </button>
+      <button
+        @click="switchSection('info')"
+        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
+        :class="currentSection === 'info' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+      >
+        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">ℹ️</span>
+        <span class="text-[9px] font-bold uppercase tracking-widest">Инфо</span>
+      </button>
+      <button
+        @click="goHome"
+        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
+        :class="currentSection === 'home' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+      >
+        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">🏠</span>
+        <span class="text-[9px] font-bold uppercase tracking-widest">Домой</span>
+      </button>
+    </div>
+    <div
+      v-if="toast.visible"
+      class="fixed left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl"
+      :class="toast.type === 'error' ? 'bg-red-500/90 text-white' : 'bg-[#111] text-metric-green border border-metric-green/40'"
+      style="bottom: calc(16px + env(safe-area-inset-bottom, 0px));"
+    >
+      {{ toast.text }}
     </div>
   </div>
 </template>
@@ -596,17 +818,11 @@ import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesMm, stripSizesMm, circleSizesWithArea, stripSizesWithArea } from './data/dentSizes';
 import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice, buildBreakdown } from './utils/priceCalc';
 import GraphicsWizard from './components/graphics/GraphicsWizard.vue';
+import { useHistoryStore } from './features/history/historyStore';
 
 // Sections & mode
 const currentSection = ref('home');
 const calcMode = ref('standard');
-
-const tabs = [
-  { id: 'metric', label: 'Метрика', icon: '🧮' },
-  { id: 'analytics', label: 'Аналитика', icon: '📊' },
-  { id: 'history', label: 'История', icon: '🗂️' },
-  { id: 'journal', label: 'Журнал', icon: '📓' }
-];
 
 // Form (standard)
 const form = reactive({
@@ -634,6 +850,25 @@ const estimateDraft = reactive({
   breakdown: []
 });
 
+const { historyItems, loadHistory, saveEstimate, updateEstimate, deleteEstimate, clearHistory } = useHistoryStore();
+const selectedHistoryId = ref(null);
+const selectedHistory = computed(() => historyItems.value.find((item) => item.id === selectedHistoryId.value) || null);
+const isSavingHistory = ref(false);
+const toast = reactive({ visible: false, text: '', type: 'success', timeoutId: null });
+const skipNextAutoFill = ref(false);
+const isEditingHistory = ref(false);
+const isUpdatingHistory = ref(false);
+const historyEditDraft = reactive({
+  clientName: '',
+  clientCompany: '',
+  clientPhone: '',
+  carBrand: '',
+  carModel: '',
+  inspectDate: '',
+  inspectTime: '',
+  comment: ''
+});
+
 const quickPartsLeft = [
   'Капот',
   'Крышка багажника',
@@ -648,6 +883,10 @@ const quickPartsLeft = [
 const quickPartsRight = [...quickPartsLeft];
 
 function ensureInspectDateTime() {
+  if (skipNextAutoFill.value) {
+    skipNextAutoFill.value = false;
+    return;
+  }
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   if (!estimateDraft.inspectDate) {
@@ -795,6 +1034,12 @@ const quickBreakdown = computed(() => {
 
 // Helpers
 const formatCurrency = (v) => new Intl.NumberFormat('ru-RU').format(v);
+const formatDateTime = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+};
 
 const haptic = (type) => {
   const tg = window.Telegram?.WebApp;
@@ -815,6 +1060,183 @@ const showLockedStub = (message = 'Раздел в разработке 🔒') =
   haptic('selection');
 };
 
+function showToast(text, type = 'success', duration = 1800) {
+  if (toast.timeoutId) clearTimeout(toast.timeoutId);
+  toast.text = text;
+  toast.type = type;
+  toast.visible = true;
+  toast.timeoutId = setTimeout(() => {
+    toast.visible = false;
+    toast.timeoutId = null;
+  }, duration);
+}
+
+function startHistoryEdit() {
+  if (!selectedHistory.value) return;
+  const client = selectedHistory.value.client || {};
+  historyEditDraft.clientName = client.name || '';
+  historyEditDraft.clientCompany = client.company || '';
+  historyEditDraft.clientPhone = client.phone || '';
+  historyEditDraft.carBrand = client.brand || '';
+  historyEditDraft.carModel = client.model || '';
+  historyEditDraft.inspectDate = client.date || '';
+  historyEditDraft.inspectTime = client.time || '';
+  historyEditDraft.comment = selectedHistory.value.comment || '';
+  isEditingHistory.value = true;
+}
+
+function cancelHistoryEdit() {
+  isEditingHistory.value = false;
+}
+
+async function saveHistoryEdit() {
+  if (!selectedHistory.value || isUpdatingHistory.value) return;
+  isUpdatingHistory.value = true;
+  try {
+    updateEstimate(selectedHistory.value.id, {
+      client: {
+        name: historyEditDraft.clientName,
+        company: historyEditDraft.clientCompany,
+        phone: historyEditDraft.clientPhone,
+        brand: historyEditDraft.carBrand,
+        model: historyEditDraft.carModel,
+        date: historyEditDraft.inspectDate,
+        time: historyEditDraft.inspectTime
+      },
+      comment: historyEditDraft.comment
+    });
+    isEditingHistory.value = false;
+    showToast('История обновлена ✅', 'success', 1800);
+  } catch (e) {
+    showToast('Не удалось обновить историю', 'error', 2200);
+  } finally {
+    isUpdatingHistory.value = false;
+  }
+}
+
+function resetDraftState() {
+  form.shape = 'circle';
+  form.sizeCode = null;
+  form.repairCode = null;
+  form.riskCode = null;
+  form.materialCode = null;
+  form.carClassCode = null;
+  form.disassemblyCode = null;
+
+  estimateDraft.clientName = '';
+  estimateDraft.clientCompany = '';
+  estimateDraft.clientPhone = '';
+  estimateDraft.carBrand = '';
+  estimateDraft.carModel = '';
+  estimateDraft.inspectDate = '';
+  estimateDraft.inspectTime = '';
+  estimateDraft.element = null;
+  estimateDraft.sizeLengthMm = null;
+  estimateDraft.sizeWidthMm = null;
+  estimateDraft.comment = '';
+  estimateDraft.breakdown = [];
+
+  graphicsState.dents = [];
+  graphicsState.selectedClass = null;
+  graphicsState.selectedPart = null;
+  graphicsSelectedClassId.value = graphicsData.carClasses[0]?.id || null;
+  graphicsSelectedPartId.value = graphicsPartsList.value?.[0]?.id || null;
+  skipNextAutoFill.value = true;
+}
+
+function buildEstimatePayload(mode) {
+  const client = {
+    name: estimateDraft.clientName,
+    company: estimateDraft.clientCompany,
+    phone: estimateDraft.clientPhone,
+    brand: estimateDraft.carBrand,
+    model: estimateDraft.carModel,
+    date: estimateDraft.inspectDate,
+    time: estimateDraft.inspectTime
+  };
+  const conditions = {
+    repairCode: form.repairCode,
+    riskCode: form.riskCode,
+    materialCode: form.materialCode,
+    carClassCode: form.carClassCode,
+    disassemblyCode: form.disassemblyCode
+  };
+  const element = estimateDraft.element || graphicsState.selectedPart?.name || null;
+  const vehicleClass = graphicsState.selectedClass?.name || null;
+  if (mode === 'detail') {
+    const dentItems = (graphicsState.dents || []).map((d) => ({
+      id: d.id,
+      type: d.type,
+      bboxMm: d.bboxMm,
+      areaMm2: d.areaMm2,
+      conditions: conditions
+    }));
+    return {
+      mode: 'detail',
+      client,
+      vehicleClass,
+      element,
+      dents: { count: dentItems.length, items: dentItems },
+      breakdown: estimateDraft.breakdown || [],
+      total: totalPrice.value,
+      comment: estimateDraft.comment || ''
+    };
+  }
+  const quickDent = {
+    id: 'quick-1',
+    type: form.shape,
+    bboxMm: {
+      width: Number(estimateDraft.sizeLengthMm) || 0,
+      height: Number(estimateDraft.sizeWidthMm) || 0
+    },
+    conditions
+  };
+  return {
+    mode: 'quick',
+    client,
+    vehicleClass: form.carClassCode || null,
+    element,
+    dents: { count: 1, items: [quickDent] },
+    breakdown: estimateDraft.breakdown || [],
+    total: totalPrice.value,
+    comment: estimateDraft.comment || ''
+  };
+}
+
+async function saveCurrentEstimate(modeOverride) {
+  if (isSavingHistory.value) return;
+  const mode = modeOverride || (calcMode.value === 'graphics' ? 'detail' : 'quick');
+  if (totalPrice.value <= 0) return;
+  isSavingHistory.value = true;
+  try {
+    const payload = buildEstimatePayload(mode);
+    saveEstimate(payload);
+    showToast('Сохранено в историю ✅', 'success', 1800);
+    resetDraftState();
+    if (calcMode.value === 'graphics') closeEditor();
+    setTimeout(() => {
+      currentSection.value = 'history';
+    }, 400);
+  } catch (e) {
+    showToast('Не удалось сохранить в историю', 'error', 2200);
+  } finally {
+    isSavingHistory.value = false;
+  }
+}
+
+function clearHistoryConfirm() {
+  if (historyItems.value.length === 0) return;
+  if (confirm('Очистить всю историю?')) clearHistory();
+}
+
+function deleteHistoryConfirm(id) {
+  if (!id) return;
+  if (confirm('Удалить оценку из истории?')) {
+    deleteEstimate(id);
+    if (selectedHistoryId.value === id) selectedHistoryId.value = null;
+  }
+}
+
 const setMode = (mode) => {
   if (mode === 'time') {
     showLockedStub('Раздел в разработке 🔒');
@@ -828,8 +1250,29 @@ const setMode = (mode) => {
   }
 };
 
+const openMetricMenu = () => {
+  if (calcMode.value === 'graphics') closeEditor();
+  currentSection.value = 'metric-menu';
+  haptic('selection');
+};
+
+const selectMetricMode = (mode) => {
+  if (mode === 'time') {
+    showLockedStub('Раздел в разработке 🔒');
+    return;
+  }
+  if (currentSection.value !== 'metric') {
+    currentSection.value = 'metric';
+    ensureInspectDateTime();
+  }
+  if (calcMode.value === 'graphics' && mode !== 'graphics') {
+    closeEditor();
+  }
+  setMode(mode);
+};
+
 const switchSection = (section) => {
-  if (section === 'analytics' || section === 'history' || section === 'journal') {
+  if (section === 'analytics' || section === 'journal') {
     currentSection.value = section;
     showLockedStub('Раздел в разработке 🔒');
     return;
@@ -956,6 +1399,10 @@ watch(totalPrice, (val) => {
   }
 });
 
+watch(selectedHistoryId, () => {
+  isEditingHistory.value = false;
+});
+
 const handleKeyDown = (e) => {
   if (calcMode.value !== 'graphics') return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -975,6 +1422,7 @@ onMounted(() => {
   }
   window.addEventListener('keydown', handleKeyDown);
   ensureInspectDateTime();
+  loadHistory();
 });
 
 watch(
@@ -999,6 +1447,9 @@ onBeforeUnmount(() => {
 .text-metric-silver { color: #a0aec0; }
 .bg-metric-green { background-color: #88e523; }
 .border-metric-green { border-color: #88e523; }
+.app-root {
+  --app-footer-height: calc(64px + env(safe-area-inset-bottom, 0px));
+}
 /* A) Тёмный фон редактора: перебить любые bg-white/konva-bg (Konva bgRect — страховка в konvaEditor.js) */
 /* Матрица без отступов: padding 0, margin 0, width/height 100% */
 .canvas-editor-wrap,
@@ -1027,7 +1478,7 @@ onBeforeUnmount(() => {
   width: 100vw;
   max-width: 100vw;
   overflow: hidden;
-  padding: 0;
+  padding: 0 0 var(--app-footer-height) 0;
   margin: 0;
   border-radius: 0;
   background: #000;
