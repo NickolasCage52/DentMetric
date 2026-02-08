@@ -13,6 +13,8 @@
       :lock-selection="wizardStep >= 3"
       :show-reset="true"
       :current-step="wizardStep"
+      @home="$emit('home')"
+      @client="showClientInfo = true"
       @update:selected-class-id="$emit('update:selectedClassId', $event)"
       @update:selected-part-id="$emit('update:selectedPartId', $event)"
       @reset="resetAll"
@@ -85,7 +87,7 @@
       <Step2SizePanel
         v-else-if="wizardStep === 2"
         :selected-dent-size="selectedDentSize"
-        :shape-variant="selectedDentSize?.shapeVariant ?? (selectedDentSize?.type === 'circle' ? 'oval' : 'strip')"
+        :shape-variant="selectedDentSize?.shapeVariant ?? (selectedDentSize?.type === 'circle' ? 'oval' : (selectedDentSize?.type === 'freeform' ? 'freeform' : 'strip'))"
         :size-width-mm="sizeWidthMm"
         :size-height-mm="sizeHeightMm"
         :free-stretch="freeStretchMode"
@@ -112,6 +114,8 @@
         v-else-if="wizardStep === 4"
         :breakdown="breakdown"
         :total-price="totalPrice"
+        :comment="estimateDraft.comment"
+        @update:comment="estimateDraft.comment = $event"
         @back="goBack"
         @back-to-edit="() => goToStep(2)"
         @reset="resetAll"
@@ -145,17 +149,41 @@
         </div>
       </div>
     </Teleport>
+    <Teleport :to="sizeMenuPortalTarget" :disabled="!sizeMenuPortalTarget">
+      <div
+        v-if="showClientInfo"
+        class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="showClientInfo = false"
+      >
+        <div class="bg-[#151F2E] w-full max-w-md rounded-2xl p-5 border border-white/10 shadow-2xl space-y-3 pb-6 max-h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center border-b border-white/5 pb-3">
+            <h3 class="text-white font-bold text-lg pl-1">Данные клиента</h3>
+            <button @click="showClientInfo = false" class="text-gray-400 p-2 text-xl">✕</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input v-model="estimateDraft.clientName" placeholder="Имя" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="estimateDraft.clientCompany" placeholder="Компания" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="estimateDraft.clientPhone" placeholder="Тел" inputmode="tel" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="estimateDraft.carBrand" placeholder="Марка" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="estimateDraft.carModel" placeholder="Модель" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="estimateDraft.inspectDate" type="date" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+            <input v-model="estimateDraft.inspectTime" type="time" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
 
-const emit = defineEmits(['update:selectedClassId', 'update:selectedPartId', 'close', 'dents-change']);
+const emit = defineEmits(['update:selectedClassId', 'update:selectedPartId', 'close', 'dents-change', 'home']);
 import {
   initKonva,
   destroyKonva,
   addDent,
+  beginFreeformDent,
   resetDents,
   deleteSelected,
   scheduleFit,
@@ -183,7 +211,8 @@ const props = defineProps({
   selectedPartId: { type: String, required: true },
   selectedPart: { type: Object, default: null },
   circleSizes: { type: Array, default: () => [] },
-  stripSizes: { type: Array, default: () => [] }
+  stripSizes: { type: Array, default: () => [] },
+  estimateDraft: { type: Object, required: true }
 });
 
 const wizardStep = ref(1);
@@ -192,6 +221,7 @@ const konvaContainer = ref(null);
 const controlsAreaRef = ref(null);
 const hintRef = ref(null);
 const showSizeMenu = ref(false);
+const showClientInfo = ref(false);
 const activeToolType = ref(null);
 const selectedDentSize = ref(null);
 const sizeWidthMm = ref(0);
@@ -284,7 +314,9 @@ const totalPrice = computed(() =>
 );
 const breakdown = computed(() => {
   const sizeCode = dents.value?.[0]?.sizeCode ?? 'STRIP_DEFAULT';
-  return buildBreakdown(basePrice.value, props.form, props.initialData, sizeCode);
+  const items = buildBreakdown(basePrice.value, props.form, props.initialData, sizeCode);
+  props.estimateDraft.breakdown = items;
+  return items;
 });
 const dentsValid = computed(() => {
   if (dents.value.length === 0) return false;
@@ -406,6 +438,10 @@ function resetAll() {
 }
 
 function openSizeMenu(type) {
+  if (type === 'freeform') {
+    beginFreeformDent(props.circleSizes);
+    return;
+  }
   activeToolType.value = type;
   showSizeMenu.value = true;
 }

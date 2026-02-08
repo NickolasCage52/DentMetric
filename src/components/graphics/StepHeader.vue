@@ -1,5 +1,13 @@
 <template>
   <header class="graphics-header shrink-0 flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-white/10 bg-black/60">
+    <button
+      type="button"
+      @click="$emit('home')"
+      class="text-xs text-gray-300 hover:text-white border border-white/10 rounded-lg px-2 py-2 min-h-[36px] flex items-center gap-1"
+    >
+      <span>←</span>
+      <span class="hidden sm:inline">Домой</span>
+    </button>
     <img
       src="/logo.png"
       alt="DentMetric"
@@ -27,6 +35,14 @@
       </select>
     </div>
     <button
+      type="button"
+      @click="$emit('client')"
+      class="text-xs text-gray-300 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[36px] flex items-center gap-1"
+    >
+      👤
+      <span class="hidden sm:inline">Клиент</span>
+    </button>
+    <button
       v-if="showReset"
       @click="$emit('reset')"
       class="text-xs text-red-400 px-3 py-2 min-h-[44px] flex items-center hover:text-red-300 shrink-0 touch-manipulation"
@@ -47,7 +63,7 @@ defineProps({
   currentStep: { type: Number, default: 1 }
 });
 
-defineEmits(['update:selectedClassId', 'update:selectedPartId', 'reset']);
+defineEmits(['update:selectedClassId', 'update:selectedPartId', 'reset', 'home', 'client']);
 </script>
 
 <style scoped>

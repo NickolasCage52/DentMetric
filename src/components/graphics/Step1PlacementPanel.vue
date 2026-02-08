@@ -26,6 +26,16 @@
             <div class="text-[10px] text-gray-500">Царапина</div>
           </div>
         </button>
+        <button
+          @click="$emit('add-type', 'freeform')"
+          class="card-metallic p-3.5 min-h-[60px] rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation col-span-2"
+        >
+          <div class="w-6 h-6 rounded-md border border-metric-green/60 bg-metric-green/10 shrink-0"></div>
+          <div class="text-left min-w-0">
+            <div class="font-bold text-[11px] text-white">Свободная форма</div>
+            <div class="text-[10px] text-gray-500">Контур вручную</div>
+          </div>
+        </button>
       </div>
       <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Добавьте хотя бы одну вмятину</p>
     </div>

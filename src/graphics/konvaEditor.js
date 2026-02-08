@@ -89,6 +89,13 @@ let wizardStep = 2;
 /** Скрыть сетку на мобильных (узкий экран). */
 let hideGridOnMobile = false;
 
+/** Freeform drawing state */
+let freeformDrawing = false;
+let freeformSizes = null;
+let freeformLine = null;
+let freeformPoints = [];
+let freeformListenersBound = false;
+
 function getActiveNode() {
   if (!tr) return null;
   const nodes = tr.nodes();
@@ -1127,6 +1134,15 @@ function rectIntersectionArea(a, b) {
 function getShapeRectLocal(shape) {
   const scaleX = Math.abs(shape.scaleX()) || 1;
   const scaleY = Math.abs(shape.scaleY()) || 1;
+  if (shape.className === 'Line') {
+    const rect = shape.getClientRect({ relativeTo: shape.getParent() });
+    return {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height
+    };
+  }
   if (shape.className === 'Ellipse') {
     const rx = Math.abs(shape.radiusX() * scaleX);
     const ry = Math.abs(shape.radiusY() * scaleY);
@@ -1157,7 +1173,10 @@ function updateShapeCalc(shape, type, id, sizes) {
   const scaleX = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleX(), 1)));
   const scaleY = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleY(), 1)));
   let areaPx = 0;
-  if (shape.className === 'Ellipse') {
+  if (type === 'freeform') {
+    const rect = getShapeRectLocal(shape);
+    areaPx = Math.PI * Math.abs(rect.width / 2) * Math.abs(rect.height / 2);
+  } else if (shape.className === 'Ellipse') {
     areaPx = Math.PI * Math.abs(shape.radiusX() * scaleX) * Math.abs(shape.radiusY() * scaleY);
   } else {
     areaPx = Math.abs(shape.width() * scaleX) * Math.abs(shape.height() * scaleY);
@@ -1195,7 +1214,8 @@ function updateShapeCalc(shape, type, id, sizes) {
 
   /** sizeCode для матрицы сложности: круг — ближайший по площади, полоса — STRIP_DEFAULT */
   let sizeCode = 'STRIP_DEFAULT';
-  if (type === 'circle' && sizes && sizes.length > 0) {
+  const typeForMatrix = type === 'freeform' ? 'circle' : type;
+  if (typeForMatrix === 'circle' && sizes && sizes.length > 0) {
     const withArea = sizes.filter((s) => (s.areaMm2 ?? s.area) != null);
     if (withArea.length > 0) {
       const areaKey = withArea[0].areaMm2 != null ? 'areaMm2' : 'area';
@@ -1215,10 +1235,10 @@ function updateShapeCalc(shape, type, id, sizes) {
 
   if (isComplex) {
     shape.stroke('#FF4444');
-    shape.fill(type === 'circle' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 68, 68, 0.3)');
+    shape.fill(typeForMatrix === 'circle' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 68, 68, 0.3)');
   } else {
-    shape.stroke(type === 'circle' ? '#88E523' : '#A0AEC0');
-    shape.fill(type === 'circle' ? 'rgba(136, 229, 35, 0.3)' : 'rgba(200, 200, 200, 0.3)');
+    shape.stroke(typeForMatrix === 'circle' ? '#88E523' : '#A0AEC0');
+    shape.fill(typeForMatrix === 'circle' ? 'rgba(136, 229, 35, 0.3)' : 'rgba(200, 200, 200, 0.3)');
   }
 
   const dentData = {
@@ -1248,6 +1268,7 @@ const CIRCLE_EQUAL_THRESHOLD_MM = 2;
 function inferShapeVariant(type, widthMm, heightMm) {
   const w = normalizeNumber(widthMm, 0);
   const h = normalizeNumber(heightMm, 0);
+  if (type === 'freeform') return 'freeform';
   if (type === 'circle') {
     return Math.abs(w - h) < CIRCLE_EQUAL_THRESHOLD_MM ? 'circle' : 'oval';
   }
@@ -1293,6 +1314,19 @@ export function setSelectedDentSizeMm(widthMm, heightMm) {
   if (node.className === 'Ellipse') {
     node.radiusX(wPx / 2);
     node.radiusY(hPx / 2);
+  } else if (node.className === 'Line') {
+    const rect = node.getClientRect({ relativeTo: node.getParent() });
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    const scaleX = rect.width > 0 ? wPx / rect.width : 1;
+    const scaleY = rect.height > 0 ? hPx / rect.height : 1;
+    node.scaleX(node.scaleX() * scaleX);
+    node.scaleY(node.scaleY() * scaleY);
+    const rectAfter = node.getClientRect({ relativeTo: node.getParent() });
+    const cxAfter = rectAfter.x + rectAfter.width / 2;
+    const cyAfter = rectAfter.y + rectAfter.height / 2;
+    node.x(node.x() + (cx - cxAfter));
+    node.y(node.y() + (cy - cyAfter));
   } else {
     node.width(wPx);
     node.height(hPx);
@@ -1321,6 +1355,7 @@ export function setDentShapeVariant(variant) {
   if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return;
   const meta = node._dentMeta;
   const type = meta.type;
+  if (type === 'freeform') return;
   const r = getShapeRectLocal(node);
   const minPx = Math.max(2, SIZE_MM_MIN * pxPerMm);
   const cx = node.x();
@@ -1370,8 +1405,242 @@ export function setDentShapeVariant(variant) {
   if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
 }
 
+function setupDentInteractions(shape, type, id, sizes) {
+  const MIN_SCALE = 0.1;
+  /** Сохраняем последнее корректное состояние (scale всегда положительный). */
+  const storeLastGoodTransform = () => {
+    const sx = Math.max(MIN_SCALE, Math.abs(shape.scaleX()));
+    const sy = Math.max(MIN_SCALE, Math.abs(shape.scaleY()));
+    const attrs = {
+      x: shape.x(),
+      y: shape.y(),
+      scaleX: sx,
+      scaleY: sy,
+      rotation: shape.rotation ? shape.rotation() : 0
+    };
+    if (shape.className === 'Ellipse') {
+      const rx = Math.abs(shape.radiusX());
+      const ry = Math.abs(shape.radiusY());
+      attrs.radiusX = rx;
+      attrs.radiusY = ry;
+      attrs.offsetX = rx;
+      attrs.offsetY = ry;
+    }
+    shape._lastGoodTransform = attrs;
+  };
+  storeLastGoodTransform();
+
+  /** Центр фигуры внутри bounds — не сбрасываем трансформ при растягивании. */
+  const isCenterInsideBounds = (shapeNode, bounds) => {
+    const cx = shapeNode.x();
+    const cy = shapeNode.y();
+    return cx >= bounds.x && cx <= bounds.x + bounds.width && cy >= bounds.y && cy <= bounds.y + bounds.height;
+  };
+
+  const updateHandler = () => {
+    updateShapeCalc(shape, type, id, sizes);
+    if (useMmMode && partBounds) {
+      const r = getShapeRectLocal(shape);
+      if (isRectInside(r, partBounds)) storeLastGoodTransform();
+      else if (isCenterInsideBounds(shape, partBounds)) storeLastGoodTransform();
+    } else if (isRectInsideAllBounds(shape.getClientRect())) {
+      storeLastGoodTransform();
+    }
+  };
+
+  shape.on('mousedown touchstart', (e) => {
+    e.cancelBubble = true;
+    if (contentGroup) contentGroup.draggable(false);
+  });
+  shape.on('dragstart', (e) => {
+    e.cancelBubble = true;
+    selectNode(shape);
+    if (contentGroup) contentGroup.draggable(false);
+  });
+  shape.on('dragmove', () => {
+    if (useMmMode && imageNode) applyBounds(shape);
+    if (useMmMode && handleGroup) positionHandle(shape);
+    if (tr) {
+      tr.nodes([shape]);
+      if (tr.forceUpdate) tr.forceUpdate();
+    }
+    updateHandler();
+    const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
+    if (layer) layer.batchDraw();
+  });
+  shape.on('dragend', () => {
+    if (useMmMode && imageNode) applyBounds(shape);
+    if (useMmMode && handleGroup) positionHandle(shape);
+    updateHandler();
+    const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
+    if (layer) layer.batchDraw();
+  });
+  shape.on('transform', updateHandler);
+  shape.on('transformstart', () => {
+    if (contentGroup) contentGroup.draggable(false);
+  });
+  shape.on('transformend', () => {
+    if (useMmMode && partBounds) {
+      const r = getShapeRectLocal(shape);
+      let dx = 0, dy = 0;
+      if (r.x < partBounds.x) dx = partBounds.x - r.x;
+      else if (r.x + r.width > partBounds.x + partBounds.width) dx = partBounds.x + partBounds.width - (r.x + r.width);
+      if (r.y < partBounds.y) dy = partBounds.y - r.y;
+      else if (r.y + r.height > partBounds.y + partBounds.height) dy = partBounds.y + partBounds.height - (r.y + r.height);
+      if (dx !== 0 || dy !== 0) shape.position({ x: shape.x() + dx, y: shape.y() + dy });
+    }
+    // Нормализация размеров: всегда положительные, scale сбрасывается в 1
+    if (shape.className === 'Rect') {
+      const newW = Math.max(MIN_TRANSFORM_SIZE_PX, Math.abs(shape.width() * shape.scaleX()));
+      const newH = Math.max(MIN_TRANSFORM_SIZE_PX, Math.abs(shape.height() * shape.scaleY()));
+      shape.width(newW);
+      shape.height(newH);
+      shape.scaleX(1);
+      shape.scaleY(1);
+      shape.offsetX(newW / 2);
+      shape.offsetY(newH / 2);
+    }
+    if (shape.className === 'Ellipse') {
+      let newRx = Math.abs(shape.radiusX() * shape.scaleX());
+      let newRy = Math.abs(shape.radiusY() * shape.scaleY());
+      if (useMmMode && pxPerMm != null && pxPerMm > 0) {
+        const maxR = (SIZE_MM_MAX / 2) * pxPerMm;
+        newRx = Math.min(newRx, maxR);
+        newRy = Math.min(newRy, maxR);
+      }
+      newRx = Math.max(MIN_TRANSFORM_SIZE_PX / 2, newRx);
+      newRy = Math.max(MIN_TRANSFORM_SIZE_PX / 2, newRy);
+      shape.radiusX(newRx);
+      shape.radiusY(newRy);
+      shape.offsetX(newRx);
+      shape.offsetY(newRy);
+      shape.scaleX(1);
+      shape.scaleY(1);
+    }
+    if (useMmMode && imageNode) applyBounds(shape);
+    updateStroke(shape);
+    updateHitArea(shape);
+    if (useMmMode && partBounds && shape._lastGoodTransform) {
+      if (!isCenterInsideBounds(shape, partBounds)) {
+        shape.setAttrs(shape._lastGoodTransform);
+      } else {
+        const sx = Math.max(MIN_SCALE, Math.abs(shape.scaleX()));
+        const sy = Math.max(MIN_SCALE, Math.abs(shape.scaleY()));
+        shape.scaleX(sx);
+        shape.scaleY(sy);
+        storeLastGoodTransform();
+      }
+    } else if (!useMmMode && !isRectInsideAllBounds(shape.getClientRect()) && shape._lastGoodTransform) {
+      shape.setAttrs(shape._lastGoodTransform);
+    }
+    updateHandler();
+    if (useMmMode && handleGroup) positionHandle(shape);
+    if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+  });
+  shape.on('click tap', (e) => {
+    e.cancelBubble = true;
+    if (useMmMode) activeDent = shape;
+    selectNode(shape);
+  });
+
+  layerDents.add(shape);
+  /** На этапах 1–2: форма draggable (и за вмятину, и за крестик). */
+  shape.draggable(wizardStep <= 2);
+  if (handleGroup) handleGroup.moveToTop();
+  updateStroke(shape);
+  updateHitArea(shape);
+  updateDentStyle(shape);
+  selectNode(shape);
+  updateHandler();
+  const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
+  if (layer) layer.batchDraw();
+}
+
+function getPointerPosRelativeToLayer() {
+  if (!stage || !layerDents) return null;
+  const pos = stage.getPointerPosition();
+  if (!pos) return null;
+  const transform = layerDents.getAbsoluteTransform().copy().invert();
+  return transform.point(pos);
+}
+
+export function beginFreeformDent(sizes) {
+  if (!stage || !layerDents) return;
+  freeformSizes = sizes || [];
+  freeformDrawing = true;
+  freeformPoints = [];
+  freeformLine = null;
+  clearSelection();
+
+  if (freeformListenersBound) return;
+  freeformListenersBound = true;
+
+  const startDrawing = () => {
+    if (!freeformDrawing) return;
+    const p = getPointerPosRelativeToLayer();
+    if (!p) return;
+    freeformPoints = [p.x, p.y];
+    freeformLine = new Konva.Line({
+      points: [...freeformPoints],
+      stroke: '#88E523',
+      strokeWidth: 2,
+      lineCap: 'round',
+      lineJoin: 'round',
+      closed: true,
+      fill: 'rgba(136, 229, 35, 0.2)',
+      name: 'dent',
+      listening: true,
+      draggable: true
+    });
+    layerDents.add(freeformLine);
+  };
+
+  const moveDrawing = () => {
+    if (!freeformDrawing || !freeformLine) return;
+    const p = getPointerPosRelativeToLayer();
+    if (!p) return;
+    freeformPoints.push(p.x, p.y);
+    freeformLine.points(freeformPoints);
+    const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
+    if (layer) layer.batchDraw();
+  };
+
+  const endDrawing = () => {
+    if (!freeformDrawing) return;
+    freeformDrawing = false;
+    if (!freeformLine || freeformPoints.length < 6) {
+      if (freeformLine) freeformLine.destroy();
+      freeformLine = null;
+      freeformPoints = [];
+      return;
+    }
+    const id = Date.now();
+    const wMm = getShapeRectLocal(freeformLine).width / (pxPerMm || 1);
+    const hMm = getShapeRectLocal(freeformLine).height / (pxPerMm || 1);
+    const shapeVariant = inferShapeVariant('freeform', wMm, hMm);
+    freeformLine.setAttr('type', 'freeform');
+    freeformLine._dentMeta = { id, type: 'freeform', sizes: freeformSizes, shapeVariant };
+    setupDentInteractions(freeformLine, 'freeform', id, freeformSizes);
+    freeformLine = null;
+    freeformPoints = [];
+  };
+
+  stage.once('mousedown touchstart', startDrawing);
+  stage.on('mousemove touchmove', moveDrawing);
+  stage.once('mouseup touchend', () => {
+    stage.off('mousemove touchmove', moveDrawing);
+    endDrawing();
+    freeformListenersBound = false;
+  });
+}
+
 export function addDent(type, sizeCode, sizes) {
   if (!stage || !layerDents || !tr) return;
+
+  if (type === 'freeform') {
+    beginFreeformDent(sizes);
+    return;
+  }
 
   const sizeObj = sizes.find((s) => s.code === sizeCode);
   if (!sizeObj) return;
@@ -1479,155 +1748,7 @@ export function addDent(type, sizeCode, sizes) {
     return currentPos;
   });
 
-  const MIN_SCALE = 0.1;
-  /** Сохраняем последнее корректное состояние (scale всегда положительный). */
-  const storeLastGoodTransform = () => {
-    const sx = Math.max(MIN_SCALE, Math.abs(shape.scaleX()));
-    const sy = Math.max(MIN_SCALE, Math.abs(shape.scaleY()));
-    const attrs = {
-      x: shape.x(),
-      y: shape.y(),
-      scaleX: sx,
-      scaleY: sy,
-      rotation: shape.rotation ? shape.rotation() : 0
-    };
-    if (shape.className === 'Ellipse') {
-      const rx = Math.abs(shape.radiusX());
-      const ry = Math.abs(shape.radiusY());
-      attrs.radiusX = rx;
-      attrs.radiusY = ry;
-      attrs.offsetX = rx;
-      attrs.offsetY = ry;
-    }
-    shape._lastGoodTransform = attrs;
-  };
-  storeLastGoodTransform();
-
-  /** Центр фигуры внутри bounds — не сбрасываем трансформ при растягивании. */
-  const isCenterInsideBounds = (shape, bounds) => {
-    const cx = shape.x();
-    const cy = shape.y();
-    return cx >= bounds.x && cx <= bounds.x + bounds.width && cy >= bounds.y && cy <= bounds.y + bounds.height;
-  };
-
-  const updateHandler = () => {
-    updateShapeCalc(shape, type, id, sizes);
-    if (useMmMode && partBounds) {
-      const r = getShapeRectLocal(shape);
-      if (isRectInside(r, partBounds)) storeLastGoodTransform();
-      else if (isCenterInsideBounds(shape, partBounds)) storeLastGoodTransform();
-    } else if (isRectInsideAllBounds(shape.getClientRect())) {
-      storeLastGoodTransform();
-    }
-  };
-
-  shape.on('mousedown touchstart', (e) => {
-    e.cancelBubble = true;
-    if (contentGroup) contentGroup.draggable(false);
-  });
-  shape.on('dragstart', (e) => {
-    e.cancelBubble = true;
-    selectNode(shape);
-    if (contentGroup) contentGroup.draggable(false);
-  });
-  shape.on('dragmove', () => {
-    if (useMmMode && imageNode) applyBounds(shape);
-    if (useMmMode && handleGroup) positionHandle(shape);
-    if (tr) {
-      tr.nodes([shape]);
-      if (tr.forceUpdate) tr.forceUpdate();
-    }
-    updateHandler();
-    const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
-    if (layer) layer.batchDraw();
-  });
-  shape.on('dragend', () => {
-    if (useMmMode && imageNode) applyBounds(shape);
-    if (useMmMode && handleGroup) positionHandle(shape);
-    updateHandler();
-    const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
-    if (layer) layer.batchDraw();
-  });
-  shape.on('transform', updateHandler);
-  shape.on('transformstart', () => {
-    if (contentGroup) contentGroup.draggable(false);
-  });
-  shape.on('transformend', () => {
-    if (useMmMode && partBounds) {
-      const r = getShapeRectLocal(shape);
-      let dx = 0, dy = 0;
-      if (r.x < partBounds.x) dx = partBounds.x - r.x;
-      else if (r.x + r.width > partBounds.x + partBounds.width) dx = partBounds.x + partBounds.width - (r.x + r.width);
-      if (r.y < partBounds.y) dy = partBounds.y - r.y;
-      else if (r.y + r.height > partBounds.y + partBounds.height) dy = partBounds.y + partBounds.height - (r.y + r.height);
-      if (dx !== 0 || dy !== 0) shape.position({ x: shape.x() + dx, y: shape.y() + dy });
-    }
-    // Нормализация размеров: всегда положительные, scale сбрасывается в 1
-    if (shape.className === 'Rect') {
-      const newW = Math.max(MIN_TRANSFORM_SIZE_PX, Math.abs(shape.width() * shape.scaleX()));
-      const newH = Math.max(MIN_TRANSFORM_SIZE_PX, Math.abs(shape.height() * shape.scaleY()));
-      shape.width(newW);
-      shape.height(newH);
-      shape.scaleX(1);
-      shape.scaleY(1);
-      shape.offsetX(newW / 2);
-      shape.offsetY(newH / 2);
-    }
-    if (shape.className === 'Ellipse') {
-      let newRx = Math.abs(shape.radiusX() * shape.scaleX());
-      let newRy = Math.abs(shape.radiusY() * shape.scaleY());
-      if (useMmMode && pxPerMm != null && pxPerMm > 0) {
-        const maxR = (SIZE_MM_MAX / 2) * pxPerMm;
-        newRx = Math.min(newRx, maxR);
-        newRy = Math.min(newRy, maxR);
-      }
-      newRx = Math.max(MIN_TRANSFORM_SIZE_PX / 2, newRx);
-      newRy = Math.max(MIN_TRANSFORM_SIZE_PX / 2, newRy);
-      shape.radiusX(newRx);
-      shape.radiusY(newRy);
-      shape.offsetX(newRx);
-      shape.offsetY(newRy);
-      shape.scaleX(1);
-      shape.scaleY(1);
-    }
-    if (useMmMode && imageNode) applyBounds(shape);
-    updateStroke(shape);
-    updateHitArea(shape);
-    if (useMmMode && partBounds && shape._lastGoodTransform) {
-      if (!isCenterInsideBounds(shape, partBounds)) {
-        shape.setAttrs(shape._lastGoodTransform);
-      } else {
-        // Гарантируем положительный scale после трансформа
-        const sx = Math.max(MIN_SCALE, Math.abs(shape.scaleX()));
-        const sy = Math.max(MIN_SCALE, Math.abs(shape.scaleY()));
-        shape.scaleX(sx);
-        shape.scaleY(sy);
-        storeLastGoodTransform();
-      }
-    } else if (!useMmMode && !isRectInsideAllBounds(shape.getClientRect()) && shape._lastGoodTransform) {
-      shape.setAttrs(shape._lastGoodTransform);
-    }
-    updateHandler();
-    if (useMmMode && handleGroup) positionHandle(shape);
-    if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
-  });
-  shape.on('click tap', (e) => {
-    e.cancelBubble = true;
-    if (useMmMode) activeDent = shape;
-    selectNode(shape);
-  });
-
-  layerDents.add(shape);
-  /** На этапах 1–2: форма draggable (и за вмятину, и за крестик). */
-  shape.draggable(wizardStep <= 2);
-  if (handleGroup) handleGroup.moveToTop();
-  updateStroke(shape);
-  updateHitArea(shape);
-  updateDentStyle(shape);
-  selectNode(shape);
-  updateHandler();
-  const layer = layerDents.getLayer ? layerDents.getLayer() : layerDents;
-  if (layer) layer.batchDraw();
+  setupDentInteractions(shape, type, id, sizes);
 
   // if (import.meta.env?.DEV) console.debug('[Konva] dent added at', centerX, centerY, 'partBounds', partBounds);
 }
@@ -1652,6 +1773,11 @@ export function resetDents() {
   if (layerDents) {
     layerDents.destroyChildren();
     dentsMap.clear();
+    freeformDrawing = false;
+    freeformSizes = null;
+    freeformLine = null;
+    freeformPoints = [];
+    freeformListenersBound = false;
     if (stage && layerDents) {
       tr = new Konva.Transformer({
         anchorStroke: '#88E523',
@@ -1736,4 +1862,9 @@ export function destroyKonva() {
   activeDent = null;
   transformerKeepRatio = true;
   hideGridOnMobile = false;
+  freeformDrawing = false;
+  freeformSizes = null;
+  freeformLine = null;
+  freeformPoints = [];
+  freeformListenersBound = false;
 }

@@ -4,7 +4,7 @@
       <!-- Breakdown -->
       <div class="summary-card rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
         <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Расчёт стоимости</div>
-        <div v-for="(item, idx) in breakdown" :key="idx" class="flex justify-between text-[11px]">
+        <div v-for="(item, idx) in breakdown" :key="idx" class="summary-row flex justify-between text-[11px]">
           <span class="text-gray-400">{{ item.name }}:</span>
           <span class="text-white font-medium">{{ item.value }}</span>
         </div>
@@ -12,6 +12,16 @@
           <span class="text-metric-green font-bold text-sm">Итог:</span>
           <span class="text-metric-green font-bold text-lg">{{ formatPrice(totalPrice) }} ₽</span>
         </div>
+      </div>
+      <div class="summary-card rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
+        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Комментарий</div>
+        <textarea
+          :value="comment"
+          @input="$emit('update:comment', $event.target.value)"
+          rows="3"
+          placeholder="Комментарий к оценке (необязательно)"
+          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm shadow-inner focus:border-metric-green/50 outline-none resize-none"
+        ></textarea>
       </div>
     </div>
     <div class="graphics-action-bar space-y-2">
@@ -54,10 +64,11 @@
 <script setup>
 defineProps({
   breakdown: { type: Array, default: () => [] },
-  totalPrice: { type: Number, default: 0 }
+  totalPrice: { type: Number, default: 0 },
+  comment: { type: String, default: '' }
 });
 
-defineEmits(['back', 'back-to-edit', 'reset']);
+defineEmits(['back', 'back-to-edit', 'reset', 'update:comment']);
 
 const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 </script>
@@ -73,7 +84,7 @@ const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
   .summary-card {
     padding: 0.5rem !important;
   }
-  .summary-card .text-[11px] {
+  .summary-row {
     font-size: 10px !important;
   }
 }

@@ -40,7 +40,7 @@
                 </button>
               </div>
               <div
-                v-else
+                v-else-if="selectedDentSize.type === 'strip'"
                 class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
               >
                 <button
@@ -60,6 +60,17 @@
                   Царапина
                 </button>
               </div>
+              <div
+                v-else
+                class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
+              >
+                <button
+                  type="button"
+                  class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium bg-metric-green text-black"
+                >
+                  Свободная форма
+                </button>
+              </div>
             </template>
             <span v-else class="text-[10px] text-gray-500 leading-[36px]">Выберите вмятину</span>
           </div>
@@ -69,7 +80,9 @@
           <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размеры (мм)</div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-[10px] text-gray-500 mb-0.5">{{ selectedDentSize?.type === 'circle' ? 'Ширина' : 'Длина' }}</label>
+              <label class="block text-[10px] text-gray-500 mb-0.5">
+                {{ selectedDentSize?.type === 'circle' ? 'Ширина' : 'Длина' }}
+              </label>
               <input
                 :value="displayWidthVal"
                 @input="onWidthInput"
@@ -85,7 +98,9 @@
               />
             </div>
             <div>
-              <label class="block text-[10px] text-gray-500 mb-0.5">{{ selectedDentSize?.type === 'circle' ? 'Высота' : 'Ширина' }}</label>
+              <label class="block text-[10px] text-gray-500 mb-0.5">
+                {{ selectedDentSize?.type === 'circle' ? 'Высота' : 'Ширина' }}
+              </label>
               <input
                 :value="displayHeightVal"
                 @input="onHeightInput"
