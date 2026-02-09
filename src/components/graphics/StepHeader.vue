@@ -9,7 +9,7 @@
       <span class="hidden sm:inline">Домой</span>
     </button>
     <img
-      src="/logo.png"
+      src="/dm-small.png"
       alt="DentMetric"
       class="graphics-header-logo h-7 w-auto object-contain shrink-0"
       onerror="this.style.display='none'"
@@ -35,6 +35,7 @@
       </select>
     </div>
     <button
+      v-if="currentStep > 1"
       type="button"
       @click="$emit('client')"
       class="text-xs text-gray-300 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[36px] flex items-center gap-1"

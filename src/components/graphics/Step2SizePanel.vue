@@ -6,12 +6,16 @@
         <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
           <div class="step2-form-head">
             <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest">Форма</div>
-            <label class="step2-checkbox">
+            <label
+              v-if="showFreeStretch"
+              class="step2-checkbox"
+            >
               <input
                 type="checkbox"
                 :checked="freeStretch"
                 @change="$emit('update:freeStretch', $event.target.checked)"
                 class="rounded border-white/20 bg-[#151515] text-metric-green focus:ring-metric-green/50"
+                :disabled="selectedDentSize?.type === 'freeform' && selectedDentSize?.isShapeFixed"
               />
               <span>Своб. растяж.</span>
             </label>
@@ -19,14 +23,14 @@
           <div class="flex items-center min-h-[36px]">
             <template v-if="selectedDentSize">
               <div
-                v-if="freeformEnabled"
+                v-if="selectedDentSize.type === 'freeform'"
                 class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
               >
                 <button
                   type="button"
                   class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium bg-metric-green text-black"
                 >
-                  Свободная форма
+                  Произвольная форма
                 </button>
               </div>
               <div
@@ -74,40 +78,14 @@
             </template>
             <span v-else class="text-[10px] text-gray-500 leading-[36px]">Выберите вмятину</span>
           </div>
-          <label class="step2-checkbox mt-2">
-            <input
-              type="checkbox"
-              :checked="freeformEnabled"
-              @change="$emit('update:freeformEnabled', $event.target.checked)"
-              class="rounded border-white/20 bg-[#151515] text-metric-green focus:ring-metric-green/50"
-              :disabled="!selectedDentSize"
-            />
-            <span>Свободная форма</span>
-          </label>
-          <div v-if="freeformEnabled" class="mt-2 space-y-1">
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                @click="$emit('toggle-freeform-edit')"
-                class="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all min-h-[32px]"
-                :class="freeformEditMode ? 'bg-metric-green text-black' : 'bg-white/5 text-gray-300'"
-              >
-                {{ freeformEditMode ? 'Точки: Вкл' : 'Редактировать точки' }}
-              </button>
-              <button
-                type="button"
-                @click="$emit('delete-freeform-point')"
-                class="px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest min-h-[32px] transition-all"
-                :class="activeFreeformPointIndex !== null ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-white/5 text-gray-500 border border-white/10'"
-                :disabled="activeFreeformPointIndex === null"
-                title="Удалить выбранную точку"
-              >
-                − Точка
-              </button>
-            </div>
-            <div class="text-[10px] text-gray-500 leading-tight">
-              Тап по ребру — добавить точку. Долгое нажатие — удалить.
-            </div>
+          <div v-if="selectedDentSize?.type === 'freeform' && !selectedDentSize?.isShapeFixed" class="mt-2">
+            <button
+              type="button"
+              @click="$emit('fix-freeform')"
+              class="w-full px-2.5 py-2 min-h-[36px] rounded-lg text-[10px] font-bold uppercase tracking-widest bg-metric-green text-black shadow-[0_0_12px_rgba(136,229,35,0.3)] active:opacity-90"
+            >
+              Зафиксировать форму
+            </button>
           </div>
         </div>
         <!-- Размеры (мм) -->
@@ -127,7 +105,7 @@
                 step="0.5"
                 inputmode="decimal"
                 :placeholder="selectedDentSize ? '' : '—'"
-                :disabled="!selectedDentSize"
+                :disabled="inputsDisabled"
                 class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[44px] text-base text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
                 @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
               />
@@ -145,14 +123,14 @@
                 step="0.5"
                 inputmode="decimal"
                 :placeholder="selectedDentSize ? '' : '—'"
-                :disabled="!selectedDentSize"
+                :disabled="inputsDisabled"
                 class="step2-input w-full rounded-lg bg-white/5 border border-white/20 px-2 py-2 min-h-[44px] text-base text-white focus:border-metric-green focus:ring-1 focus:ring-metric-green/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
                 @focus="selectedDentSize && $emit('dimensions-focus', sizesPanel)"
               />
             </div>
           </div>
           <div v-if="areaMm2" class="mt-1 text-[10px] text-gray-500">
-            Площадь: <span class="text-white">{{ formatArea(areaMm2) }}</span> мм²
+            Площадь (справочно): <span class="text-white">{{ formatArea(areaMm2) }}</span> мм²
           </div>
         </div>
       </div>
@@ -177,14 +155,6 @@
           <span>Продолжить → Условия</span>
         </button>
       </div>
-      <button
-        type="button"
-        class="actionbar-total-btn"
-        :class="totalPrice > 0 ? 'actionbar-total-btn--active' : 'actionbar-total-btn--idle'"
-        :disabled="totalPrice <= 0"
-      >
-        <span>ИТОГО: {{ totalPrice > 0 ? formatPrice(totalPrice) + ' ₽' : '—' }}</span>
-      </button>
     </div>
   </div>
 </template>
@@ -198,24 +168,17 @@ const props = defineProps({
   sizeWidthMm: { type: Number, default: 0 },
   sizeHeightMm: { type: Number, default: 0 },
   freeStretch: { type: Boolean, default: false },
-  freeformEnabled: { type: Boolean, default: false },
-  freeformEditMode: { type: Boolean, default: false },
-  activeFreeformPointIndex: { type: Number, default: null },
-  freeformPointCount: { type: Number, default: 0 },
   areaMm2: { type: Number, default: null },
-  totalPrice: { type: Number, default: 0 },
   canNext: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
   'update:shapeVariant',
   'update:freeStretch',
-  'update:freeformEnabled',
   'update:sizeWidthMm',
   'update:sizeHeightMm',
   'dimensions-focus',
-  'toggle-freeform-edit',
-  'delete-freeform-point',
+  'fix-freeform',
   'next',
   'back'
 ]);
@@ -230,6 +193,15 @@ const displayHeightVal = computed(() => {
   const n = Number(props.sizeHeightMm);
   return Number.isFinite(n) && n > 0 ? props.sizeHeightMm : '';
 });
+const showFreeStretch = computed(() => {
+  if (!props.selectedDentSize) return true;
+  if (props.selectedDentSize.type !== 'freeform') return true;
+  return !props.selectedDentSize.isShapeFixed;
+});
+const inputsDisabled = computed(() => {
+  if (!props.selectedDentSize) return true;
+  return false;
+});
 
 function sanitizeInput(val) {
   const n = parseFloat(String(val || '').replace(',', '.'));
@@ -243,7 +215,6 @@ function onHeightInput(e) {
   emit('update:sizeHeightMm', sanitizeInput(e?.target?.value));
 }
 
-const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
 const formatArea = (v) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(v));
 
 </script>

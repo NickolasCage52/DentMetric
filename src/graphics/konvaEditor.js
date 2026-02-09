@@ -8,6 +8,8 @@ const HEAT_RATIO_THRESHOLD = 0.08;
 const BOUNDS_MARGIN_PX = 12;
 /** Отступ сетки от края видимой части детали (1–2px). */
 const GRID_PADDING_PX = 2;
+/** Отключить визуальную сетку в детализации. */
+const GRID_ENABLED = false;
 /** B) Hit area: доля от размера фигуры, min/max px (удобный захват пальцем, но не мешает другим). */
 const HIT_SIZE_MIN = 8;
 const HIT_SIZE_MAX = 16;
@@ -114,20 +116,42 @@ function getActiveNode() {
   return null;
 }
 
+function isFreeformMeta(meta) {
+  return !!meta && (meta.type === 'freeform' || meta.freeformEnabled);
+}
+
+function canShowTransformerForNode(node) {
+  if (!node) return false;
+  if (wizardStep <= 2) return false;
+  const meta = node._dentMeta;
+  if (!meta) return true;
+  if (meta.type === 'freeform') return true;
+  if (meta.freeformEnabled) return false;
+  return true;
+}
+
 /** Выбрать одну фигуру. На этапе 1: только handle "плюс", без Transformer. На этапе 2+: Transformer + handle. */
 function selectNode(node) {
   if (!tr || !layerDents) return;
   tr.keepRatio(transformerKeepRatio);
   /** На этапе 1 не привязываем к Transformer (нет квадратов/ручек resize). */
   const meta = node?._dentMeta;
-  const hideTransformer = wizardStep === 1 || node?.className === 'Line' || meta?.freeformEnabled;
-  tr.nodes(hideTransformer ? [] : [node]);
+  const showTransformer = canShowTransformerForNode(node);
+  tr.nodes(showTransformer ? [node] : []);
+  if (meta?.type === 'freeform') {
+    tr.rotateEnabled(false);
+    if (meta?.isShapeFixed) tr.keepRatio(true);
+    else tr.keepRatio(!meta?.isFreeStretchEnabled);
+  } else {
+    tr.rotateEnabled(true);
+    tr.keepRatio(transformerKeepRatio);
+  }
   if (node && node.moveToTop) node.moveToTop();
   if (tr.getParent() === layerDents) tr.moveToTop();
   if (useMmMode) {
     activeDent = node && node.getAttr?.('name') === 'dent' ? node : null;
     if (handleGroup) {
-      if (activeDent && !meta?.freeformEnabled) {
+      if (activeDent) {
         handleGroup.visible(true);
         positionHandle(activeDent);
       } else {
@@ -773,17 +797,26 @@ export function setEditorInteractive(interactive, step = 2) {
   stage.listening(!!interactive);
   /** На этапе 1: Transformer скрыт (нет квадратов/ручек resize). На этапе 2+: показываем. */
   if (tr) {
-    if (step === 1) {
+    if (step <= 2 || !interactive) {
       tr.nodes([]);
       tr.visible(false);
     } else {
-      tr.visible(!!interactive);
-      if (!!interactive && activeDent) tr.nodes([activeDent]);
+      tr.visible(true);
+      if (activeDent && canShowTransformerForNode(activeDent)) {
+        const meta = activeDent._dentMeta;
+        if (meta?.type === 'freeform') {
+          if (meta?.isShapeFixed) tr.keepRatio(true);
+          else tr.keepRatio(!meta?.isFreeStretchEnabled);
+        } else {
+          tr.keepRatio(transformerKeepRatio);
+        }
+        tr.nodes([activeDent]);
+      }
+      else tr.nodes([]);
     }
   }
   if (handleGroup) {
-    const hideHandle = !!activeDent?._dentMeta?.freeformEnabled;
-    handleGroup.visible(!!interactive && !!activeDent && !hideHandle);
+    handleGroup.visible(!!interactive && !!activeDent);
   }
   if (!interactive) {
     clearFreeformEditHandles();
@@ -791,7 +824,7 @@ export function setEditorInteractive(interactive, step = 2) {
     updateFreeformEditHandles(getActiveNode());
   }
   /** На этапе 1: сетка скрыта. На этапах 2/3 — показываем, кроме мобильной версии. */
-  if (layerGrid) layerGrid.visible(step !== 1 && !hideGridOnMobile);
+  if (layerGrid) layerGrid.visible(GRID_ENABLED && step !== 1 && !hideGridOnMobile);
   /** На этапах 1–2: форма draggable (и за саму вмятину, и за крестик). */
   const shapeDraggable = !!interactive;
   const children = layerDents?.getChildren?.() || [];
@@ -821,7 +854,7 @@ export function setEditable(editable, step = 2) {
 export function setHideGridOnMobile(hide) {
   hideGridOnMobile = !!hide;
   if (layerGrid) {
-    layerGrid.visible(wizardStep !== 1 && !hideGridOnMobile);
+    layerGrid.visible(GRID_ENABLED && wizardStep !== 1 && !hideGridOnMobile);
     const layer = layerGrid.getLayer ? layerGrid.getLayer() : null;
     if (layer) layer.batchDraw();
   }
@@ -1031,6 +1064,15 @@ async function initImagePart(stageW, stageH) {
 
 /** Сетка 30×30 мм. (x,y,dispW,dispH) — область отрисовки в координатах contentGroup. Линии выравниваются по глобальной сетке (0,0). */
 function drawGridStage(x, y, dispW, dispH) {
+  if (!GRID_ENABLED) {
+    if (layerGrid) {
+      layerGrid.destroyChildren();
+      layerGrid.visible(false);
+      const layer = layerGrid.getLayer ? layerGrid.getLayer() : null;
+      if (layer) layer.batchDraw();
+    }
+    return;
+  }
   if (!layerGrid || pxPerMm == null || dispW <= 0 || dispH <= 0) return;
   layerGrid.destroyChildren();
   const cellPx = CELL_MM * pxPerMm;
@@ -1170,6 +1212,39 @@ function polygonArea(points) {
     sum += x1 * y2 - x2 * y1;
   }
   return Math.abs(sum) / 2;
+}
+
+function ellipseAreaByMm(w, h) {
+  return Math.PI * (w / 2) * (h / 2);
+}
+
+function getClosestSizeCodeByArea(sizes, area, areaKey = 'areaMm2') {
+  if (!sizes || sizes.length === 0 || !Number.isFinite(area)) return null;
+  let closest = null;
+  let minDist = Infinity;
+  for (const s of sizes) {
+    const a = Number(s?.[areaKey]);
+    if (!Number.isFinite(a)) continue;
+    const d = Math.abs(a - area);
+    if (d < minDist) {
+      minDist = d;
+      closest = s;
+    }
+  }
+  return closest?.code || null;
+}
+
+function getClosestSizeCodeByMm(sizes, widthMm, heightMm) {
+  if (!sizes || sizes.length === 0) return null;
+  const areaMm2 = ellipseAreaByMm(widthMm, heightMm);
+  const withArea = sizes.map((s) => {
+    if (Number.isFinite(s?.areaMm2)) return s;
+    if (s?.mm?.w && s?.mm?.h) {
+      return { ...s, areaMm2: ellipseAreaByMm(s.mm.w, s.mm.h) };
+    }
+    return s;
+  });
+  return getClosestSizeCodeByArea(withArea, areaMm2, 'areaMm2');
 }
 
 function getLineLocalBounds(line) {
@@ -1431,26 +1506,30 @@ function updateShapeCalc(shape, type, id, sizes) {
   if (!shape || !stage) return;
   const meta = shape._dentMeta || {};
   const baseType = meta.baseType || type;
-  const isFreeform = !!meta.freeformEnabled;
+  const isFreeform = isFreeformMeta(meta);
+  const isFreeformType = meta?.type === 'freeform';
 
   // Используем абсолютные значения scale для корректного расчёта площади (защита от NaN/undefined)
   const scaleX = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleX(), 1)));
   const scaleY = Math.max(0.01, Math.abs(normalizeNumber(shape.scaleY(), 1)));
-  let areaPx = 0;
+  let areaPxGeom = 0;
   if (isFreeform) {
     const pts = shape.points ? shape.points() : [];
-    areaPx = polygonArea(pts);
+    areaPxGeom = polygonArea(pts);
   } else if (shape.className === 'Ellipse') {
-    areaPx = Math.PI * Math.abs(shape.radiusX() * scaleX) * Math.abs(shape.radiusY() * scaleY);
+    areaPxGeom = Math.PI * Math.abs(shape.radiusX() * scaleX) * Math.abs(shape.radiusY() * scaleY);
   } else {
-    areaPx = Math.abs(shape.width() * scaleX) * Math.abs(shape.height() * scaleY);
+    areaPxGeom = Math.abs(shape.width() * scaleX) * Math.abs(shape.height() * scaleY);
   }
 
   const bbox = getShapeRectLocal(shape);
+  const areaPxForPrice = isFreeform ? Math.max(0, (bbox?.width ?? 0) * (bbox?.height ?? 0)) : areaPxGeom;
   let areaMm2 = null;
+  let areaMm2ForPrice = null;
   let cellsCount = null;
   if (useMmMode && pxPerMm != null && pxPerMm > 0) {
-    areaMm2 = areaPx / (pxPerMm * pxPerMm);
+    areaMm2 = areaPxGeom / (pxPerMm * pxPerMm);
+    areaMm2ForPrice = areaPxForPrice / (pxPerMm * pxPerMm);
     cellsCount = areaMm2 / (CELL_MM * CELL_MM);
   }
 
@@ -1470,18 +1549,23 @@ function updateShapeCalc(shape, type, id, sizes) {
   }
 
   let price;
-  const typeForPrice = baseType;
-  if (useMmMode && areaMm2 != null && sizes && sizes[0] && sizes[0].areaMm2 != null) {
-    price = getInterpolatedPriceByAreaMm2(areaMm2, typeForPrice, sizes);
+  const typeForPrice = isFreeformType ? 'circle' : baseType;
+  let sizeCode = 'STRIP_DEFAULT';
+  if (isFreeformType && useMmMode && pxPerMm && sizes) {
+    const wMm = (bbox?.width ?? 0) / pxPerMm;
+    const hMm = (bbox?.height ?? 0) / pxPerMm;
+    sizeCode = getClosestSizeCodeByMm(sizes, wMm, hMm) || 'S2';
+    price = prices[sizeCode] ?? 0;
+  } else if (useMmMode && areaMm2ForPrice != null && sizes && sizes[0] && sizes[0].areaMm2 != null) {
+    price = getInterpolatedPriceByAreaMm2(areaMm2ForPrice, typeForPrice, sizes);
   } else {
-    price = getInterpolatedPriceByAreaPx(areaPx, typeForPrice, sizes);
+    price = getInterpolatedPriceByAreaPx(areaPxForPrice, typeForPrice, sizes);
   }
   if (isComplex) price *= complexMult;
 
   /** sizeCode для матрицы сложности: круг — ближайший по площади, полоса — STRIP_DEFAULT */
-  let sizeCode = 'STRIP_DEFAULT';
   const typeForMatrix = baseType === 'circle' ? 'circle' : 'strip';
-  if (typeForMatrix === 'circle' && sizes && sizes.length > 0) {
+  if (!isFreeformType && typeForMatrix === 'circle' && sizes && sizes.length > 0) {
     const withArea = sizes.filter((s) => (s.areaMm2 ?? s.area) != null);
     if (withArea.length > 0) {
       const areaKey = withArea[0].areaMm2 != null ? 'areaMm2' : 'area';
@@ -1499,7 +1583,10 @@ function updateShapeCalc(shape, type, id, sizes) {
     }
   }
 
-  if (isComplex) {
+  if (isFreeformType) {
+    shape.stroke('#88E523');
+    shape.fill('rgba(136, 229, 35, 0.2)');
+  } else if (isComplex) {
     shape.stroke('#FF4444');
     shape.fill(typeForMatrix === 'circle' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 68, 68, 0.3)');
   } else {
@@ -1511,11 +1598,19 @@ function updateShapeCalc(shape, type, id, sizes) {
     meta.freeformPoints = [...shape.points()];
   }
 
+  const freeformPointsPx = isFreeform
+    ? (meta.freeformPoints || []).reduce((acc, v, idx) => {
+      if (idx % 2 === 0) acc.push({ x: v, y: meta.freeformPoints[idx + 1] });
+      return acc;
+    }, [])
+    : undefined;
+
+  const dentType = meta.type || baseType;
   const dentData = {
     id,
-    type: baseType,
+    type: dentType,
     sizeCode,
-    areaPx,
+    areaPx: areaPxGeom,
     areaMm2: areaMm2 ?? undefined,
     bboxPx: { width: bbox?.width ?? 0, height: bbox?.height ?? 0 },
     bboxMm: useMmMode && pxPerMm ? { width: (bbox?.width ?? 0) / pxPerMm, height: (bbox?.height ?? 0) / pxPerMm } : undefined,
@@ -1524,8 +1619,12 @@ function updateShapeCalc(shape, type, id, sizes) {
     price,
     rotation: shape.rotation ? shape.rotation() : 0,
     shapeKind: meta.shapeKind,
-    freeformEnabled: meta.freeformEnabled,
-    freeformPoints: meta.freeformPoints
+    freeformEnabled: isFreeform,
+    freeformPoints: meta.freeformPoints,
+    freeformPointsPx,
+    isShapeFixed: meta.isShapeFixed === true,
+    freeStretchEnabled: meta.isFreeStretchEnabled === true,
+    fixedAspectRatio: Number.isFinite(meta.fixedAspectRatio) ? meta.fixedAspectRatio : null
   };
   dentsMap.set(id, dentData);
   if (onDentChangeCallback) {
@@ -1574,7 +1673,7 @@ export function getSelectedDentSizeMm() {
   const widthMm = clamp(wPx / px, SIZE_MM_MIN, SIZE_MM_MAX);
   const heightMm = clamp(hPx / px, SIZE_MM_MIN, SIZE_MM_MAX);
   const meta = node._dentMeta;
-  const type = meta.baseType || meta.type;
+  const type = meta.type || meta.baseType;
   const shapeVariant = inferShapeVariant(type, widthMm, heightMm);
   meta.shapeVariant = shapeVariant;
   const areaPx = node.className === 'Line' ? polygonArea(node.points?.() || []) : null;
@@ -1585,11 +1684,20 @@ export function getSelectedDentSizeMm() {
     shapeVariant,
     widthMm,
     heightMm,
-    freeformEnabled: !!meta.freeformEnabled,
+    freeformEnabled: isFreeformMeta(meta),
     shapeKind: meta.shapeKind,
     areaMm2: areaMm2 ?? undefined,
     freeformPointCount: node.className === 'Line' ? Math.floor((node.points?.() || []).length / 2) : undefined,
-    activeFreeformPointIndex: meta.activeFreeformPointIndex ?? null
+    activeFreeformPointIndex: meta.activeFreeformPointIndex ?? null,
+    isShapeFixed: meta.isShapeFixed === true,
+    freeStretchEnabled: meta.isFreeStretchEnabled === true,
+    fixedAspectRatio: Number.isFinite(meta.fixedAspectRatio) ? meta.fixedAspectRatio : null,
+    freeformPointsPx: isFreeformMeta(meta)
+      ? (meta.freeformPoints || []).reduce((acc, v, idx) => {
+        if (idx % 2 === 0) acc.push({ x: v, y: meta.freeformPoints[idx + 1] });
+        return acc;
+      }, [])
+      : undefined
   };
 }
 
@@ -1600,6 +1708,8 @@ export function getSelectedDentSizeMm() {
 export function setSelectedDentSizeMm(widthMm, heightMm) {
   const node = getActiveNode();
   if (!node || !node._dentMeta || !useMmMode || pxPerMm == null || pxPerMm <= 0) return;
+  const meta = node._dentMeta;
+  if (meta.type === 'freeform' && !meta.isShapeFixed) return;
   const wMm = clamp(normalizeNumber(widthMm, SIZE_MM_MIN), SIZE_MM_MIN, SIZE_MM_MAX);
   const hMm = clamp(normalizeNumber(heightMm, SIZE_MM_MIN), SIZE_MM_MIN, SIZE_MM_MAX);
   const wPx = wMm * pxPerMm;
@@ -1608,7 +1718,6 @@ export function setSelectedDentSizeMm(widthMm, heightMm) {
     node.radiusX(wPx / 2);
     node.radiusY(hPx / 2);
   } else if (node.className === 'Line') {
-    const meta = node._dentMeta;
     normalizeLinePointsToTopLeft(node);
     const bounds = getLineLocalBounds(node);
     const curW = Math.max(1, bounds.width);
@@ -1631,13 +1740,25 @@ export function setSelectedDentSizeMm(widthMm, heightMm) {
     node.offsetY(hPx / 2);
   }
   if (useMmMode && imageNode) applyBounds(node);
-  const meta = node._dentMeta;
   updateShapeCalc(node, meta.type, meta.id, meta.sizes);
   updateStroke(node);
   updateHitArea(node);
   if (useMmMode && handleGroup) positionHandle(node);
   const layer = node.getLayer();
   if (layer) layer.batchDraw();
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+}
+
+export function setSelectedDentFreeStretch(enabled) {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta) return;
+  if (node._dentMeta.type !== 'freeform') return;
+  if (node._dentMeta.isShapeFixed) return;
+  node._dentMeta.isFreeStretchEnabled = !!enabled;
+  if (tr && canShowTransformerForNode(node)) {
+    tr.keepRatio(!enabled);
+    tr.nodes([node]);
+  }
   if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
 }
 
@@ -1933,6 +2054,21 @@ function setupDentInteractions(shape, type, id, sizes) {
       shape.scaleX(1);
       shape.scaleY(1);
     }
+    if (shape.className === 'Line') {
+      const sx = Math.max(0.01, Math.abs(shape.scaleX()));
+      const sy = Math.max(0.01, Math.abs(shape.scaleY()));
+      if (sx !== 1 || sy !== 1) {
+        const curPts = shape.points?.() || [];
+        const next = [];
+        for (let i = 0; i < curPts.length; i += 2) {
+          next.push(curPts[i] * sx, curPts[i + 1] * sy);
+        }
+        shape.points(next);
+        shape.scaleX(1);
+        shape.scaleY(1);
+        normalizeLinePointsToTopLeft(shape);
+      }
+    }
     if (useMmMode && imageNode) applyBounds(shape);
     updateStroke(shape);
     updateHitArea(shape);
@@ -2078,6 +2214,71 @@ export function startFreeformRedrawForSelectedDent() {
   startFreeformDrawingSession(target, target._dentMeta);
 }
 
+export function addFreeformDentFromPoints(points, sizes) {
+  if (!stage || !layerDents || !tr) return;
+  if (!Array.isArray(points) || points.length < 3) return;
+  const inv = layerDents.getAbsoluteTransform().copy().invert();
+  const localPointsStage = points.map((p) => inv.point({ x: p.x, y: p.y }));
+  const id = Date.now();
+  let minX = localPointsStage[0].x;
+  let minY = localPointsStage[0].y;
+  let maxX = localPointsStage[0].x;
+  let maxY = localPointsStage[0].y;
+  localPointsStage.forEach((p) => {
+    if (!p) return;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  });
+  const localPoints = [];
+  localPointsStage.forEach((p) => {
+    localPoints.push((p.x || 0) - minX, (p.y || 0) - minY);
+  });
+  const line = new Konva.Line({
+    points: localPoints,
+    closed: true,
+    fill: 'rgba(136, 229, 35, 0.2)',
+    stroke: '#88E523',
+    strokeWidth: 1.2,
+    lineCap: 'round',
+    lineJoin: 'round',
+    name: 'dent',
+    listening: true,
+    draggable: true
+  });
+  line.position({ x: minX, y: minY });
+  line.setAttr('type', 'freeform');
+  line._dentMeta = {
+    id,
+    type: 'freeform',
+    baseType: 'circle',
+    sizes,
+    shapeVariant: 'freeform',
+    shapeKind: 'freeform',
+    freeformEnabled: true,
+    freeformPoints: [...localPoints],
+    isFreeStretchEnabled: false,
+    isShapeFixed: false,
+    fixedAspectRatio: null
+  };
+  setupDentInteractions(line, 'strip', id, sizes);
+}
+
+export function setSelectedDentShapeFixed() {
+  const node = getActiveNode();
+  if (!node || !node._dentMeta) return;
+  if (node._dentMeta.type !== 'freeform') return;
+  const rect = getShapeRectLocal(node);
+  const ratio = rect?.height ? rect.width / rect.height : null;
+  node._dentMeta.isShapeFixed = true;
+  node._dentMeta.fixedAspectRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : null;
+  node._dentMeta.isFreeStretchEnabled = false;
+  selectNode(node);
+  updateShapeCalc(node, node._dentMeta.baseType || node._dentMeta.type, node._dentMeta.id, node._dentMeta.sizes);
+  if (onSelectedDentChangeCallback) onSelectedDentChangeCallback(getSelectedDentSizeMm());
+}
+
 export function addDent(type, sizeCode, sizes) {
   if (!stage || !layerDents || !tr) return;
 
@@ -2166,7 +2367,10 @@ export function addDent(type, sizeCode, sizes) {
     shapeVariant,
     shapeKind: type === 'circle' ? 'oval' : 'stripe',
     freeformEnabled: false,
-    freeformPoints: null
+    freeformPoints: null,
+    isFreeStretchEnabled: false,
+    isShapeFixed: false,
+    fixedAspectRatio: null
   };
 
   if (useMmMode && partBounds) {

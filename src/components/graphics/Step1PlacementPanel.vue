@@ -5,16 +5,9 @@
         <div class="text-[11px] text-gray-300 text-left">
           Выберите тип вмятины и разместите её на элементе
         </div>
-        <button
-          type="button"
-          @click="$emit('client')"
-          class="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-400 border border-white/10 hover:text-white hover:border-white/20"
-        >
-          Клиент
-        </button>
       </div>
       <!-- Выбор типа вмятины -->
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-3 gap-2">
         <button
           @click="$emit('add-type', 'circle')"
           class="card-metallic p-3.5 min-h-[60px] rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation"
@@ -35,17 +28,15 @@
             <div class="text-[10px] text-gray-500">Царапина</div>
           </div>
         </button>
-      </div>
-      <div v-if="selectedDentSize?.freeformEnabled" class="flex items-center justify-between gap-2 mt-1">
-        <div class="text-[10px] text-gray-500">
-          Свободная форма активна
-        </div>
         <button
-          type="button"
-          @click="$emit('draw-freeform')"
-          class="px-3 py-2 min-h-[36px] rounded-lg text-[10px] font-bold uppercase tracking-widest bg-metric-green text-black shadow-[0_0_12px_rgba(136,229,35,0.3)] active:opacity-90"
+          @click="$emit('add-freeform')"
+          class="card-metallic p-3.5 min-h-[60px] rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation"
         >
-          Рисовать форму
+          <div class="w-6 h-6 rounded-md border-2 border-metric-green bg-metric-green/20 shrink-0"></div>
+          <div class="text-left min-w-0">
+            <div class="font-bold text-[11px] text-white">Произвольная</div>
+            <div class="text-[10px] text-gray-500">Форма</div>
+          </div>
         </button>
       </div>
       <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Добавьте хотя бы одну вмятину</p>
@@ -70,28 +61,16 @@
           <span>Продолжить → Размеры</span>
         </button>
       </div>
-      <button
-        type="button"
-        class="actionbar-total-btn"
-        :class="totalPrice > 0 ? 'actionbar-total-btn--active' : 'actionbar-total-btn--idle'"
-        :disabled="totalPrice <= 0"
-      >
-        <span>ИТОГО: {{ totalPrice > 0 ? formatPrice(totalPrice) + ' ₽' : '—' }}</span>
-      </button>
     </div>
   </div>
 </template>
 
 <script setup>
 const props = defineProps({
-  canNext: { type: Boolean, default: false },
-  totalPrice: { type: Number, default: 0 },
-  selectedDentSize: { type: Object, default: null }
+  canNext: { type: Boolean, default: false }
 });
 
-defineEmits(['add-type', 'next', 'back', 'draw-freeform', 'client']);
-
-const formatPrice = (v) => new Intl.NumberFormat('ru-RU').format(v);
+defineEmits(['add-type', 'add-freeform', 'next', 'back']);
 
 </script>
 

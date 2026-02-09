@@ -109,253 +109,369 @@
     <!-- Section: Metric -->
     <div v-else-if="currentSection === 'metric'" class="flex flex-col h-full">
       <div v-if="calcMode !== 'graphics'" class="p-4 space-y-3 shrink-0 z-20 bg-black">
-        <div class="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            @click="goHome"
-            class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px] flex items-center gap-1"
-          >
-            <span>←</span>
-            <span>Домой</span>
-          </button>
-          <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
-          <button
-            type="button"
-            @click="openMetricMenu"
-            class="text-xs text-gray-300 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px] flex items-center gap-1"
-          >
-            <span>Метрика</span>
-            <span>▾</span>
-          </button>
+        <div class="flex items-center justify-center">
+          <img src="/dm-small.png" alt="DentMetric" class="h-7 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
         </div>
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
         <!-- Standard mode -->
-        <div v-if="calcMode === 'standard'" class="space-y-4">
-          <div class="card-metallic rounded-2xl p-5 space-y-3">
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Данные клиента (опц.)</div>
-            <div class="grid grid-cols-2 gap-2">
-              <input v-model="estimateDraft.clientName" @focus="scrollFieldIntoView" placeholder="Имя" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-              <input v-model="estimateDraft.clientCompany" @focus="scrollFieldIntoView" placeholder="Компания" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-              <input v-model="estimateDraft.clientPhone" @focus="scrollFieldIntoView" placeholder="Тел" inputmode="tel" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-              <input v-model="estimateDraft.carBrand" @focus="scrollFieldIntoView" placeholder="Марка" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-              <input v-model="estimateDraft.carModel" @focus="scrollFieldIntoView" placeholder="Модель" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-              <input v-model="estimateDraft.inspectDate" @focus="scrollFieldIntoView" type="date" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-              <input v-model="estimateDraft.inspectTime" @focus="scrollFieldIntoView" type="time" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-            </div>
+        <div v-if="calcMode === 'standard'" class="flex flex-col min-h-full">
+          <div class="flex items-center justify-center pb-2">
+            <StepDots :current-step="quickStep" :total-steps="3" />
           </div>
-          <div class="card-metallic rounded-2xl p-5">
-            <div class="mb-2">
-              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Элемент кузова</label>
-              <div class="relative">
-                <select
-                  v-model="estimateDraft.element"
-                  class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
-                >
-                  <option :value="null" disabled selected>Выберите элемент</option>
-                  <optgroup label="Левая сторона">
-                    <option v-for="part in quickPartsLeft" :key="part" :value="`left:${part}`">{{ part }}</option>
-                  </optgroup>
-                  <optgroup label="Правая сторона">
-                    <option v-for="part in quickPartsRight" :key="part" :value="`right:${part}`">{{ part }}</option>
-                  </optgroup>
-                </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                  <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+
+          <div class="space-y-4 pb-4">
+            <div v-if="quickStep === 1" class="space-y-4">
+              <div class="card-metallic rounded-2xl p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Данные клиента</div>
+                  <div v-if="userSettings.clientRequired" class="text-[10px] text-red-400 uppercase tracking-widest">обязательно</div>
                 </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <input v-model="estimateDraft.clientName" @focus="scrollFieldIntoView" placeholder="Имя" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.clientCompany" @focus="scrollFieldIntoView" placeholder="Компания" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.clientPhone" @focus="scrollFieldIntoView" placeholder="Тел" inputmode="tel" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.carBrand" @focus="scrollFieldIntoView" placeholder="Марка" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.carModel" @focus="scrollFieldIntoView" placeholder="Модель" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.inspectDate" @focus="scrollFieldIntoView" type="date" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.inspectTime" @focus="scrollFieldIntoView" type="time" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                </div>
+                <p v-if="userSettings.clientRequired && !clientDataValid" class="text-[10px] text-gray-500 text-center">Заполните имя и телефон</p>
               </div>
             </div>
-          </div>
-          <div class="card-metallic rounded-2xl p-5">
-            <div class="mb-5">
-              <div class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Тип повреждения</div>
-              <div class="flex space-x-3">
+
+            <div v-else-if="quickStep === 2" class="space-y-4">
+              <div class="space-y-3">
                 <div
-                  @click="setShape('circle')"
-                  class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
-                  :class="form.shape === 'circle' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'"
+                  v-for="(dent, idx) in estimateDraft.quickDents"
+                  :key="dent.id"
+                  class="card-metallic rounded-2xl p-5 space-y-3"
                 >
-                  <div
-                    class="w-4 h-4 rounded-full border-2 mb-2 shadow-[0_0_5px_currentColor]"
-                    :class="form.shape === 'circle' ? 'border-metric-green bg-metric-green' : 'border-gray-500'"
-                  ></div>
-                  <span class="text-xs font-bold uppercase" :class="form.shape === 'circle' ? 'text-white' : 'text-gray-400'">Круг/Овал</span>
+                  <div class="flex items-center justify-between">
+                    <div class="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Вмятина {{ idx + 1 }}</div>
+                    <button
+                      type="button"
+                      @click="removeQuickDent(dent.id)"
+                      class="text-xs text-red-400 hover:text-red-300 border border-red-500/30 rounded-lg px-2 py-1"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Сторона</label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        @click="setQuickDentSide(dent, 'left')"
+                        class="rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-widest border transition-all"
+                        :class="dent.panelSide === 'left' ? 'bg-metric-green text-black border-metric-green shadow-neon' : 'bg-[#151515] border-white/10 text-gray-400'"
+                      >
+                        Левая
+                      </button>
+                      <button
+                        type="button"
+                        @click="setQuickDentSide(dent, 'right')"
+                        class="rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-widest border transition-all"
+                        :class="dent.panelSide === 'right' ? 'bg-metric-green text-black border-metric-green shadow-neon' : 'bg-[#151515] border-white/10 text-gray-400'"
+                      >
+                        Правая
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Элемент</label>
+                    <div class="relative">
+                      <select
+                        v-model="dent.panelElement"
+                        @change="onQuickDentElementChange(dent)"
+                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
+                      >
+                        <option :value="null" disabled selected>Выберите элемент</option>
+                        <option v-for="part in (dent.panelSide === 'right' ? quickPartsRight : quickPartsLeft)" :key="part" :value="part">
+                          {{ part }}
+                        </option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex space-x-3">
+                    <div
+                      @click="setQuickDentShape(dent, 'circle')"
+                      class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
+                      :class="dent.shape === 'circle' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'"
+                    >
+                      <div
+                        class="w-4 h-4 rounded-full border-2 mb-2 shadow-[0_0_5px_currentColor]"
+                        :class="dent.shape === 'circle' ? 'border-metric-green bg-metric-green' : 'border-gray-500'"
+                      ></div>
+                      <span class="text-xs font-bold uppercase" :class="dent.shape === 'circle' ? 'text-white' : 'text-gray-400'">Круг/Овал</span>
+                    </div>
+                    <div
+                      @click="setQuickDentShape(dent, 'strip')"
+                      class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
+                      :class="dent.shape === 'strip' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'"
+                    >
+                      <div
+                        class="w-6 h-2 rounded-sm mb-3 shadow-[0_0_5px_currentColor]"
+                        :class="dent.shape === 'strip' ? 'bg-metric-green' : 'bg-gray-500'"
+                      ></div>
+                      <span class="text-xs font-bold uppercase" :class="dent.shape === 'strip' ? 'text-white' : 'text-gray-400'">Полоса</span>
+                    </div>
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Размер</label>
+                    <div class="relative group">
+                      <select
+                        v-model="dent.sizeCode"
+                        required
+                        @change="syncQuickDentMmFromSizeCode(dent)"
+                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
+                      >
+                        <option :value="null" disabled selected>Выберите размер</option>
+                        <option v-for="size in getSizeListForShape(dent.shape)" :key="size.code" :value="size.code">{{ size.name }}</option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-widest">Длина (мм)</label>
+                      <input
+                        v-model.number="dent.sizeLengthMm"
+                        @input="syncQuickDentSizeFromMm(dent)"
+                        @focus="scrollFieldIntoView"
+                        type="number"
+                        min="0.1"
+                        step="0.5"
+                        inputmode="decimal"
+                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors"
+                      >
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-widest">Ширина (мм)</label>
+                      <input
+                        v-model.number="dent.sizeWidthMm"
+                        @input="syncQuickDentSizeFromMm(dent)"
+                        @focus="scrollFieldIntoView"
+                        type="number"
+                        min="0.1"
+                        step="0.5"
+                        inputmode="decimal"
+                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors"
+                      >
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Технология</label>
+                      <div class="relative">
+                        <select
+                          v-model="dent.conditions.repairCode"
+                          required
+                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                        >
+                          <option :value="null" disabled selected>Выберите</option>
+                          <option v-for="r in initialData.repairTypes" :key="r.code" :value="r.code">{{ r.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
+                      <div class="relative">
+                        <select
+                          v-model="dent.conditions.riskCode"
+                          required
+                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                        >
+                          <option :value="null" disabled selected>Выберите</option>
+                          <option v-for="risk in initialData.risks" :key="risk.code" :value="risk.code">{{ risk.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
+                      <div class="relative">
+                        <select
+                          v-model="dent.conditions.materialCode"
+                          required
+                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                        >
+                          <option :value="null" disabled selected>Выберите</option>
+                          <option v-for="m in initialData.materials" :key="m.code" :value="m.code">{{ m.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
+                      <div class="relative">
+                        <select
+                          v-model="dent.conditions.carClassCode"
+                          required
+                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                        >
+                          <option :value="null" disabled selected>Выберите</option>
+                          <option v-for="c in initialData.carClasses" :key="c.code" :value="c.code">{{ c.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
+                    <div class="relative">
+                      <select
+                        v-model="dent.conditions.disassemblyCode"
+                        required
+                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                      >
+                        <option :value="null" disabled selected>Выберите</option>
+                        <option v-for="d in initialData.disassembly" :key="d.code" :value="d.code">{{ d.name }}</option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex justify-between text-[11px] text-gray-400 pt-1">
+                    <span>Подитог:</span>
+                    <span class="text-white font-medium">{{ formatCurrency(getQuickDentTotal(dent.id)) }} ₽</span>
+                  </div>
                 </div>
-                <div
-                  @click="setShape('strip')"
-                  class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
-                  :class="form.shape === 'strip' ? 'bg-[#222] border-metric-green shadow-neon' : 'bg-[#151515] border-white/5 hover:border-white/10'"
+
+                <button
+                  type="button"
+                  @click="addQuickDent"
+                  class="w-full py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px]"
                 >
-                  <div
-                    class="w-6 h-2 rounded-sm mb-3 shadow-[0_0_5px_currentColor]"
-                    :class="form.shape === 'strip' ? 'bg-metric-green' : 'bg-gray-500'"
-                  ></div>
-                  <span class="text-xs font-bold uppercase" :class="form.shape === 'strip' ? 'text-white' : 'text-gray-400'">Полоса</span>
+                  + Добавить вмятину
+                </button>
+              </div>
+            </div>
+
+            <div v-else-if="quickStep === 3" class="space-y-4">
+              <div class="card-metallic rounded-2xl p-5 space-y-2" v-if="quickLineItems.length">
+                <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Вмятины</div>
+                <div v-for="(item, idx) in quickLineItems" :key="item.dent.id" class="border-b border-white/10 pb-2 mb-2 last:mb-0 last:pb-0 last:border-0">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-gray-400">Вмятина {{ idx + 1 }} · {{ getQuickDentLabel(item.dent) }}</span>
+                    <span class="text-white font-medium">{{ formatCurrency(item.appliedTotal) }} ₽</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500">
+                    Размер: {{ Number(item.dent.sizeLengthMm || 0).toFixed(1) }}×{{ Number(item.dent.sizeWidthMm || 0).toFixed(1) }} мм
+                    <span v-if="item.discount">· -50% доп. вмятина</span>
+                  </div>
+                </div>
+                <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
+                  <span class="text-metric-green font-bold text-sm">Итог:</span>
+                  <span class="text-metric-green font-bold text-lg">{{ formatCurrency(quickTotal) }} ₽</span>
                 </div>
               </div>
-              <br />
-              <div class="mb-2">
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Размер</label>
-                <div class="relative group">
-                  <select
-                    v-model="form.sizeCode"
-                    required
-                    @change="syncMmFromSizeCode"
-                    class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
-                  >
-                    <option :value="null" disabled selected>Выберите размер</option>
-                    <option v-for="size in currentSizeList" :key="size.code" :value="size.code">{{ size.name }}</option>
-                  </select>
-                  <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                    <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+
+              <div v-if="quickLineItems.length" class="space-y-3">
+                <div
+                  v-for="(dentItem, idx) in quickLineItems"
+                  :key="dentItem.dent.id"
+                  class="card-metallic rounded-2xl p-5 space-y-2"
+                >
+                  <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Расчёт стоимости · Вмятина {{ idx + 1 }}</div>
+                  <div v-for="(line, lineIdx) in dentItem.breakdown" :key="lineIdx" class="flex justify-between text-[11px]">
+                    <span class="text-gray-400">{{ line.name }}:</span>
+                    <span class="text-white font-medium">{{ line.value }}</span>
+                  </div>
+                  <div class="border-t border-white/10 pt-2 mt-2 flex justify-between text-[11px]">
+                    <span class="text-gray-400">Итог по вмятине:</span>
+                    <span class="text-white font-medium">{{ formatCurrency(dentItem.total) }} ₽</span>
+                  </div>
+                  <div v-if="dentItem.discount" class="flex justify-between text-[11px]">
+                    <span class="text-gray-400">Итог с 50%:</span>
+                    <span class="text-white font-medium">{{ formatCurrency(dentItem.appliedTotal) }} ₽</span>
                   </div>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-widest">Длина (мм)</label>
-                  <input
-                    v-model.number="estimateDraft.sizeLengthMm"
-                    @input="onQuickSizeInput"
-                    @focus="scrollFieldIntoView"
-                    type="number"
-                    min="0.1"
-                    step="0.5"
-                    inputmode="decimal"
-                    class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors"
-                  >
-                </div>
-                <div>
-                  <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-widest">Ширина (мм)</label>
-                  <input
-                    v-model.number="estimateDraft.sizeWidthMm"
-                    @input="onQuickSizeInput"
-                    @focus="scrollFieldIntoView"
-                    type="number"
-                    min="0.1"
-                    step="0.5"
-                    inputmode="decimal"
-                    class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors"
-                  >
-                </div>
+
+              <div class="card-metallic rounded-2xl p-5 space-y-2">
+                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Комментарий</div>
+                <textarea
+                  v-model="estimateDraft.comment"
+                  @focus="scrollFieldIntoView"
+                  rows="3"
+                  placeholder="Комментарий к оценке (необязательно)"
+                  class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-sm shadow-inner focus:border-metric-green/50 outline-none resize-none"
+                ></textarea>
               </div>
             </div>
           </div>
-          <div class="card-metallic rounded-2xl p-5">
-            <div class="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Технология</div>
-            <div class="relative">
-              <select
-                v-model="form.repairCode"
-                required
-                class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
+
+          <div class="mt-2 px-2 py-2">
+            <div v-if="quickStep < 3" class="flex gap-2">
+              <button
+                type="button"
+                @click="goQuickBack"
+                class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 rounded-xl min-h-[44px]"
               >
-                <option :value="null" disabled selected>Выберите технологию</option>
-                <option v-for="r in initialData.repairTypes" :key="r.code" :value="r.code">{{ r.name }}</option>
-              </select>
-              <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
-            </div>
-          </div>
-          <div class="card-metallic rounded-2xl p-5 space-y-4">
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Условия</div>
-            <div>
-              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
-              <div class="relative">
-                <select
-                  v-model="form.riskCode"
-                  required
-                  class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
-                >
-                  <option :value="null" disabled selected>Выберите сложность</option>
-                  <option v-for="risk in initialData.risks" :key="risk.code" :value="risk.code">{{ risk.name }}</option>
-                </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
-              </div>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
-              <div class="relative">
-                <select
-                  v-model="form.materialCode"
-                  required
-                  class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
-                >
-                  <option :value="null" disabled selected>Выберите материал</option>
-                  <option v-for="m in initialData.materials" :key="m.code" :value="m.code">{{ m.name }}</option>
-                </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
-              </div>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
-              <div class="relative">
-                <select
-                  v-model="form.carClassCode"
-                  required
-                  class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
-                >
-                  <option :value="null" disabled selected>Выберите класс авто</option>
-                  <option v-for="c in initialData.carClasses" :key="c.code" :value="c.code">{{ c.name }}</option>
-                </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"><svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></div>
-              </div>
-            </div>
-          </div>
-          <div class="card-metallic rounded-2xl p-5">
-            <div class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Дополнительно</div>
-            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
-            <div class="relative">
-              <select
-                v-model="form.disassemblyCode"
-                required
-                class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
+                Назад
+              </button>
+              <button
+                type="button"
+                @click="goQuickNext"
+                :disabled="(quickStep === 1 && !clientDataValid) || (quickStep === 2 && !quickStep2Valid)"
+                class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option :value="null" disabled selected>Выберите арматурные работы</option>
-                <option v-for="d in initialData.disassembly" :key="d.code" :value="d.code">{{ d.name }}</option>
-              </select>
-              <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                Вперёд
+              </button>
+            </div>
+            <div v-else class="space-y-2">
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="goQuickBack"
+                  class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 rounded-xl min-h-[44px]"
+                >
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  @click="saveCurrentEstimate('quick')"
+                  class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="isSavingHistory || !quickStep3Ready"
+                >
+                  {{ isSavingHistory ? 'Сохранение...' : 'Сохранить в историю' }}
+                </button>
               </div>
+              <button
+                type="button"
+                @click="showLockedStub('Раздел в разработке 🔒')"
+                class="w-full py-3 text-xs font-bold uppercase tracking-widest text-black bg-metric-green rounded-xl active:opacity-90 transition-opacity"
+                :disabled="!quickStep3Ready"
+              >
+                Записать на ремонт
+              </button>
             </div>
           </div>
-          <button
-            @click="resetForm"
-            class="w-full py-4 text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300 hover:bg-red-900/10 border border-transparent hover:border-red-900/20 rounded-xl transition-all flex items-center justify-center space-x-2 opacity-80 hover:opacity-100"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            <span>Сбросить параметры</span>
-          </button>
-          <div class="card-metallic rounded-2xl p-5 space-y-2" v-if="quickBreakdown.length">
-            <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Расчёт стоимости</div>
-            <div v-for="(item, idx) in quickBreakdown" :key="idx" class="flex justify-between text-[11px]">
-              <span class="text-gray-400">{{ item.name }}:</span>
-              <span class="text-white font-medium">{{ item.value }}</span>
-            </div>
-            <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
-              <span class="text-metric-green font-bold text-sm">Итог:</span>
-              <span class="text-metric-green font-bold text-lg">{{ formatCurrency(totalPrice) }} ₽</span>
-            </div>
-          </div>
-          <div v-if="totalPrice > 0" class="card-metallic rounded-2xl p-5 space-y-2">
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Комментарий</div>
-            <textarea
-              v-model="estimateDraft.comment"
-              @focus="scrollFieldIntoView"
-              rows="3"
-              placeholder="Комментарий к оценке (необязательно)"
-              class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-sm shadow-inner focus:border-metric-green/50 outline-none resize-none"
-            ></textarea>
-          </div>
-          <button
-            v-if="totalPrice > 0"
-            @click="saveCurrentEstimate('quick')"
-            class="w-full py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="isSavingHistory"
-          >
-            {{ isSavingHistory ? 'Сохранение...' : 'Сохранить в историю' }}
-          </button>
         </div>
 
         <!-- Time mode (locked) -->
@@ -381,6 +497,8 @@
           :strip-sizes="graphicsStripSizes"
         :estimate-draft="estimateDraft"
         :history-saving="isSavingHistory"
+          :client-required="userSettings.clientRequired"
+          :client-valid="clientDataValid"
         @home="goHome"
           @close="closeEditor"
           @dents-change="(d) => graphicsState.dents = d"
@@ -400,7 +518,7 @@
           <span>←</span>
           <span>Домой</span>
         </button>
-        <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
+        <img src="/dm-small.png" alt="DentMetric" class="h-8 w-auto object-contain" onerror="this.style.display='none'">
         <button
           type="button"
           @click="clearHistoryConfirm"
@@ -484,7 +602,10 @@
         <div v-if="selectedHistory.dents?.items?.length" class="card-metallic rounded-2xl p-4 space-y-2">
           <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Вмятины</div>
           <div v-for="dent in selectedHistory.dents.items" :key="dent.id" class="text-[11px] text-gray-400 flex justify-between">
-            <span>{{ dent.type }} · {{ dent.bboxMm?.width?.toFixed?.(1) || '—' }}×{{ dent.bboxMm?.height?.toFixed?.(1) || '—' }} мм</span>
+            <span>
+              {{ dent.type }} · {{ dent.bboxMm?.width?.toFixed?.(1) || '—' }}×{{ dent.bboxMm?.height?.toFixed?.(1) || '—' }} мм
+              <span v-if="dent.panelElement">· {{ (dent.panelSide || 'left') + ':' }}{{ dent.panelElement }}</span>
+            </span>
             <span v-if="dent.areaMm2" class="text-white">{{ Math.round(dent.areaMm2) }} мм²</span>
           </div>
         </div>
@@ -529,7 +650,7 @@
       </div>
 
       <div v-else class="space-y-3">
-        <div v-if="historyItems.length === 0" class="card-metallic rounded-2xl p-6 text-center text-gray-400">
+        <div v-if="historyItems.length === 0" class="card-metallic rounded-2xl p-6 text-center text-gray-400 w-full">
           <div class="text-2xl mb-2">🗂️</div>
           <div class="text-sm">История пуста</div>
         </div>
@@ -537,7 +658,7 @@
           v-for="item in historyItems"
           :key="item.id"
           @click="selectedHistoryId = item.id"
-          class="card-metallic rounded-2xl p-4 text-left border border-white/10 hover:border-metric-green/40 transition-colors"
+          class="card-metallic rounded-2xl p-4 text-left border border-white/10 hover:border-metric-green/40 transition-colors w-full"
         >
           <div class="flex justify-between items-center">
             <div>
@@ -566,11 +687,23 @@
           <span>←</span>
           <span>Домой</span>
         </button>
-        <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
+        <img src="/dm-small.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
         <div class="w-[70px]"></div>
       </div>
       <div class="card-metallic rounded-2xl p-5">
         <h2 class="text-xl font-bold mb-1 text-white">Настройки</h2>
+      </div>
+      <div class="card-metallic rounded-2xl p-5 space-y-3">
+        <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Обязательные поля</div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm text-gray-300">Данные клиента обязательны</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input v-model="userSettings.clientRequired" type="checkbox" class="sr-only peer">
+            <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+            <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+          </label>
+        </div>
+        <div class="text-[10px] text-gray-500">Если включено, потребуется заполнить имя и телефон на шаге клиента.</div>
       </div>
       <div class="card-metallic rounded-2xl p-5 space-y-3">
         <div class="flex justify-between items-center mb-4">
@@ -624,7 +757,7 @@
           <span>←</span>
           <span>Домой</span>
         </button>
-        <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
+        <img src="/dm-small.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
         <div class="w-[70px]"></div>
       </div>
       <div class="flex items-center justify-center pb-4">
@@ -746,7 +879,7 @@
           <span>←</span>
           <span>Домой</span>
         </button>
-        <img src="/logo.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
+        <img src="/dm-small.png" alt="DentMetric" class="h-7 w-auto object-contain" onerror="this.style.display='none'">
         <div class="w-[70px]"></div>
       </div>
       <div class="card-metallic rounded-2xl p-6 text-center text-gray-400 mt-6">
@@ -816,13 +949,15 @@ import { initialData } from './data/initialData';
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesMm, stripSizesMm, circleSizesWithArea, stripSizesWithArea } from './data/dentSizes';
-import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice, buildBreakdown } from './utils/priceCalc';
+import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from './utils/priceCalc';
 import GraphicsWizard from './components/graphics/GraphicsWizard.vue';
+import StepDots from './components/graphics/StepDots.vue';
 import { useHistoryStore } from './features/history/historyStore';
 
 // Sections & mode
 const currentSection = ref('home');
 const calcMode = ref('standard');
+const quickStep = ref(1);
 
 // Form (standard)
 const form = reactive({
@@ -847,7 +982,8 @@ const estimateDraft = reactive({
   sizeLengthMm: null,
   sizeWidthMm: null,
   comment: '',
-  breakdown: []
+  breakdown: [],
+  quickDents: []
 });
 
 const { historyItems, loadHistory, saveEstimate, updateEstimate, deleteEstimate, clearHistory } = useHistoryStore();
@@ -882,6 +1018,110 @@ const quickPartsLeft = [
 ];
 const quickPartsRight = [...quickPartsLeft];
 
+const clientDataValid = computed(() => {
+  if (!userSettings.clientRequired) return true;
+  return Boolean(String(estimateDraft.clientName || '').trim() && String(estimateDraft.clientPhone || '').trim());
+});
+
+function normalizePanelElement(value) {
+  if (!value) return null;
+  if (typeof value === 'string' && value.includes(':')) {
+    const [side, ...rest] = value.split(':');
+    return { side: side === 'right' ? 'right' : 'left', element: rest.join(':') };
+  }
+  return { side: 'left', element: String(value) };
+}
+
+function createQuickDent(panelElement = null) {
+  const normalized = normalizePanelElement(panelElement);
+  return {
+    id: `quick_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    shape: 'circle',
+    sizeCode: null,
+    sizeLengthMm: null,
+    sizeWidthMm: null,
+    panelSide: normalized?.side || 'left',
+    panelElement: normalized?.element || null,
+    conditions: {
+      repairCode: null,
+      riskCode: null,
+      materialCode: null,
+      carClassCode: null,
+      disassemblyCode: null
+    }
+  };
+}
+
+function addQuickDent() {
+  const panel = getQuickDefaultPanel();
+  estimateDraft.quickDents.push(createQuickDent(panel?.element ? `${panel.side}:${panel.element}` : null));
+  haptic('selection');
+}
+
+function removeQuickDent(id) {
+  estimateDraft.quickDents = estimateDraft.quickDents.filter((d) => d.id !== id);
+  haptic('selection');
+}
+
+function setQuickDentShape(dent, shape) {
+  dent.shape = shape;
+  dent.sizeCode = null;
+  dent.sizeLengthMm = null;
+  dent.sizeWidthMm = null;
+  haptic('selection');
+}
+
+function getQuickDefaultPanel() {
+  const last = estimateDraft.quickDents[estimateDraft.quickDents.length - 1];
+  if (last?.panelElement) return { side: last.panelSide || 'left', element: last.panelElement };
+  return { side: 'left', element: quickPartsLeft.length ? quickPartsLeft[0] : null };
+}
+
+function onQuickDentElementChange(dent) {
+  if (dent?.panelElement && !dent.panelSide) dent.panelSide = 'left';
+  haptic('selection');
+}
+
+function setQuickDentSide(dent, side) {
+  if (!dent) return;
+  dent.panelSide = side === 'right' ? 'right' : 'left';
+  if (!dent.panelElement) {
+    dent.panelElement = dent.panelSide === 'right' ? quickPartsRight[0] : quickPartsLeft[0];
+  }
+  haptic('selection');
+}
+
+function normalizeQuickDentPanel(dent) {
+  if (!dent) return;
+  if (dent.panelElement && typeof dent.panelElement === 'string' && dent.panelElement.includes(':')) {
+    const parsed = normalizePanelElement(dent.panelElement);
+    dent.panelSide = parsed?.side || dent.panelSide || 'left';
+    dent.panelElement = parsed?.element || null;
+  }
+  if (!dent.panelSide) dent.panelSide = 'left';
+  if (!dent.panelElement) {
+    dent.panelElement = dent.panelSide === 'right' ? quickPartsRight[0] : quickPartsLeft[0];
+  }
+}
+
+function getSizeListForShape(shape) {
+  return shape === 'circle' ? initialData.circleSizes : initialData.stripSizes;
+}
+
+function syncQuickDentMmFromSizeCode(dent) {
+  if (!dent.sizeCode) return;
+  const sizes = dent.shape === 'circle' ? circleSizesMm : stripSizesMm;
+  const size = sizes.find((s) => s.code === dent.sizeCode);
+  if (!size?.mm) return;
+  dent.sizeLengthMm = size.mm.w;
+  dent.sizeWidthMm = size.mm.h;
+}
+
+function syncQuickDentSizeFromMm(dent) {
+  const sizeCode = getSizeCodeFromMm(dent.shape, dent.sizeLengthMm, dent.sizeWidthMm);
+  if (sizeCode) dent.sizeCode = sizeCode;
+}
+
 function ensureInspectDateTime() {
   if (skipNextAutoFill.value) {
     skipNextAutoFill.value = false;
@@ -909,7 +1149,8 @@ const buildDefaultPrices = () => {
 const userSettings = reactive({
   prices: buildDefaultPrices(),
   masters: JSON.parse(JSON.stringify(initialData.defaultMasters)),
-  hourlyRate: 0
+  hourlyRate: 0,
+  clientRequired: false
 });
 
 const saved = localStorage.getItem('dentRepairSettings_v5');
@@ -918,6 +1159,7 @@ if (saved) {
     const p = JSON.parse(saved);
     if (p.prices) Object.assign(userSettings.prices, p.prices);
     if (p.masters) userSettings.masters = p.masters;
+    if (typeof p.clientRequired === 'boolean') userSettings.clientRequired = p.clientRequired;
   } catch (e) {
     if (import.meta.env?.DEV) console.error('Failed to load settings', e);
   }
@@ -980,9 +1222,6 @@ function ensureGraphicsSelection() {
 }
 
 // Computed
-const currentSizeList = computed(() =>
-  form.shape === 'circle' ? initialData.circleSizes : initialData.stripSizes
-);
 
 /** В графике для круга: мм-размеры для кроссовера (капот, двери, крыло), иначе legacy */
 const graphicsCircleSizes = computed(() => {
@@ -1002,10 +1241,26 @@ const graphicsStripSizes = computed(() => {
   return initialData.stripSizes;
 });
 
-const standardPrice = computed(() => {
-  if (!form.sizeCode) return 0;
-  const base = userSettings.prices[form.sizeCode] || 0;
-  return applyConditionsToBase(base, form, initialData, form.sizeCode, 100);
+const quickDentTotals = computed(() => estimateDraft.quickDents.map((dent) => {
+  const sizeCode = dent.sizeCode;
+  const base = sizeCode ? (userSettings.prices[sizeCode] || 0) : 0;
+  const total = base > 0 ? applyConditionsToBase(base, dent.conditions, initialData, sizeCode || 'STRIP_DEFAULT') : 0;
+  const breakdown = base > 0 ? buildBreakdown(base, dent.conditions, initialData, sizeCode || 'STRIP_DEFAULT') : [];
+  return { dent, sizeCode, base, total, breakdown };
+}));
+
+const quickLineItems = computed(() => {
+  const list = quickDentTotals.value.filter((d) => d.total > 0).sort((a, b) => b.total - a.total);
+  return list.map((item, idx) => {
+    const applied = idx === 0 ? item.total : roundPrice(item.total * 0.5);
+    return { ...item, appliedTotal: applied, discount: idx > 0 };
+  });
+});
+
+const quickTotal = computed(() => {
+  if (quickLineItems.value.length === 0) return 0;
+  const sum = quickLineItems.value.reduce((acc, item, idx) => acc + (idx === 0 ? item.total : item.total * 0.5), 0);
+  return roundPrice(sum);
 });
 
 /** База от вмятин: сумма базовых цен (каждая вмятина отдельно). Единый источник: priceCalc.calcBasePriceFromDents. */
@@ -1018,19 +1273,39 @@ const graphicsPrice = computed(() =>
 
 const totalPrice = computed(() => {
   if (currentSection.value !== 'metric') return 0;
-  if (calcMode.value === 'standard') return standardPrice.value;
+  if (calcMode.value === 'standard') return quickTotal.value;
   if (calcMode.value === 'graphics') return graphicsPrice.value;
   return 0;
 });
 
-const quickBreakdown = computed(() => {
-  if (calcMode.value !== 'standard') return [];
-  if (!form.sizeCode) return [];
-  const base = userSettings.prices[form.sizeCode] || 0;
-  const items = buildBreakdown(base, form, initialData, form.sizeCode);
-  estimateDraft.breakdown = items;
+const quickBreakdownItems = computed(() => {
+  const items = quickLineItems.value.map((item, idx) => ({
+    name: `Вмятина ${idx + 1}${item.discount ? ' (50%)' : ''}`,
+    value: `${formatCurrency(item.appliedTotal)} ₽`
+  }));
   return items;
 });
+
+const quickStep2Valid = computed(() => {
+  if (estimateDraft.quickDents.length === 0) return false;
+  return estimateDraft.quickDents.every((d) =>
+    d.sizeCode &&
+    d.conditions?.repairCode &&
+    d.conditions?.riskCode &&
+    d.conditions?.materialCode &&
+    d.conditions?.carClassCode &&
+    d.conditions?.disassemblyCode
+  );
+});
+
+const quickStep3Ready = computed(() => quickTotal.value > 0);
+
+const getQuickDentTotal = (dentId) => {
+  const item = quickDentTotals.value.find((d) => d.dent.id === dentId);
+  return item?.total || 0;
+};
+
+const getQuickDentLabel = (dent) => (dent.shape === 'circle' ? 'Круг/Овал' : 'Полоса');
 
 // Helpers
 const formatCurrency = (v) => new Intl.NumberFormat('ru-RU').format(v);
@@ -1040,6 +1315,11 @@ const formatDateTime = (iso) => {
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
 };
+
+watch([quickBreakdownItems, calcMode], () => {
+  if (calcMode.value !== 'standard') return;
+  estimateDraft.breakdown = quickBreakdownItems.value;
+});
 
 const haptic = (type) => {
   const tg = window.Telegram?.WebApp;
@@ -1135,6 +1415,8 @@ function resetDraftState() {
   estimateDraft.sizeWidthMm = null;
   estimateDraft.comment = '';
   estimateDraft.breakdown = [];
+  estimateDraft.quickDents = [];
+  quickStep.value = 1;
 
   graphicsState.dents = [];
   graphicsState.selectedClass = null;
@@ -1161,7 +1443,9 @@ function buildEstimatePayload(mode) {
     carClassCode: form.carClassCode,
     disassemblyCode: form.disassemblyCode
   };
-  const element = estimateDraft.element || graphicsState.selectedPart?.name || null;
+  const firstQuick = estimateDraft.quickDents?.[0];
+  const quickElement = firstQuick?.panelElement ? `${firstQuick.panelSide || 'left'}:${firstQuick.panelElement}` : null;
+  const element = quickElement || graphicsState.selectedPart?.name || null;
   const vehicleClass = graphicsState.selectedClass?.name || null;
   if (mode === 'detail') {
     const dentItems = (graphicsState.dents || []).map((d) => ({
@@ -1182,23 +1466,26 @@ function buildEstimatePayload(mode) {
       comment: estimateDraft.comment || ''
     };
   }
-  const quickDent = {
-    id: 'quick-1',
-    type: form.shape,
+  const dentItems = (estimateDraft.quickDents || []).map((d) => ({
+    id: d.id,
+    type: d.shape,
+    sizeCode: d.sizeCode,
     bboxMm: {
-      width: Number(estimateDraft.sizeLengthMm) || 0,
-      height: Number(estimateDraft.sizeWidthMm) || 0
+      width: Number(d.sizeLengthMm) || 0,
+      height: Number(d.sizeWidthMm) || 0
     },
-    conditions
-  };
+    panelSide: d.panelSide || 'left',
+    panelElement: d.panelElement || null,
+    conditions: d.conditions
+  }));
   return {
     mode: 'quick',
     client,
-    vehicleClass: form.carClassCode || null,
+    vehicleClass: null,
     element,
-    dents: { count: 1, items: [quickDent] },
+    dents: { count: dentItems.length, items: dentItems },
     breakdown: estimateDraft.breakdown || [],
-    total: totalPrice.value,
+    total: quickTotal.value,
     comment: estimateDraft.comment || ''
   };
 }
@@ -1243,6 +1530,7 @@ const setMode = (mode) => {
     return;
   }
   calcMode.value = mode;
+  if (mode === 'standard') quickStep.value = 1;
   haptic('selection');
   if (mode === 'graphics') {
     if (window.Telegram?.WebApp?.expand) window.Telegram.WebApp.expand();
@@ -1285,29 +1573,23 @@ const switchSection = (section) => {
   }
 };
 
+const goQuickBack = () => {
+  if (quickStep.value <= 1) {
+    openMetricMenu();
+    return;
+  }
+  quickStep.value -= 1;
+};
+
+const goQuickNext = () => {
+  if (quickStep.value === 1 && !clientDataValid.value) return;
+  if (quickStep.value === 2 && !quickStep2Valid.value) return;
+  if (quickStep.value < 3) quickStep.value += 1;
+};
+
 const goHome = () => {
   if (calcMode.value === 'graphics') closeEditor();
   currentSection.value = 'home';
-  haptic('selection');
-};
-
-const setShape = (s) => {
-  form.shape = s;
-  form.sizeCode = null;
-  estimateDraft.sizeLengthMm = null;
-  estimateDraft.sizeWidthMm = null;
-  haptic('selection');
-};
-
-const resetForm = () => {
-  form.sizeCode = null;
-  form.repairCode = null;
-  form.riskCode = null;
-  form.materialCode = null;
-  form.carClassCode = null;
-  form.disassemblyCode = null;
-  estimateDraft.sizeLengthMm = null;
-  estimateDraft.sizeWidthMm = null;
   haptic('selection');
 };
 
@@ -1315,7 +1597,11 @@ const addMaster = () => userSettings.masters.push({ name: '', rate: 0 });
 const removeMaster = (i) => userSettings.masters.splice(i, 1);
 
 const saveSettings = () => {
-  const dataToSave = { prices: userSettings.prices, masters: userSettings.masters };
+  const dataToSave = {
+    prices: userSettings.prices,
+    masters: userSettings.masters,
+    clientRequired: userSettings.clientRequired
+  };
   localStorage.setItem('dentRepairSettings_v5', JSON.stringify(dataToSave));
   const tg = window.Telegram?.WebApp;
   if (tg?.showPopup && tg?.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
@@ -1329,6 +1615,7 @@ const saveSettings = () => {
 const resetDefaults = () => {
   if (confirm('Сбросить цены к стандартным?')) {
     Object.assign(userSettings.prices, buildDefaultPrices());
+    userSettings.clientRequired = false;
     saveSettings();
   }
 };
@@ -1362,19 +1649,6 @@ function getSizeCodeFromMm(shape, lengthMm, widthMm) {
   return closest?.code || null;
 }
 
-function onQuickSizeInput() {
-  const sizeCode = getSizeCodeFromMm(form.shape, estimateDraft.sizeLengthMm, estimateDraft.sizeWidthMm);
-  if (sizeCode) form.sizeCode = sizeCode;
-}
-
-function syncMmFromSizeCode() {
-  if (!form.sizeCode) return;
-  const sizes = form.shape === 'circle' ? circleSizesMm : stripSizesMm;
-  const size = sizes.find((s) => s.code === form.sizeCode);
-  if (!size?.mm) return;
-  estimateDraft.sizeLengthMm = size.mm.w;
-  estimateDraft.sizeWidthMm = size.mm.h;
-}
 
 // Graphics
 const closeEditor = () => {
@@ -1401,6 +1675,15 @@ watch(totalPrice, (val) => {
 
 watch(selectedHistoryId, () => {
   isEditingHistory.value = false;
+});
+
+watch(quickStep, (step) => {
+  if (step === 2 && estimateDraft.quickDents.length === 0) {
+    addQuickDent();
+  }
+  if (step === 2 && estimateDraft.quickDents.length > 0) {
+    estimateDraft.quickDents.forEach((dent) => normalizeQuickDentPanel(dent));
+  }
 });
 
 const handleKeyDown = (e) => {

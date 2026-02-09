@@ -10,7 +10,7 @@
       :selected-part-id="selectedPartId"
       :car-classes="carClasses"
       :parts-list="partsList"
-      :lock-selection="wizardStep >= 3"
+      :lock-selection="wizardStep >= 4"
       :show-reset="true"
       :current-step="wizardStep"
       @home="$emit('home')"
@@ -22,10 +22,10 @@
     <!-- Hint: фиксированная высота, не влияет на позицию матрицы -->
     <div class="graphics-hint-area">
       <div
-        v-if="wizardStep <= 2"
+        v-if="wizardStep >= 2 && wizardStep <= 3"
         ref="hintRef"
         class="step-hint-block w-full px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm border pointer-events-none"
-        :class="wizardStep === 1 ? 'border-metric-green/40' : 'border-metric-green/40'"
+        :class="wizardStep === 2 ? 'border-metric-green/40' : 'border-metric-green/40'"
       >
         <p class="step-hint-text text-[12px] font-medium leading-tight text-gray-200 mb-1">
           {{ stepHintText }}
@@ -46,9 +46,9 @@
         style="background-color: #0b0f14"
       >
         <div ref="konvaContainer" id="konva-container" class="absolute inset-0 w-full h-full" style="background-color: #0b0f14; padding: 0; margin: 0"></div>
-        <!-- Кнопка удаления вмятины на этапах 1–2 (HUD): активна только при выбранной вмятине -->
+        <!-- Кнопка удаления вмятины на этапах 1–3 (HUD): активна только при выбранной вмятине -->
         <button
-          v-if="wizardStep <= 2"
+          v-if="wizardStep <= 3"
           type="button"
           class="hud-delete-btn"
           :class="{ 'hud-delete-btn--active': selectedDentSize }"
@@ -67,7 +67,7 @@
     </div>
     <!-- Индикаторы этапов: фиксированная зона ниже матрицы -->
     <div class="graphics-progress-area">
-      <StepDots :current-step="wizardStep" :total-steps="4" />
+      <StepDots :current-step="wizardStep" :total-steps="5" />
     </div>
     <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
@@ -75,54 +75,51 @@
       class="graphics-controls-area shrink-0 border-t border-white/10 bg-black/80 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[env(safe-area-inset-bottom,0px)]"
       :style="controlsAreaKeyboardStyle"
     >
-      <Step1PlacementPanel
+      <Step0ClientPanel
         v-if="wizardStep === 1"
-        :preview-price="roundPrice(basePrice)"
-        :total-price="roundPrice(totalPrice)"
-        :can-next="dents.length >= 1"
-        :selected-dent-size="selectedDentSize"
-        @add-type="openSizeMenu"
-        @client="showClientInfo = true"
-        @draw-freeform="onStartFreeformRedraw"
+        :model="estimateDraft"
+        :client-required="clientRequired"
+        :can-next="clientValid"
         @next="() => goToStep(2)"
         @back="goBack"
       />
-      <Step2SizePanel
+      <Step1PlacementPanel
         v-else-if="wizardStep === 2"
+        :can-next="dents.length >= 1"
+        @add-type="openSizeMenu"
+        @add-freeform="openFreeformModal"
+        @next="() => goToStep(3)"
+        @back="goBack"
+      />
+      <Step2SizePanel
+        v-else-if="wizardStep === 3"
         :selected-dent-size="selectedDentSize"
         :shape-variant="selectedDentSize?.shapeVariant ?? (selectedDentSize?.type === 'circle' ? 'oval' : 'strip')"
         :size-width-mm="sizeWidthMm"
         :size-height-mm="sizeHeightMm"
         :free-stretch="freeStretchMode"
-        :freeform-enabled="selectedDentSize?.freeformEnabled ?? false"
-        :freeform-edit-mode="freeformEditMode"
-        :active-freeform-point-index="selectedDentSize?.activeFreeformPointIndex ?? null"
-        :freeform-point-count="selectedDentSize?.freeformPointCount ?? 0"
         :area-mm2="selectedDentSize?.areaMm2 ?? null"
-        :total-price="roundPrice(totalPrice)"
         :can-next="dentsValid"
         @update:shape-variant="onShapeVariantChange"
         @update:free-stretch="onFreeStretchChange"
-        @update:freeform-enabled="onFreeformToggle"
         @update:size-width-mm="onSizeWidthInput"
         @update:size-height-mm="onSizeHeightInput"
         @dimensions-focus="onDimensionsInputFocus"
-        @toggle-freeform-edit="onToggleFreeformEdit"
-        @delete-freeform-point="onDeleteFreeformPoint"
-        @next="() => goToStep(3)"
+        @fix-freeform="onFixFreeformShape"
+        @next="() => goToStep(4)"
         @back="goBack"
       />
       <Step3ConditionsPanel
-        v-else-if="wizardStep === 3"
+        v-else-if="wizardStep === 4"
         :model="form"
         :initial-data="initialData"
         :base-price="roundPrice(basePrice)"
         :total-price="totalPrice"
         @back="goBack"
-        @calculate="() => goToStep(4)"
+        @calculate="() => goToStep(5)"
       />
       <Step4SummaryPanel
-        v-else-if="wizardStep === 4"
+        v-else-if="wizardStep === 5"
         :breakdown="breakdown"
         :total-price="totalPrice"
         :freeform-used="freeformUsed"
@@ -131,7 +128,7 @@
         :comment="estimateDraft.comment"
         @update:comment="estimateDraft.comment = $event"
         @back="goBack"
-        @back-to-edit="() => goToStep(2)"
+        @back-to-edit="() => goToStep(3)"
         @save="emit('save-history')"
         @reset="resetAll"
       />
@@ -187,6 +184,12 @@
         </div>
       </div>
     </Teleport>
+    <FreeformDrawModal
+      :open="showFreeformModal"
+      :canvas-size="freeformCanvasSize"
+      @confirm="onFreeformConfirm"
+      @cancel="closeFreeformModal"
+    />
   </div>
 </template>
 
@@ -198,8 +201,7 @@ import {
   initKonva,
   destroyKonva,
   addDent,
-  setSelectedDentFreeformEnabled,
-  startFreeformRedrawForSelectedDent,
+  addFreeformDentFromPoints,
   resetDents,
   deleteSelected,
   scheduleFit,
@@ -208,16 +210,18 @@ import {
   setKeepRatio,
   setEditable,
   setHideGridOnMobile,
-  setFreeformEditMode,
-  deleteActiveFreeformPoint
+  setSelectedDentFreeStretch,
+  setSelectedDentShapeFixed
 } from '../../graphics/konvaEditor';
 import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from '../../utils/priceCalc';
 import StepHeader from './StepHeader.vue';
+import Step0ClientPanel from './Step0ClientPanel.vue';
 import Step1PlacementPanel from './Step1PlacementPanel.vue';
 import Step2SizePanel from './Step2SizePanel.vue';
 import Step3ConditionsPanel from './Step3ConditionsPanel.vue';
 import Step4SummaryPanel from './Step4SummaryPanel.vue';
 import StepDots from './StepDots.vue';
+import FreeformDrawModal from './FreeformDrawModal.vue';
 
 const props = defineProps({
   form: { type: Object, required: true },
@@ -231,7 +235,9 @@ const props = defineProps({
   circleSizes: { type: Array, default: () => [] },
   stripSizes: { type: Array, default: () => [] },
   estimateDraft: { type: Object, required: true },
-  historySaving: { type: Boolean, default: false }
+  historySaving: { type: Boolean, default: false },
+  clientRequired: { type: Boolean, default: false },
+  clientValid: { type: Boolean, default: true }
 });
 
 const wizardStep = ref(1);
@@ -246,8 +252,11 @@ const selectedDentSize = ref(null);
 const sizeWidthMm = ref(0);
 const sizeHeightMm = ref(0);
 const freeStretchMode = ref(true);
+const sizeEditAxis = ref(null);
+const sizeAdjusting = ref(false);
 const dents = ref([]);
-const freeformEditMode = ref(false);
+const showFreeformModal = ref(false);
+const freeformCanvasSize = ref({ width: 320, height: 240 });
 let sizeApplyTimeout = null;
 let sizeEditByUser = false;
 
@@ -263,7 +272,7 @@ const matrixSafeTopStyle = computed(() => ({
 let hintObserver = null;
 
 function updateMatrixSafeTop() {
-  if (wizardStep.value <= 2) {
+  if (wizardStep.value <= 3) {
     if (matrixSafeTop.value !== MIN_SAFE_TOP) matrixSafeTop.value = MIN_SAFE_TOP;
     return;
   }
@@ -339,9 +348,9 @@ const breakdown = computed(() => {
   props.estimateDraft.breakdown = items;
   return items;
 });
-const freeformUsed = computed(() => dents.value?.some((d) => d?.freeformEnabled));
+const freeformUsed = computed(() => dents.value?.some((d) => d?.type === 'freeform'));
 const freeformAreaMm2 = computed(() => dents.value.reduce((sum, d) => {
-  if (!d?.freeformEnabled) return sum;
+  if (d?.type !== 'freeform') return sum;
   const area = Number(d?.areaMm2);
   return sum + (Number.isFinite(area) ? area : 0);
 }, 0));
@@ -355,9 +364,9 @@ const dentsValid = computed(() => {
 
 const stepHintText = computed(() => {
   switch (wizardStep.value) {
-    case 1:
-      return 'Выберите деталь. Добавьте вмятины и перетащите на место.';
     case 2:
+      return 'Выберите деталь. Добавьте вмятины и перетащите на место.';
+    case 3:
       return 'Размеры в мм. Форма: круг/овал или полоса/царапина.';
     default:
       return '';
@@ -370,12 +379,11 @@ watch(selectedDentSize, (info, oldInfo) => {
     const h = Number(info.heightMm);
     sizeWidthMm.value = Number.isFinite(w) && w > 0 ? Math.round(w * 10) / 10 : 0;
     sizeHeightMm.value = Number.isFinite(h) && h > 0 ? Math.round(h * 10) / 10 : 0;
+    if (info.type === 'freeform') {
+      freeStretchMode.value = !!info.freeStretchEnabled;
+    }
   }
   sizeEditByUser = false;
-  if (!info?.freeformEnabled) {
-    freeformEditMode.value = false;
-    setFreeformEditMode(false);
-  }
   const panelToggled = (info && !oldInfo) || (!info && oldInfo);
   if (panelToggled) nextTick(() => setTimeout(() => scheduleFit('controls-resize'), 50));
 }, { immediate: true });
@@ -383,14 +391,31 @@ watch(selectedDentSize, (info, oldInfo) => {
 watch([sizeWidthMm, sizeHeightMm], () => {
   if (!selectedDentSize.value) return;
   if (!sizeEditByUser) return;
+  if (sizeAdjusting.value) return;
   if (sizeApplyTimeout) clearTimeout(sizeApplyTimeout);
   sizeApplyTimeout = setTimeout(() => {
-    const w = Number(sizeWidthMm.value);
-    const h = Number(sizeHeightMm.value);
+    let w = Number(sizeWidthMm.value);
+    let h = Number(sizeHeightMm.value);
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
       sizeEditByUser = false;
       sizeApplyTimeout = null;
       return;
+    }
+    const isFreeform = selectedDentSize.value?.type === 'freeform';
+    const shouldKeepRatio = isFreeform && (selectedDentSize.value?.isShapeFixed || !selectedDentSize.value?.freeStretchEnabled);
+    if (shouldKeepRatio) {
+      const ratio = Number(selectedDentSize.value?.fixedAspectRatio) || (h ? w / h : null);
+      if (ratio && ratio > 0) {
+        if (sizeEditAxis.value === 'width') {
+          h = w / ratio;
+        } else if (sizeEditAxis.value === 'height') {
+          w = h * ratio;
+        }
+        sizeAdjusting.value = true;
+        sizeWidthMm.value = Math.round(w * 10) / 10;
+        sizeHeightMm.value = Math.round(h * 10) / 10;
+        sizeAdjusting.value = false;
+      }
     }
     const cur = selectedDentSize.value;
     if (cur && Math.abs(cur.widthMm - w) < 0.01 && Math.abs(cur.heightMm - h) < 0.01) {
@@ -406,8 +431,8 @@ watch([sizeWidthMm, sizeHeightMm], () => {
 
 watch(dents, (val) => {
   emit('dents-change', val);
-  if (wizardStep.value === 2 && val.length === 0) {
-    goToStep(1);
+  if (wizardStep.value === 3 && val.length === 0) {
+    goToStep(2);
   }
 }, { deep: true });
 
@@ -431,6 +456,9 @@ function goBack() {
       break;
     case 4:
       goToStep(3);
+      break;
+    case 5:
+      goToStep(4);
       break;
     default:
       goToStep(1);
@@ -495,39 +523,55 @@ function onShapeVariantChange(variant) {
 }
 
 function onFreeStretchChange(checked) {
-  setKeepRatio(!checked);
-}
-
-function onFreeformToggle(enabled) {
-  setSelectedDentFreeformEnabled(!!enabled);
-  if (!enabled) {
-    freeformEditMode.value = false;
-    setFreeformEditMode(false);
+  if (selectedDentSize.value?.type === 'freeform') {
+    setSelectedDentFreeStretch(!!checked);
+    freeStretchMode.value = !!checked;
+    return;
   }
-}
-
-function onStartFreeformRedraw() {
-  startFreeformRedrawForSelectedDent();
+  setKeepRatio(!checked);
 }
 
 function onSizeWidthInput(val) {
   sizeEditByUser = true;
+  sizeEditAxis.value = 'width';
   sizeWidthMm.value = val;
 }
 
 function onSizeHeightInput(val) {
   sizeEditByUser = true;
+  sizeEditAxis.value = 'height';
   sizeHeightMm.value = val;
 }
 
-function onToggleFreeformEdit() {
-  if (!selectedDentSize.value?.freeformEnabled) return;
-  freeformEditMode.value = !freeformEditMode.value;
-  setFreeformEditMode(freeformEditMode.value);
+function onFixFreeformShape() {
+  setSelectedDentShapeFixed();
 }
 
-function onDeleteFreeformPoint() {
-  deleteActiveFreeformPoint();
+function updateFreeformCanvasSize() {
+  const rect = konvaContainer.value?.getBoundingClientRect?.();
+  if (!rect?.width || !rect?.height) {
+    freeformCanvasSize.value = { width: 320, height: 240 };
+    return;
+  }
+  freeformCanvasSize.value = { width: Math.round(rect.width), height: Math.round(rect.height) };
+}
+
+function openFreeformModal() {
+  updateFreeformCanvasSize();
+  showFreeformModal.value = true;
+}
+
+function closeFreeformModal() {
+  showFreeformModal.value = false;
+}
+
+function onFreeformConfirm(points) {
+  if (!Array.isArray(points) || points.length < 3) {
+    closeFreeformModal();
+    return;
+  }
+  addFreeformDentFromPoints(points, props.circleSizes);
+  closeFreeformModal();
 }
 
 const formatCurrency = (v) => new Intl.NumberFormat('ru-RU').format(v);
@@ -547,7 +591,7 @@ const initKonvaEditor = async () => {
     (info) => { selectedDentSize.value = info; }
   );
   /* Применить текущий шаг (draggable формы vs handle) после init */
-  setEditable(wizardStep.value <= 2, wizardStep.value);
+  setEditable(wizardStep.value >= 2 && wizardStep.value <= 3, wizardStep.value);
   updateMobileGrid();
   /* Повторный fit после layout: контейнер мог иметь 0 размер при init */
   nextTick(() => setTimeout(() => scheduleFit('init-layout'), 150));
@@ -563,17 +607,15 @@ watch(
   (step) => {
     nextTick(() => {
       updateMatrixSafeTop();
-      setEditable(step <= 2, step);
+      setEditable(step >= 2 && step <= 3, step);
       updateMobileGrid();
-      if (step === 2) {
+      if (step === 3) {
         setKeepRatio(!freeStretchMode.value);
         setTimeout(() => scheduleFit('step2-show'), 200);
       }
-      if (step >= 3) {
-        freeformEditMode.value = false;
-        setFreeformEditMode(false);
+      if (step >= 4) {
       }
-      if (step >= 3) setTimeout(() => scheduleFit('resize'), 150);
+      if (step >= 4) setTimeout(() => scheduleFit('resize'), 150);
     });
   },
   { immediate: true }
@@ -655,7 +697,7 @@ onBeforeUnmount(() => {
   --bottomH: 34%;
   --matrixSafeTop: 60px;
   --matrixHeight: auto;
-  --actionbar-height: calc(112px + env(safe-area-inset-bottom, 0px));
+  --actionbar-height: calc(112px + env(safe-area-inset-bottom, 0px) + var(--app-footer-height, 0px));
   --controlsMaxH: clamp(230px, 28vh, 340px);
 }
 
@@ -794,34 +836,15 @@ onBeforeUnmount(() => {
   hyphens: auto;
 }
 
-.graphics-step-1 .graphics-controls-area,
-.graphics-step-2 .graphics-controls-area {
+.graphics-step-2 .graphics-controls-area,
+.graphics-step-3 .graphics-controls-area {
   flex: 0 0 auto;
   min-height: 0;
   height: var(--controlsMaxH);
   max-height: var(--controlsMaxH);
 }
 
-.graphics-step-1 :deep(.graphics-panel-content),
-.graphics-step-2 :deep(.graphics-panel-content) {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overflow: visible;
-}
-
-.graphics-step-3 .graphics-stage-area {
-  display: none;
-}
-
-.graphics-step-3 .graphics-controls-area {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  height: auto;
-  border-top: none;
-}
-
+.graphics-step-2 :deep(.graphics-panel-content),
 .graphics-step-3 :deep(.graphics-panel-content) {
   flex: 1 1 auto;
   min-height: 0;
@@ -829,21 +852,44 @@ onBeforeUnmount(() => {
   overflow: visible;
 }
 
+.graphics-step-1 .graphics-stage-area,
+.graphics-step-4 .graphics-stage-area {
+  display: none;
+}
 
-.graphics-step-3 .graphics-hint-area {
+.graphics-step-1 .graphics-controls-area,
+.graphics-step-4 .graphics-controls-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  border-top: none;
+}
+
+.graphics-step-1 :deep(.graphics-panel-content),
+.graphics-step-4 :deep(.graphics-panel-content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+
+.graphics-step-1 .graphics-hint-area,
+.graphics-step-4 .graphics-hint-area {
   flex: 0 0 0;
   min-height: 0;
   max-height: 0;
   padding: 0;
 }
 
-.graphics-step-4 .graphics-stage-area {
-  flex: 0 0 30%;
-  min-height: 120px;
-  max-height: 30%;
+.graphics-step-5 .graphics-stage-area {
+  flex: 0 0 22%;
+  min-height: 90px;
+  max-height: 22%;
 }
 
-.graphics-step-4 .graphics-controls-area {
+.graphics-step-5 .graphics-controls-area {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
@@ -851,11 +897,23 @@ onBeforeUnmount(() => {
 }
 
 
-.graphics-step-4 .graphics-hint-area {
+.graphics-step-5 .graphics-hint-area {
   flex: 0 0 0;
   min-height: 0;
   max-height: 0;
   padding: 0;
+}
+
+.graphics-step-5 {
+  --actionbar-height: calc(240px + env(safe-area-inset-bottom, 0px) + var(--app-footer-height, 0px));
+}
+
+.graphics-step-5 :deep(.graphics-panel-content) {
+  padding-bottom: calc(var(--actionbar-height) + 12px);
+}
+
+.graphics-step-5 :deep(.graphics-action-bar) {
+  bottom: calc(var(--app-footer-height, 0px) + env(safe-area-inset-bottom, 0px) - 30px);
 }
 
 :deep(.graphics-panel-content) {
@@ -866,7 +924,7 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc(var(--app-footer-height, 0px) + env(safe-area-inset-bottom, 0px) - 30px);
   z-index: 30;
   padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
   background: rgba(10, 12, 16, 0.85);

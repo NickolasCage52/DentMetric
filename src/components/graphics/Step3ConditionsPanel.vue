@@ -76,14 +76,6 @@
         </button>
       </div>
       <p v-if="!conditionsComplete" class="text-[10px] text-gray-500 text-center">Выберите все параметры</p>
-      <button
-        type="button"
-        class="actionbar-total-btn"
-        :class="totalPrice > 0 ? 'actionbar-total-btn--active' : 'actionbar-total-btn--idle'"
-        :disabled="totalPrice <= 0"
-      >
-        <span>ИТОГО: {{ totalPrice > 0 ? formatPrice(totalPrice) + ' ₽' : '—' }}</span>
-      </button>
     </div>
   </div>
 </template>
