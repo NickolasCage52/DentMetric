@@ -2235,6 +2235,21 @@ export function addFreeformDentFromPoints(points, sizes) {
   localPointsStage.forEach((p) => {
     localPoints.push((p.x || 0) - minX, (p.y || 0) - minY);
   });
+  const bboxWidth = Math.max(1, maxX - minX);
+  const bboxHeight = Math.max(1, maxY - minY);
+  let centerStage = { x: stage.width() / 2, y: stage.height() / 2 };
+  if (imageNode) {
+    const rect = imageNode.getClientRect({ relativeTo: stage });
+    centerStage = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  } else if (gridRectRef && contentGroup) {
+    const s = contentGroup.scaleX();
+    const pos = contentGroup.position();
+    centerStage = {
+      x: pos.x + (gridRectRef.x + gridRectRef.width / 2) * s,
+      y: pos.y + (gridRectRef.y + gridRectRef.height / 2) * s
+    };
+  }
+  const centerLayer = inv.point(centerStage);
   const line = new Konva.Line({
     points: localPoints,
     closed: true,
@@ -2247,7 +2262,10 @@ export function addFreeformDentFromPoints(points, sizes) {
     listening: true,
     draggable: true
   });
-  line.position({ x: minX, y: minY });
+  line.position({
+    x: centerLayer.x - bboxWidth / 2,
+    y: centerLayer.y - bboxHeight / 2
+  });
   line.setAttr('type', 'freeform');
   line._dentMeta = {
     id,

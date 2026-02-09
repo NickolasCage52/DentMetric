@@ -912,10 +912,6 @@ onBeforeUnmount(() => {
   padding-bottom: calc(var(--actionbar-height) + 12px);
 }
 
-.graphics-step-5 :deep(.graphics-action-bar) {
-  bottom: calc(var(--app-footer-height, 0px) + env(safe-area-inset-bottom, 0px) - 30px);
-}
-
 :deep(.graphics-panel-content) {
   padding-bottom: var(--actionbar-height);
 }
@@ -924,7 +920,7 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--app-footer-height, 0px) + env(safe-area-inset-bottom, 0px) - 30px);
+  bottom: 0;
   z-index: 30;
   padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
   background: rgba(10, 12, 16, 0.85);

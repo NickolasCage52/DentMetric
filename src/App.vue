@@ -1,5 +1,5 @@
 <template>
-  <div class="app-root max-w-md mx-auto relative h-screen flex flex-col bg-black text-white pb-[env(safe-area-inset-bottom)]">
+  <div ref="appRootRef" class="app-root max-w-md mx-auto relative h-screen flex flex-col bg-black text-white pb-[env(safe-area-inset-bottom)]">
     <!-- Home -->
     <div v-if="currentSection === 'home'" class="flex flex-col h-full px-4 pt-5 pb-24">
       <div class="flex items-start justify-between">
@@ -889,7 +889,7 @@
     </div>
 
     <!-- Bottom tabs -->
-    <div class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center pb-[env(safe-area-inset-bottom)] z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
+    <div ref="bottomNavRef" class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center pb-[env(safe-area-inset-bottom)] z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
       <button
         @click="switchSection('history')"
         class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
@@ -958,6 +958,16 @@ import { useHistoryStore } from './features/history/historyStore';
 const currentSection = ref('home');
 const calcMode = ref('standard');
 const quickStep = ref(1);
+const appRootRef = ref(null);
+const bottomNavRef = ref(null);
+let footerResizeObserver = null;
+const updateFooterHeight = () => {
+  const root = appRootRef.value;
+  const nav = bottomNavRef.value;
+  if (!root || !nav) return;
+  const h = Math.round(nav.getBoundingClientRect().height || 0);
+  if (h > 0) root.style.setProperty('--app-footer-height', `${h}px`);
+};
 
 // Form (standard)
 const form = reactive({
@@ -1704,6 +1714,10 @@ onMounted(() => {
     window.Telegram.WebApp.MainButton.setParams({ color: '#88E523', text_color: '#000000' });
   }
   window.addEventListener('keydown', handleKeyDown);
+  updateFooterHeight();
+  footerResizeObserver = new ResizeObserver(() => updateFooterHeight());
+  if (bottomNavRef.value) footerResizeObserver.observe(bottomNavRef.value);
+  window.addEventListener('resize', updateFooterHeight);
   ensureInspectDateTime();
   loadHistory();
 });
@@ -1722,6 +1736,9 @@ watch(
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('resize', updateFooterHeight);
+  if (footerResizeObserver && bottomNavRef.value) footerResizeObserver.unobserve(bottomNavRef.value);
+  if (footerResizeObserver) footerResizeObserver.disconnect();
 });
 </script>
 

@@ -8,10 +8,6 @@
           <span class="text-gray-400">Форма:</span>
           <span class="text-white font-medium">Произвольная (расчёт по габаритам круга/овала)</span>
         </div>
-        <div v-if="freeformUsed && freeformAreaMm2" class="summary-row flex justify-between text-[11px]">
-          <span class="text-gray-400">Площадь (справочно):</span>
-          <span class="text-white font-medium">{{ formatArea(freeformAreaMm2) }} мм²</span>
-        </div>
         <div v-for="(item, idx) in breakdown" :key="idx" class="summary-row flex justify-between text-[11px]">
           <span class="text-gray-400">{{ item.name }}:</span>
           <span class="text-white font-medium">{{ item.value }}</span>
