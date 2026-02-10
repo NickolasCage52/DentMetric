@@ -950,6 +950,7 @@ import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesMm, stripSizesMm, circleSizesWithArea, stripSizesWithArea } from './data/dentSizes';
 import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from './utils/priceCalc';
+import { getBasePriceByMm, getSizeCodeForMatrix } from './utils/priceAdapter';
 import GraphicsWizard from './components/graphics/GraphicsWizard.vue';
 import StepDots from './components/graphics/StepDots.vue';
 import { useHistoryStore } from './features/history/historyStore';
@@ -1252,11 +1253,15 @@ const graphicsStripSizes = computed(() => {
 });
 
 const quickDentTotals = computed(() => estimateDraft.quickDents.map((dent) => {
-  const sizeCode = dent.sizeCode;
-  const base = sizeCode ? (userSettings.prices[sizeCode] || 0) : 0;
-  const total = base > 0 ? applyConditionsToBase(base, dent.conditions, initialData, sizeCode || 'STRIP_DEFAULT') : 0;
-  const breakdown = base > 0 ? buildBreakdown(base, dent.conditions, initialData, sizeCode || 'STRIP_DEFAULT') : [];
-  return { dent, sizeCode, base, total, breakdown };
+  const w = Number(dent.sizeLengthMm) || 0;
+  const h = Number(dent.sizeWidthMm) || 0;
+  const shape = dent.shape === 'circle' ? 'circle' : 'strip';
+  const sizes = shape === 'circle' ? circleSizesWithArea : stripSizesWithArea;
+  const base = (w > 0 && h > 0) ? getBasePriceByMm(shape, w, h, sizes, userSettings.prices) : 0;
+  const sizeCodeForMatrix = getSizeCodeForMatrix(shape, w, h, sizes);
+  const total = base > 0 ? applyConditionsToBase(base, dent.conditions, initialData, sizeCodeForMatrix) : 0;
+  const breakdown = base > 0 ? buildBreakdown(base, dent.conditions, initialData, sizeCodeForMatrix) : [];
+  return { dent, sizeCode: dent.sizeCode, base, total, breakdown };
 }));
 
 const quickLineItems = computed(() => {
@@ -1325,6 +1330,21 @@ const formatDateTime = (iso) => {
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
 };
+
+if (import.meta.env?.DEV) {
+  const compareQuickAndDetailForSameInput = (shape, widthMm, heightMm, conditions) => {
+    const sizes = shape === 'circle' ? circleSizesWithArea : stripSizesWithArea;
+    const base = getBasePriceByMm(shape, widthMm, heightMm, sizes, userSettings.prices);
+    const sizeCodeForMatrix = getSizeCodeForMatrix(shape, widthMm, heightMm, sizes);
+    const quickTotal = applyConditionsToBase(base, conditions, initialData, sizeCodeForMatrix);
+    const detailTotal = applyConditionsToBase(base, conditions, initialData, sizeCodeForMatrix);
+    if (quickTotal !== detailTotal) {
+      console.warn('[Pricing mismatch]', { shape, widthMm, heightMm, base, sizeCodeForMatrix, quickTotal, detailTotal });
+    }
+  };
+  // Example usage in console:
+  // compareQuickAndDetailForSameInput('circle', 120, 300, form);
+}
 
 watch([quickBreakdownItems, calcMode], () => {
   if (calcMode.value !== 'standard') return;

@@ -1,4 +1,5 @@
 import Konva from 'konva';
+import { getInterpolatedPriceByAreaMm2 as interpolateByAreaMm2, getClosestSizeCodeByAreaMm2 } from '../utils/priceAdapter';
 import { normalizeNumber, clamp } from '../utils/validation';
 
 const RIB_MULTIPLIER = 1.3;
@@ -1137,29 +1138,7 @@ function drawHeatZonesStage(dispX, dispY) {
 }
 
 function getInterpolatedPriceByAreaMm2(areaMm2, type, sizesWithArea) {
-  if (!sizesWithArea || sizesWithArea.length === 0) return 0;
-  const sorted = [...sizesWithArea].sort((a, b) => a.areaMm2 - b.areaMm2);
-  if (areaMm2 <= sorted[0].areaMm2) return prices[sorted[0].code] ?? 0;
-  const last = sorted[sorted.length - 1];
-  const areaS11 = last.areaMm2 ?? 0;
-  const priceS11 = prices[last.code] ?? 15000;
-  if (areaMm2 <= areaS11) {
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const s1 = sorted[i];
-      const s2 = sorted[i + 1];
-      if (areaMm2 >= s1.areaMm2 && areaMm2 <= s2.areaMm2) {
-        const p1 = prices[s1.code] ?? 0;
-        const p2 = prices[s2.code] ?? 0;
-        const ratio = (areaMm2 - s1.areaMm2) / (s2.areaMm2 - s1.areaMm2);
-        return p1 + (p2 - p1) * ratio;
-      }
-    }
-    return priceS11;
-  }
-  /** Площадь > S11: убираем потолок. Условия считаются от фактической предварительной цены. */
-  const extraArea = areaMm2 - areaS11;
-  const markup = Math.max(500, 3500 * Math.log(1 + extraArea / 50000));
-  return priceS11 + markup;
+  return interpolateByAreaMm2(areaMm2, sizesWithArea, prices);
 }
 
 function getInterpolatedPriceByAreaPx(areaPx, type, sizes) {
@@ -1568,18 +1547,8 @@ function updateShapeCalc(shape, type, id, sizes) {
   if (!isFreeformType && typeForMatrix === 'circle' && sizes && sizes.length > 0) {
     const withArea = sizes.filter((s) => (s.areaMm2 ?? s.area) != null);
     if (withArea.length > 0) {
-      const areaKey = withArea[0].areaMm2 != null ? 'areaMm2' : 'area';
       const areaVal = areaMm2 ?? areaPx;
-      let closest = withArea[0];
-      let minDist = Math.abs((closest[areaKey] ?? 0) - areaVal);
-      for (const s of withArea) {
-        const d = Math.abs((s[areaKey] ?? 0) - areaVal);
-        if (d < minDist) {
-          minDist = d;
-          closest = s;
-        }
-      }
-      sizeCode = closest.code ?? 'S2';
+      sizeCode = getClosestSizeCodeByAreaMm2(areaVal, withArea) || 'S2';
     }
   }
 
