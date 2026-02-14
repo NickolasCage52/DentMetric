@@ -1,113 +1,116 @@
 <template>
-  <div ref="appRootRef" class="app-root max-w-md mx-auto relative h-screen flex flex-col bg-black text-white pb-[env(safe-area-inset-bottom)]">
+  <div ref="appRootRef" class="app-root max-w-md mx-auto relative h-screen flex flex-col text-white pb-[env(safe-area-inset-bottom)]" :class="{ 'app-root--gradient': currentSection === 'home', 'app-root--solid': currentSection !== 'home' }">
     <!-- Home -->
-    <div v-if="currentSection === 'home'" class="flex flex-col h-full px-4 pt-5 pb-24">
-      <div class="flex items-start justify-between">
+    <div v-if="currentSection === 'home'" class="home-screen flex flex-col h-full pb-24">
+      <div class="flex items-start justify-between px-4 pt-5">
         <div class="flex-1"></div>
         <button
           type="button"
           @click="showLockedStub('Раздел в разработке 🔒')"
-          class="w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-lg hover:bg-white/10 transition-colors"
+          class="w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-lg hover:bg-white/10 hover:border-metric-green/30 transition-all"
           aria-label="Профиль"
         >
           👤
         </button>
       </div>
-      <div class="flex justify-center pt-4 pb-3">
-        <img src="/logo.png" alt="DentMetric" class="w-full max-w-[260px] h-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
-      </div>
-      <div class="grid grid-cols-2 gap-3 pt-2">
-        <button
-          @click="openMetricMenu"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-metric-green/40 shadow-neon"
-        >
-          <div class="text-xl">🧮</div>
-          <div class="text-sm font-bold">Метрика</div>
-          <div class="text-[10px] text-gray-500">Расчёт стоимости</div>
-        </button>
-        <button
-          @click="switchSection('analytics')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 opacity-70"
-        >
-          <div class="text-xl">📊</div>
-          <div class="text-sm font-bold">Аналитика 🔒</div>
-          <div class="text-[10px] text-gray-500">В разработке</div>
-        </button>
-        <button
-          @click="switchSection('history')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-white/10"
-        >
-          <div class="text-xl">🗂️</div>
-          <div class="text-sm font-bold">История оценок</div>
-          <div class="text-[10px] text-gray-500">Сохранённые расчёты</div>
-        </button>
-        <button
-          @click="switchSection('journal')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 opacity-70"
-        >
-          <div class="text-xl">📓</div>
-          <div class="text-sm font-bold">Журнал записи 🔒</div>
-          <div class="text-[10px] text-gray-500">В разработке</div>
-        </button>
-      </div>
-      <div class="mt-auto pt-6"></div>
-    </div>
-
-    <!-- Section: Metric Menu -->
-    <div v-else-if="currentSection === 'metric-menu'" class="flex flex-col h-full px-4 pt-5 pb-24">
-      <div class="flex items-start justify-between">
-        <button
-          type="button"
-          @click="goHome"
-          class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px] flex items-center gap-1"
-        >
-          <span>←</span>
-          <span>Домой</span>
-        </button>
-        <div class="flex-1"></div>
-        <button
-          type="button"
-          @click="goHome"
-          class="text-xs text-gray-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-2 min-h-[40px]"
-        >
-          ✕
-        </button>
-      </div>
-      <div class="flex items-center justify-center pb-3 pt-2">
-        <div class="px-5 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] shadow-lg">
-          <span class="text-[10px] font-bold uppercase text-metric-green tracking-widest">Метрика</span>
+      <div class="flex-1 flex flex-col items-center justify-center px-4 py-4 relative">
+        <div class="home-logo-wrap absolute top-6 left-1/2 -translate-x-1/2 z-10">
+          <img src="/logo.png" alt="DentMetric" class="home-logo w-full max-w-[200px] h-auto object-contain relative z-10" onerror="this.style.display='none'">
         </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3 pt-2">
-        <button
-          @click="selectMetricMode('standard')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-metric-green/40 shadow-neon"
-        >
-          <div class="text-xl">⚡</div>
-          <div class="text-sm font-bold">Быстрый расчёт</div>
-          <div class="text-[10px] text-gray-500">Короткий расчёт</div>
-        </button>
-        <button
-          @click="selectMetricMode('graphics')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 border border-white/10 hover:border-metric-green/40 transition-colors"
-        >
-          <div class="text-xl">🎨</div>
-          <div class="text-sm font-bold">Детализация</div>
-          <div class="text-[10px] text-gray-500">Графический режим</div>
-        </button>
-        <button
-          @click="selectMetricMode('time')"
-          class="card-metallic rounded-2xl p-4 flex flex-col items-start gap-2 opacity-70"
-        >
-          <div class="text-xl">⏱️</div>
-          <div class="text-sm font-bold">ГРАД 🔒</div>
-          <div class="text-[10px] text-gray-500">В разработке</div>
-        </button>
+        <div class="home-buttons-grid relative z-10">
+          <button
+            data-testid="btn-open-metric"
+            @click="openMetricMenu"
+            class="home-btn home-btn-primary card-metallic btn-glow pulse-animation rounded-2xl p-5 flex flex-col items-center justify-center gap-2 border border-metric-green/40 shadow-neon min-h-[110px] w-full"
+          >
+            <svg class="home-btn-icon w-8 h-8 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span class="text-sm font-bold uppercase tracking-wider">Метрика</span>
+            <span class="text-[10px] text-gray-500">Расчёт стоимости</span>
+          </button>
+          <button
+            @click="switchSection('analytics')"
+            class="home-btn card-metallic btn-glow rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-75 min-h-[110px] w-full border border-white/10 hover:border-metric-green/30 hover:opacity-100"
+          >
+            <svg class="home-btn-icon w-8 h-8 text-metric-green/90 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span class="text-sm font-bold uppercase tracking-wider">Аналитика</span>
+            <span class="text-[10px] text-gray-500">В разработке 🔒</span>
+          </button>
+          <button
+            data-testid="btn-history"
+            @click="switchSection('history')"
+            class="home-btn home-btn-primary card-metallic btn-glow pulse-animation rounded-2xl p-5 flex flex-col items-center justify-center gap-2 border border-metric-green/40 min-h-[110px] w-full hover:border-metric-green/60"
+          >
+            <svg class="home-btn-icon w-8 h-8 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span class="text-sm font-bold uppercase tracking-wider">История оценок</span>
+            <span class="text-[10px] text-gray-500">Сохранённые расчёты</span>
+          </button>
+          <button
+            @click="switchSection('journal')"
+            class="home-btn card-metallic btn-glow rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-75 min-h-[110px] w-full border border-white/10 hover:border-metric-green/30 hover:opacity-100"
+          >
+            <svg class="home-btn-icon w-8 h-8 text-metric-green/90 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <span class="text-sm font-bold uppercase tracking-wider">Журнал записи</span>
+            <span class="text-[10px] text-gray-500">В разработке 🔒</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Section: Metric -->
     <div v-else-if="currentSection === 'metric'" class="flex flex-col h-full">
+      <!-- Full-screen mode picker (replaces bottom sheet) -->
+      <div v-if="!calcMode" class="flex flex-col flex-1 min-h-0 overflow-y-auto p-4 pb-24">
+        <div class="flex-1 flex flex-col justify-center py-8">
+          <div class="flex items-center justify-center mb-8">
+            <img src="/dm-small.png" alt="DentMetric" class="h-8 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
+          </div>
+          <p class="text-[10px] font-bold uppercase text-metric-green tracking-widest text-center mb-6">Выбор режима расчёта</p>
+          <div class="grid grid-cols-1 gap-3 max-w-sm mx-auto w-full">
+            <button
+              data-testid="metric-standard"
+              @click="selectMetricMode('standard')"
+              class="card-metallic rounded-2xl p-5 flex items-center gap-4 border border-metric-green/40 hover:border-metric-green/60 hover:shadow-neon transition-all"
+            >
+              <span class="text-2xl">⚡</span>
+              <div class="text-left">
+                <div class="text-sm font-bold">БЫСТРЫЙ</div>
+                <div class="text-[10px] text-gray-500">Короткий расчёт</div>
+              </div>
+            </button>
+            <button
+              data-testid="metric-graphics"
+              @click="selectMetricMode('graphics')"
+              class="card-metallic rounded-2xl p-5 flex items-center gap-4 border border-white/10 hover:border-metric-green/40 hover:shadow-neon transition-all"
+            >
+              <span class="text-2xl">🎨</span>
+              <div class="text-left">
+                <div class="text-sm font-bold">ДЕТАЛИЗАЦИЯ</div>
+                <div class="text-[10px] text-gray-500">Графический режим</div>
+              </div>
+            </button>
+            <button
+              @click="selectMetricMode('time')"
+              class="card-metallic rounded-2xl p-5 flex items-center gap-4 border border-white/10 opacity-70"
+            >
+              <span class="text-2xl">⏱️</span>
+              <div class="text-left">
+                <div class="text-sm font-bold">ГРАД 🔒</div>
+                <div class="text-[10px] text-gray-500">В разработке</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <template v-else>
       <div v-if="calcMode !== 'graphics'" class="p-4 space-y-3 shrink-0 z-20 bg-black">
         <div class="flex items-center justify-center">
           <img src="/dm-small.png" alt="DentMetric" class="h-7 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
@@ -117,31 +120,35 @@
       <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
         <!-- Standard mode -->
         <div v-if="calcMode === 'standard'" class="flex flex-col min-h-full">
-          <div class="flex items-center justify-center pb-2">
-            <StepDots :current-step="quickStep" :total-steps="3" />
+          <div data-testid="step-dots" class="flex items-center justify-center pb-2">
+            <StepDots :current-step="quickLogicalStep" :total-steps="quickTotalSteps" />
           </div>
 
-          <div class="space-y-4 pb-4">
-            <div v-if="quickStep === 1" class="space-y-4">
+          <div class="space-y-4 pb-40">
+            <div v-if="quickStep === 1 && userSettings.showClientQuick" class="space-y-4">
               <div class="card-metallic rounded-2xl p-5 space-y-3">
                 <div class="flex items-center justify-between">
-                  <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Данные клиента</div>
-                  <div v-if="userSettings.clientRequired" class="text-[10px] text-red-400 uppercase tracking-widest">обязательно</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Данные клиента</span>
+                    <InfoIcon v-if="userSettings.showInfoTooltips" tooltip-text="Заполните контактные данные клиента и информацию об автомобиле. Эти поля можно сделать обязательными в настройках." />
+                  </div>
+                  <span v-if="userSettings.clientRequired" class="text-[10px] text-red-400 uppercase tracking-widest">обязательно</span>
+                  <span v-else class="text-[10px] text-gray-500">опционально</span>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                  <input v-model="estimateDraft.clientName" @focus="scrollFieldIntoView" placeholder="Имя" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-                  <input v-model="estimateDraft.clientCompany" @focus="scrollFieldIntoView" placeholder="Компания" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-                  <input v-model="estimateDraft.clientPhone" @focus="scrollFieldIntoView" placeholder="Тел" inputmode="tel" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-                  <input v-model="estimateDraft.carBrand" @focus="scrollFieldIntoView" placeholder="Марка" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-                  <input v-model="estimateDraft.carModel" @focus="scrollFieldIntoView" placeholder="Модель" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-                  <input v-model="estimateDraft.inspectDate" @focus="scrollFieldIntoView" type="date" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
-                  <input v-model="estimateDraft.inspectTime" @focus="scrollFieldIntoView" type="time" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.clientName" @focus="scrollFieldIntoView" placeholder="Имя клиента" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.clientCompany" @focus="scrollFieldIntoView" placeholder="Компания / Юр. лицо" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.clientPhone" @focus="scrollFieldIntoView" placeholder="Телефон" inputmode="tel" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.carBrand" @focus="scrollFieldIntoView" placeholder="Марка автомобиля" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.carModel" @focus="scrollFieldIntoView" placeholder="Модель автомобиля" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.inspectDate" @focus="scrollFieldIntoView" type="date" placeholder="Дата осмотра" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
+                  <input v-model="estimateDraft.inspectTime" @focus="scrollFieldIntoView" type="time" placeholder="Время осмотра" class="bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none">
                 </div>
-                <p v-if="userSettings.clientRequired && !clientDataValid" class="text-[10px] text-gray-500 text-center">Заполните имя и телефон</p>
+                <p v-if="userSettings.clientRequired && !clientDataValid" class="text-[10px] text-gray-500 text-center">Заполните обязательные поля</p>
               </div>
             </div>
 
-            <div v-else-if="quickStep === 2" class="space-y-4">
+            <div v-else-if="quickStep === 2 || (quickStep === 1 && !userSettings.showClientQuick)" class="space-y-4">
               <div class="space-y-3">
                 <div
                   v-for="(dent, idx) in estimateDraft.quickDents"
@@ -153,9 +160,10 @@
                     <button
                       type="button"
                       @click="removeQuickDent(dent.id)"
-                      class="text-xs text-red-400 hover:text-red-300 border border-red-500/30 rounded-lg px-2 py-1"
+                      class="p-2 text-red-400 hover:text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+                      aria-label="Удалить"
                     >
-                      Удалить
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                   </div>
 
@@ -182,17 +190,18 @@
                   </div>
 
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Элемент</label>
+                    <div class="flex items-center gap-1.5 mb-2">
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Поврежденный элемент</label>
+                      <InfoIcon v-if="userSettings.showInfoTooltips" tooltip-text="Выберите деталь кузова, на которой расположена вмятина (капот, дверь, крыло и т.д.)." />
+                    </div>
                     <div class="relative">
                       <select
                         v-model="dent.panelElement"
                         @change="onQuickDentElementChange(dent)"
-                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
+                        :class="['w-full rounded-xl px-4 py-3 text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors', dent.panelElement ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
-                        <option :value="null" disabled selected>Выберите элемент</option>
-                        <option v-for="part in (dent.panelSide === 'right' ? quickPartsRight : quickPartsLeft)" :key="part" :value="part">
-                          {{ part }}
-                        </option>
+                        <option :value="null" disabled>Выберите элемент</option>
+                        <option v-for="part in (dent.panelSide === 'right' ? quickPartsRight : quickPartsLeft)" :key="part" :value="part">{{ part }}</option>
                       </select>
                       <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
                         <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
@@ -200,7 +209,12 @@
                     </div>
                   </div>
 
-                  <div class="flex space-x-3">
+                  <div>
+                    <div class="flex items-center gap-1.5 mb-2">
+                      <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">ГЕОМЕТРИЯ ПОВРЕЖДЕНИЯ</span>
+                      <InfoIcon v-if="userSettings.showInfoTooltips" tooltip-text="Круг/Овал — точечные вмятины. Полоса — удлинённые повреждения, царапины. Система автоматически подбирает форму по соотношению сторон (L/H ≥ 2.5 → Полоса)." />
+                    </div>
+                    <div class="flex space-x-3">
                     <div
                       @click="setQuickDentShape(dent, 'circle')"
                       class="flex-1 relative rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 border"
@@ -223,16 +237,21 @@
                       ></div>
                       <span class="text-xs font-bold uppercase" :class="dent.shape === 'strip' ? 'text-white' : 'text-gray-400'">Полоса</span>
                     </div>
+                    </div>
                   </div>
 
                   <div class="mb-2">
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Размер</label>
-                    <div class="relative group">
+                    <div class="flex items-center gap-1.5 mb-2">
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Размер повреждения</label>
+                      <InfoIcon v-if="userSettings.showInfoTooltips" tooltip-text="Выберите шаблонный размер или введите произвольные длину и ширину в мм. Длина — большая сторона, ширина — меньшая." />
+                    </div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 tracking-widest">РАЗМЕР ПО ШАБЛОНУ</label>
+                    <div class="relative group mb-3">
                       <select
                         v-model="dent.sizeCode"
                         required
-                        @change="syncQuickDentMmFromSizeCode(dent)"
-                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors"
+                        @change="onQuickDentSizeCodeChange(dent)"
+                        :class="['w-full rounded-xl px-4 py-3 text-lg font-semibold shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors', dent.sizeCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
                         <option :value="null" disabled selected>Выберите размер</option>
                         <option v-for="size in getSizeListForShape(dent.shape)" :key="size.code" :value="size.code">{{ size.name }}</option>
@@ -241,12 +260,14 @@
                         <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
                       </div>
                     </div>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-2">
+                    <div class="mb-1">
+                      <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Произвольный размер</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
                     <div>
                       <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-widest">Длина (мм)</label>
                       <input
+                        data-testid="dent-size-length"
                         v-model.number="dent.sizeLengthMm"
                         @input="syncQuickDentSizeFromMm(dent)"
                         @focus="scrollFieldIntoView"
@@ -254,12 +275,13 @@
                         min="0.1"
                         step="0.5"
                         inputmode="decimal"
-                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors"
+                        :class="['w-full rounded-xl px-4 py-3 text-lg font-semibold shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors', (dent.sizeLengthMm && dent.sizeLengthMm > 0) ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
                     </div>
                     <div>
                       <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-widest">Ширина (мм)</label>
                       <input
+                        data-testid="dent-size-width"
                         v-model.number="dent.sizeWidthMm"
                         @input="syncQuickDentSizeFromMm(dent)"
                         @focus="scrollFieldIntoView"
@@ -267,19 +289,25 @@
                         min="0.1"
                         step="0.5"
                         inputmode="decimal"
-                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-4 py-3 text-white text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors"
+                        :class="['w-full rounded-xl px-4 py-3 text-lg font-semibold shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none transition-colors', (dent.sizeWidthMm && dent.sizeWidthMm > 0) ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
                     </div>
                   </div>
+                  </div>
 
-                  <div class="grid grid-cols-2 gap-2">
+                  <div class="rounded-2xl border border-metric-green/20 bg-[#0d0d0d]/80 p-4">
+                    <div class="flex items-center gap-1.5 mb-3">
+                      <span class="text-[10px] font-bold text-metric-green uppercase tracking-widest">ПАРАМЕТРЫ РАСЧЁТА</span>
+                      <InfoIcon v-if="userSettings.showInfoTooltips" tooltip-text="Технология ремонта, сложность, материал панели и класс авто влияют на итоговую стоимость. Материал ЛКП — тип лакокрасочного покрытия (глянец, мат, плёнка)." />
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Технология</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Технология ремонта</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.repairCode"
                           required
-                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                          :class="['w-full rounded-xl px-3 py-2.5 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', dent.conditions.repairCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                         >
                           <option :value="null" disabled selected>Выберите</option>
                           <option v-for="r in initialData.repairTypes" :key="r.code" :value="r.code">{{ r.name }}</option>
@@ -290,12 +318,12 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность выполнения</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.riskCode"
                           required
-                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                          :class="['w-full rounded-xl px-3 py-2.5 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', dent.conditions.riskCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                         >
                           <option :value="null" disabled selected>Выберите</option>
                           <option v-for="risk in initialData.risks" :key="risk.code" :value="risk.code">{{ risk.name }}</option>
@@ -306,12 +334,12 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал панели</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.materialCode"
                           required
-                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                          :class="['w-full rounded-xl px-3 py-2.5 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', dent.conditions.materialCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                         >
                           <option :value="null" disabled selected>Выберите</option>
                           <option v-for="m in initialData.materials" :key="m.code" :value="m.code">{{ m.name }}</option>
@@ -322,12 +350,28 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс авто</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">МАТЕРИАЛ ЛКП</label>
+                      <div class="relative">
+                        <select
+                          v-model="dent.conditions.paintMaterialCode"
+                          :class="['w-full rounded-xl px-3 py-2.5 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', dent.conditions.paintMaterialCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
+                        >
+                          <option :value="null" disabled selected>Выберите</option>
+                          <option v-for="p in initialData.paintMaterials" :key="p.code" :value="p.code">{{ p.name }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                      <p v-if="dent.conditions.paintMaterialCode" class="text-[9px] text-gray-500 mt-1 ml-1">{{ (initialData.paintMaterials.find(p => p.code === dent.conditions.paintMaterialCode))?.desc }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Класс автомобиля</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.carClassCode"
                           required
-                          class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                          :class="['w-full rounded-xl px-3 py-2.5 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', dent.conditions.carClassCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                         >
                           <option :value="null" disabled selected>Выберите</option>
                           <option v-for="c in initialData.carClasses" :key="c.code" :value="c.code">{{ c.name }}</option>
@@ -339,30 +383,54 @@
                     </div>
                   </div>
 
-                  <div>
+                  <div class="col-span-2">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Арматурные работы</label>
+                    <p class="text-[9px] text-gray-500 mb-2 ml-1">Сначала выберите поврежденный элемент. Работы зависят от элемента.</p>
                     <div class="relative">
                       <select
-                        v-model="dent.conditions.disassemblyCode"
-                        required
-                        class="w-full bg-[#151515] border border-[#333] rounded-xl px-3 py-2.5 text-white text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors"
+                        :value="(dent.conditions.disassemblyCodes || ['Z0'])[0]"
+                        @change="onArmaturnayaSelect(dent, $event.target.value)"
+                        :class="['w-full rounded-xl px-4 py-3 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', (dent.conditions.disassemblyCodes || ['Z0'])[0] ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
+                      >
+                        <option
+                          v-for="work in getArmaturnayaWorksForElement(dent.panelElement)"
+                          :key="work.code"
+                          :value="work.code"
+                        >
+                          {{ work.name }}{{ work.price > 0 ? ' — ' + work.price.toLocaleString('ru-RU') + ' ₽' : '' }}
+                        </option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                        <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">ШУМОИЗОЛЯЦИЯ</label>
+                    <div class="relative">
+                      <select
+                        v-model="dent.conditions.soundInsulationCode"
+                        :class="['w-full rounded-xl px-3 py-2.5 text-sm focus:border-metric-green/50 outline-none appearance-none transition-colors', dent.conditions.soundInsulationCode ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
                         <option :value="null" disabled selected>Выберите</option>
-                        <option v-for="d in initialData.disassembly" :key="d.code" :value="d.code">{{ d.name }}</option>
+                        <option v-for="s in initialData.soundInsulation" :key="s.code" :value="s.code" :title="s.desc">{{ s.name }}</option>
                       </select>
                       <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
                         <svg class="w-3 h-3 text-metric-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
                       </div>
                     </div>
+                    <p v-if="dent.conditions.soundInsulationCode" class="text-[9px] text-gray-500 mt-1 ml-1">{{ (initialData.soundInsulation.find(s => s.code === dent.conditions.soundInsulationCode))?.desc }}</p>
+                  </div>
                   </div>
 
                   <div class="flex justify-between text-[11px] text-gray-400 pt-1">
                     <span>Подитог:</span>
-                    <span class="text-white font-medium">{{ formatCurrency(getQuickDentTotal(dent.id)) }} ₽</span>
+                    <span class="text-white font-medium">{{ formatRoundedPrice(getQuickDentTotal(dent.id)) }} ₽</span>
                   </div>
                 </div>
 
                 <button
+                  data-testid="btn-add-dent"
                   type="button"
                   @click="addQuickDent"
                   class="w-full py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px]"
@@ -378,16 +446,20 @@
                 <div v-for="(item, idx) in quickLineItems" :key="item.dent.id" class="border-b border-white/10 pb-2 mb-2 last:mb-0 last:pb-0 last:border-0">
                   <div class="flex justify-between text-[11px]">
                     <span class="text-gray-400">Вмятина {{ idx + 1 }} · {{ getQuickDentLabel(item.dent) }}</span>
-                    <span class="text-white font-medium">{{ formatCurrency(item.appliedTotal) }} ₽</span>
+                    <span class="text-white font-medium">{{ formatRoundedPrice(item.appliedTotal) }} ₽</span>
                   </div>
                   <div class="text-[10px] text-gray-500">
-                    Размер: {{ Number(item.dent.sizeLengthMm || 0).toFixed(1) }}×{{ Number(item.dent.sizeWidthMm || 0).toFixed(1) }} мм
+                    <span class="text-base font-semibold">Размер повреждения: {{ formatSizeDisplay(item.dent.sizeLengthMm, item.dent.sizeWidthMm) }}</span>
                     <span v-if="item.discount">· -50% доп. вмятина</span>
                   </div>
                 </div>
                 <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
                   <span class="text-metric-green font-bold text-sm">Итог:</span>
-                  <span class="text-metric-green font-bold text-lg">{{ formatCurrency(quickTotal) }} ₽</span>
+                  <span data-testid="total-price" class="text-metric-green font-bold text-lg">{{ formatCurrency(displayTotal) }} ₽</span>
+                </div>
+                <div class="border-t border-white/10 pt-2 mt-2 flex justify-between items-center">
+                  <span class="text-gray-400 text-sm">ВРЕМЯ РЕМОНТА:</span>
+                  <span class="text-white font-medium">{{ estimatedRepairTime }}</span>
                 </div>
               </div>
 
@@ -404,11 +476,11 @@
                   </div>
                   <div class="border-t border-white/10 pt-2 mt-2 flex justify-between text-[11px]">
                     <span class="text-gray-400">Итог по вмятине:</span>
-                    <span class="text-white font-medium">{{ formatCurrency(dentItem.total) }} ₽</span>
+                    <span class="text-white font-medium">{{ formatRoundedPrice(dentItem.total) }} ₽</span>
                   </div>
                   <div v-if="dentItem.discount" class="flex justify-between text-[11px]">
                     <span class="text-gray-400">Итог с 50%:</span>
-                    <span class="text-white font-medium">{{ formatCurrency(dentItem.appliedTotal) }} ₽</span>
+                    <span class="text-white font-medium">{{ formatRoundedPrice(dentItem.appliedTotal) }} ₽</span>
                   </div>
                 </div>
               </div>
@@ -426,7 +498,16 @@
             </div>
           </div>
 
-          <div class="mt-2 px-2 py-2">
+          <div class="sticky bottom-0 mt-auto px-4 pt-2 pb-2 bg-black border-t border-white/10 shrink-0">
+            <div v-if="calcMode === 'standard'" class="flex justify-end mb-1">
+              <button
+                type="button"
+                @click="resetDraftState"
+                class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                СБРОС
+              </button>
+            </div>
             <div v-if="quickStep < 3" class="flex gap-2">
               <button
                 type="button"
@@ -436,9 +517,10 @@
                 Назад
               </button>
               <button
+                data-testid="btn-go-next"
                 type="button"
                 @click="goQuickNext"
-                :disabled="(quickStep === 1 && !clientDataValid) || (quickStep === 2 && !quickStep2Valid)"
+                :disabled="(quickStep === 1 && userSettings.showClientQuick && !clientDataValid) || ((quickStep === 2 || (quickStep === 1 && !userSettings.showClientQuick)) && !quickStep2Valid)"
                 class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Вперёд
@@ -454,6 +536,7 @@
                   Назад
                 </button>
                 <button
+                  data-testid="btn-save-estimate"
                   type="button"
                   @click="saveCurrentEstimate('quick')"
                   class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -465,7 +548,7 @@
               <button
                 type="button"
                 @click="showLockedStub('Раздел в разработке 🔒')"
-                class="w-full py-3 text-xs font-bold uppercase tracking-widest text-black bg-metric-green rounded-xl active:opacity-90 transition-opacity"
+                class="cta-primary w-full py-3 text-xs font-bold uppercase tracking-widest text-black bg-metric-green rounded-xl active:opacity-90 shadow-[0_0_15px_rgba(136,229,35,0.4)]"
                 :disabled="!quickStep3Ready"
               >
                 Записать на ремонт
@@ -499,12 +582,15 @@
         :history-saving="isSavingHistory"
           :client-required="userSettings.clientRequired"
           :client-valid="clientDataValid"
+          :show-client-step="userSettings.showClientDetail"
+          :auto-save="userSettings.autoSaveHistory"
         @home="goHome"
           @close="closeEditor"
           @dents-change="(d) => graphicsState.dents = d"
         @save-history="saveCurrentEstimate('detail')"
         />
       </div>
+      </template>
     </div>
 
     <!-- Section: Settings -->
@@ -541,7 +627,7 @@
             <span class="text-white font-medium">{{ selectedHistory.mode === 'detail' ? 'Детализация' : 'Быстрый расчёт' }}</span>
           </div>
           <div class="flex justify-between text-sm">
-            <span class="text-gray-400">Элемент:</span>
+            <span class="text-gray-400">Поврежденный элемент:</span>
             <span class="text-white font-medium">{{ selectedHistory.element || '—' }}</span>
           </div>
           <div class="flex justify-between text-sm">
@@ -657,6 +743,7 @@
         <button
           v-for="item in historyItems"
           :key="item.id"
+          :data-testid="`history-item-${item.id}`"
           @click="selectedHistoryId = item.id"
           class="card-metallic rounded-2xl p-4 text-left border border-white/10 hover:border-metric-green/40 transition-colors w-full"
         >
@@ -693,17 +780,115 @@
       <div class="card-metallic rounded-2xl p-5">
         <h2 class="text-xl font-bold mb-1 text-white">Настройки</h2>
       </div>
-      <div class="card-metallic rounded-2xl p-5 space-y-3">
-        <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Обязательные поля</div>
-        <div class="flex items-center justify-between gap-2">
-          <div class="text-sm text-gray-300">Данные клиента обязательны</div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input v-model="userSettings.clientRequired" type="checkbox" class="sr-only peer">
-            <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
-            <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+      <div class="card-metallic rounded-2xl p-5 space-y-4">
+        <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Настройки режимов расчёта</div>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-gray-300">Показывать ввод данных клиента (Быстрый)</div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input v-model="userSettings.showClientQuick" type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+              <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-gray-300">Показывать ввод данных клиента (Детализация)</div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input v-model="userSettings.showClientDetail" type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+              <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-gray-300">Данные клиента обязательны</div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input v-model="userSettings.clientRequired" type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+              <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-gray-300">Автосохранение в историю</div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input v-model="userSettings.autoSaveHistory" type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+              <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-gray-300">Показывать подсказки (i)</div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input v-model="userSettings.showInfoTooltips" type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+              <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+        </div>
+        <div class="border-t border-white/10 pt-3 mt-2">
+          <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Обязательные поля (при включении выше)</div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm text-gray-300">Телефон обязателен</div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0" :class="{ 'opacity-60 cursor-not-allowed': !userSettings.clientRequired }">
+                <input v-model="userSettings.requirePhone" type="checkbox" class="sr-only peer" :disabled="!userSettings.clientRequired">
+                <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm text-gray-300">Имя обязательно</div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0" :class="{ 'opacity-60 cursor-not-allowed': !userSettings.clientRequired }">
+                <input v-model="userSettings.requireName" type="checkbox" class="sr-only peer" :disabled="!userSettings.clientRequired">
+                <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm text-gray-300">Марка/Модель обязательны</div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0" :class="{ 'opacity-60 cursor-not-allowed': !userSettings.clientRequired }">
+                <input v-model="userSettings.requireCarBrandModel" type="checkbox" class="sr-only peer" :disabled="!userSettings.clientRequired">
+                <div class="w-11 h-6 bg-white/10 rounded-full peer peer-checked:bg-metric-green transition-colors"></div>
+                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="text-[10px] text-gray-500">При выключении экрана клиента шаг пропускается автоматически.</div>
+      </div>
+      <div class="card-metallic rounded-2xl p-5 space-y-4">
+        <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Округление цены</div>
+        <div class="flex flex-wrap gap-2">
+          <label
+            v-for="opt in PRICE_ROUND_OPTIONS"
+            :key="opt.value"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border cursor-pointer transition-all"
+            :class="userSettings.priceRoundStep === opt.value ? 'bg-metric-green/20 border-metric-green text-white' : 'border-white/10 hover:border-white/20 text-gray-400'"
+          >
+            <input v-model="userSettings.priceRoundStep" type="radio" :value="opt.value" class="sr-only">
+            <span class="text-sm">{{ opt.label }}</span>
           </label>
         </div>
-        <div class="text-[10px] text-gray-500">Если включено, потребуется заполнить имя и телефон на шаге клиента.</div>
+        <p class="text-[10px] text-gray-500">Округление применяется к итоговой сумме (вверх до шага).</p>
+      </div>
+      <div class="card-metallic rounded-2xl p-5 space-y-4">
+        <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest mb-2">Единицы размеров</div>
+        <div class="flex gap-2">
+          <label
+            class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border cursor-pointer transition-all min-h-[44px]"
+            :class="userSettings.sizeUnit === 'mm' ? 'bg-metric-green/20 border-metric-green text-white' : 'border-white/10 hover:border-white/20 text-gray-400'"
+          >
+            <input v-model="userSettings.sizeUnit" type="radio" value="mm" class="sr-only">
+            <span class="text-sm font-medium">мм</span>
+          </label>
+          <label
+            class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border cursor-pointer transition-all min-h-[44px]"
+            :class="userSettings.sizeUnit === 'cm' ? 'bg-metric-green/20 border-metric-green text-white' : 'border-white/10 hover:border-white/20 text-gray-400'"
+          >
+            <input v-model="userSettings.sizeUnit" type="radio" value="cm" class="sr-only">
+            <span class="text-sm font-medium">см</span>
+          </label>
+        </div>
+        <p class="text-[10px] text-gray-500">Отображение размеров в списках и сводках. Ввод всегда в мм.</p>
       </div>
       <div class="card-metallic rounded-2xl p-5 space-y-3">
         <div class="flex justify-between items-center mb-4">
@@ -741,7 +926,7 @@
         </div>
       </div>
       <div class="flex flex-col space-y-3 pt-4">
-        <button @click="saveSettings" class="w-full bg-metric-green text-black font-bold py-3.5 rounded-xl active:opacity-90 transition-opacity shadow-[0_0_15px_rgba(136,229,35,0.4)]">Сохранить настройки</button>
+        <button @click="saveSettings" class="cta-primary w-full bg-metric-green text-black font-bold py-3.5 rounded-xl active:opacity-90 shadow-[0_0_15px_rgba(136,229,35,0.4)]">Сохранить настройки</button>
         <button @click="resetDefaults" class="w-full text-gray-400 text-sm font-medium py-3 hover:text-white transition-colors">Сбросить к стандартным</button>
       </div>
     </div>
@@ -813,7 +998,7 @@
             <div class="text-gray-400 leading-snug">S (Круг) и LS (Полоса). Является основой базовой цены.</div>
           </div>
           <div>
-            <div class="font-bold text-metric-green text-[10px] uppercase mb-2 tracking-widest">СЛОЖНОСТЬ (K)</div>
+            <div class="font-bold text-metric-green text-[10px] uppercase mb-2 tracking-widest">СЛОЖНОСТЬ ВЫПОЛНЕНИЯ (K)</div>
             <div class="space-y-1.5">
               <div class="flex space-x-2"><span class="text-white font-bold w-6">K1:</span><span>Лёгкая</span></div>
               <div class="flex space-x-2"><span class="text-white font-bold w-6">K2:</span><span>Средняя</span></div>
@@ -888,57 +1073,60 @@
       </div>
     </div>
 
-    <!-- Bottom tabs -->
-    <div ref="bottomNavRef" class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center pb-[env(safe-area-inset-bottom)] z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
+    <!-- Bottom tabs - Part C: consistent spacing, glow on active -->
+    <div ref="bottomNavRef" class="fixed bottom-0 left-0 w-full bg-[#050505] border-t border-[#222] flex justify-around items-center gap-1 py-2 pb-[env(safe-area-inset-bottom)] z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
       <button
         @click="switchSection('history')"
-        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-        :class="currentSection === 'history' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+        class="flex-1 min-w-0 py-3 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 rounded-lg"
+        :class="currentSection === 'history' ? 'text-metric-green scale-105 drop-shadow-[0_0_8px_rgba(136,229,35,0.4)]' : 'text-gray-600 hover:text-gray-400'"
       >
-        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">🗂️</span>
+        <span class="text-2xl">🗂️</span>
         <span class="text-[9px] font-bold uppercase tracking-widest">История</span>
       </button>
       <button
         @click="switchSection('settings')"
-        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-        :class="currentSection === 'settings' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+        class="flex-1 min-w-0 py-3 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 rounded-lg"
+        :class="currentSection === 'settings' ? 'text-metric-green scale-105 drop-shadow-[0_0_8px_rgba(136,229,35,0.4)]' : 'text-gray-600 hover:text-gray-400'"
       >
-        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">⚙️</span>
+        <span class="text-2xl">⚙️</span>
         <span class="text-[9px] font-bold uppercase tracking-widest">Настройки</span>
       </button>
       <button
+        data-testid="nav-metric"
         @click="openMetricMenu"
-        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-        :class="currentSection === 'metric' || currentSection === 'metric-menu' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+        class="flex-1 min-w-0 py-3 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 rounded-lg"
+        :class="currentSection === 'metric' ? 'text-metric-green scale-105 drop-shadow-[0_0_8px_rgba(136,229,35,0.4)]' : 'text-gray-600 hover:text-gray-400'"
       >
-        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">🧮</span>
+        <span class="text-2xl">🧮</span>
         <span class="text-[9px] font-bold uppercase tracking-widest">Метрика</span>
       </button>
       <button
         @click="switchSection('info')"
-        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-        :class="currentSection === 'info' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+        class="flex-1 min-w-0 py-3 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 rounded-lg"
+        :class="currentSection === 'info' ? 'text-metric-green scale-105 drop-shadow-[0_0_8px_rgba(136,229,35,0.4)]' : 'text-gray-600 hover:text-gray-400'"
       >
-        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">ℹ️</span>
+        <span class="text-2xl">ℹ️</span>
         <span class="text-[9px] font-bold uppercase tracking-widest">Инфо</span>
       </button>
       <button
         @click="goHome"
-        class="flex-1 py-4 flex flex-col items-center justify-center transition-all duration-300"
-        :class="currentSection === 'home' ? 'text-metric-green scale-105' : 'text-gray-600 hover:text-gray-400'"
+        class="flex-1 min-w-0 py-3 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 rounded-lg"
+        :class="currentSection === 'home' ? 'text-metric-green scale-105 drop-shadow-[0_0_8px_rgba(136,229,35,0.4)]' : 'text-gray-600 hover:text-gray-400'"
       >
-        <span class="text-2xl mb-1 filter drop-shadow-[0_0_5px_currentColor]">🏠</span>
+        <span class="text-2xl">🏠</span>
         <span class="text-[9px] font-bold uppercase tracking-widest">Домой</span>
       </button>
     </div>
-    <div
-      v-if="toast.visible"
-      class="fixed left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl"
-      :class="toast.type === 'error' ? 'bg-red-500/90 text-white' : 'bg-[#111] text-metric-green border border-metric-green/40'"
-      style="bottom: calc(16px + env(safe-area-inset-bottom, 0px));"
-    >
-      {{ toast.text }}
-    </div>
+    <Transition name="toast">
+      <div
+        v-if="toast.visible"
+        class="fixed left-1/2 -translate-x-1/2 z-[300] px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl backdrop-blur-sm"
+        :class="toast.type === 'error' ? 'toast-error' : 'toast-success'"
+        style="bottom: calc(16px + env(safe-area-inset-bottom, 0px));"
+      >
+        {{ toast.text }}
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -946,19 +1134,27 @@
 import { ref, reactive, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
 import { deleteSelected } from './graphics/konvaEditor';
 import { initialData } from './data/initialData';
+import { getArmaturnayaWorksForElement, getArmaturnayaTotalPrice } from './data/armaturnayaWorks';
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesMm, stripSizesMm, circleSizesWithArea, stripSizesWithArea } from './data/dentSizes';
-import { applyConditionsToBase, calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from './utils/priceCalc';
-import { getBasePriceByMm, getSizeCodeForMatrix } from './utils/priceAdapter';
+import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from './utils/priceCalc';
+import { calculateDentPrice as calcDentViaAdapter, normalizeGraphicsDentsForPricing, normalizeDimensions } from './features/pricing/pricingAdapter';
+import { applyPriceRoundingCeil, PRICE_ROUND_OPTIONS } from './utils/priceRounding';
+import { classifyShapeByRatio } from './utils/shapeClassification';
 import GraphicsWizard from './components/graphics/GraphicsWizard.vue';
 import StepDots from './components/graphics/StepDots.vue';
+import InfoIcon from './components/InfoIcon.vue';
+import { getElementIconPath } from './utils/elementIcons';
 import { useHistoryStore } from './features/history/historyStore';
 
 // Sections & mode
 const currentSection = ref('home');
-const calcMode = ref('standard');
+const calcMode = ref('');
 const quickStep = ref(1);
+
+const quickTotalSteps = computed(() => userSettings.showClientQuick ? 3 : 2);
+const quickLogicalStep = computed(() => userSettings.showClientQuick ? quickStep.value : Math.max(1, quickStep.value - 1));
 const appRootRef = ref(null);
 const bottomNavRef = ref(null);
 let footerResizeObserver = null;
@@ -978,7 +1174,9 @@ const form = reactive({
   riskCode: null,
   materialCode: null,
   carClassCode: null,
-  disassemblyCode: null
+  disassemblyCode: null,
+  paintMaterialCode: null,
+  soundInsulationCode: null
 });
 
 const estimateDraft = reactive({
@@ -1025,13 +1223,21 @@ const quickPartsLeft = [
   'Задняя дверь',
   'Заднее крыло',
   'Стойка крыши',
-  'Порог'
+  'Порог',
+  'Бампер'
 ];
 const quickPartsRight = [...quickPartsLeft];
 
 const clientDataValid = computed(() => {
   if (!userSettings.clientRequired) return true;
-  return Boolean(String(estimateDraft.clientName || '').trim() && String(estimateDraft.clientPhone || '').trim());
+  const name = String(estimateDraft.clientName || '').trim();
+  const phone = String(estimateDraft.clientPhone || '').trim();
+  const brand = String(estimateDraft.carBrand || '').trim();
+  const model = String(estimateDraft.carModel || '').trim();
+  if (userSettings.requireName && !name) return false;
+  if (userSettings.requirePhone && !phone) return false;
+  if (userSettings.requireCarBrandModel && (!brand || !model)) return false;
+  return true;
 });
 
 function normalizePanelElement(value) {
@@ -1058,7 +1264,9 @@ function createQuickDent(panelElement = null) {
       riskCode: null,
       materialCode: null,
       carClassCode: null,
-      disassemblyCode: null
+      disassemblyCodes: ['Z0'],
+      paintMaterialCode: null,
+      soundInsulationCode: null
     }
   };
 }
@@ -1090,15 +1298,23 @@ function getQuickDefaultPanel() {
 
 function onQuickDentElementChange(dent) {
   if (dent?.panelElement && !dent.panelSide) dent.panelSide = 'left';
+  if (dent?.conditions?.disassemblyCodes && dent.panelElement) {
+    const works = getArmaturnayaWorksForElement(dent.panelElement);
+    const validCodes = new Set(works.map((w) => w.code));
+    const current = (dent.conditions.disassemblyCodes || ['Z0'])[0];
+    dent.conditions.disassemblyCodes = validCodes.has(current) ? [current] : ['Z0'];
+  }
+  haptic('selection');
+}
+
+function onArmaturnayaSelect(dent, code) {
+  dent.conditions.disassemblyCodes = code ? [code] : ['Z0'];
   haptic('selection');
 }
 
 function setQuickDentSide(dent, side) {
   if (!dent) return;
   dent.panelSide = side === 'right' ? 'right' : 'left';
-  if (!dent.panelElement) {
-    dent.panelElement = dent.panelSide === 'right' ? quickPartsRight[0] : quickPartsLeft[0];
-  }
   haptic('selection');
 }
 
@@ -1110,9 +1326,6 @@ function normalizeQuickDentPanel(dent) {
     dent.panelElement = parsed?.element || null;
   }
   if (!dent.panelSide) dent.panelSide = 'left';
-  if (!dent.panelElement) {
-    dent.panelElement = dent.panelSide === 'right' ? quickPartsRight[0] : quickPartsLeft[0];
-  }
 }
 
 function getSizeListForShape(shape) {
@@ -1128,7 +1341,20 @@ function syncQuickDentMmFromSizeCode(dent) {
   dent.sizeWidthMm = size.mm.h;
 }
 
+function onQuickDentSizeCodeChange(dent) {
+  syncQuickDentMmFromSizeCode(dent);
+  syncQuickDentSizeFromMm(dent);
+  haptic('selection');
+}
+
 function syncQuickDentSizeFromMm(dent) {
+  const l = Number(dent.sizeLengthMm) || 0;
+  const w = Number(dent.sizeWidthMm) || 0;
+  if (l > 0 && w > 0) {
+    const classified = classifyShapeByRatio({ widthMm: l, heightMm: w });
+    const targetShape = classified === 'stripe' ? 'strip' : 'circle';
+    if (dent.shape !== targetShape) dent.shape = targetShape;
+  }
   const sizeCode = getSizeCodeFromMm(dent.shape, dent.sizeLengthMm, dent.sizeWidthMm);
   if (sizeCode) dent.sizeCode = sizeCode;
 }
@@ -1161,20 +1387,40 @@ const userSettings = reactive({
   prices: buildDefaultPrices(),
   masters: JSON.parse(JSON.stringify(initialData.defaultMasters)),
   hourlyRate: 0,
-  clientRequired: false
+  clientRequired: false,
+  showClientQuick: true,
+  showClientDetail: true,
+  requirePhone: true,
+  requireName: true,
+  requireCarBrandModel: false,
+  autoSaveHistory: false,
+  showInfoTooltips: true,
+  priceRoundStep: 0,
+  sizeUnit: 'mm'
 });
 
-const saved = localStorage.getItem('dentRepairSettings_v5');
-if (saved) {
+function loadUserSettings() {
+  const v6 = localStorage.getItem('dentRepairSettings_v6');
+  const v5 = localStorage.getItem('dentRepairSettings_v5');
   try {
-    const p = JSON.parse(saved);
+    const p = (v6 ? JSON.parse(v6) : null) || (v5 ? JSON.parse(v5) : null) || {};
     if (p.prices) Object.assign(userSettings.prices, p.prices);
     if (p.masters) userSettings.masters = p.masters;
     if (typeof p.clientRequired === 'boolean') userSettings.clientRequired = p.clientRequired;
+    if (typeof p.showClientQuick === 'boolean') userSettings.showClientQuick = p.showClientQuick;
+    if (typeof p.showClientDetail === 'boolean') userSettings.showClientDetail = p.showClientDetail;
+    if (typeof p.requirePhone === 'boolean') userSettings.requirePhone = p.requirePhone;
+    if (typeof p.requireName === 'boolean') userSettings.requireName = p.requireName;
+    if (typeof p.requireCarBrandModel === 'boolean') userSettings.requireCarBrandModel = p.requireCarBrandModel;
+    if (typeof p.autoSaveHistory === 'boolean') userSettings.autoSaveHistory = p.autoSaveHistory;
+    if (typeof p.showInfoTooltips === 'boolean') userSettings.showInfoTooltips = p.showInfoTooltips;
+    if (typeof p.priceRoundStep === 'number' && PRICE_ROUND_OPTIONS.some((o) => o.value === p.priceRoundStep)) userSettings.priceRoundStep = p.priceRoundStep;
+    if (p.sizeUnit === 'cm' || p.sizeUnit === 'mm') userSettings.sizeUnit = p.sizeUnit;
   } catch (e) {
     if (import.meta.env?.DEV) console.error('Failed to load settings', e);
   }
 }
+loadUserSettings();
 
 // Graphics state
 const graphicsState = reactive({
@@ -1202,10 +1448,14 @@ const graphicsPartsList = computed(() => {
 const graphicsSelectedClassId = ref('crossover');
 const graphicsSelectedPartId = ref('hood');
 
-watch([graphicsState.selectedClass, graphicsState.selectedPart], () => {
-  if (graphicsState.selectedClass) graphicsSelectedClassId.value = graphicsState.selectedClass.id;
-  if (graphicsState.selectedPart) graphicsSelectedPartId.value = graphicsState.selectedPart.id;
-}, { immediate: true });
+watch(
+  () => [graphicsState.selectedClass, graphicsState.selectedPart],
+  () => {
+    if (graphicsState.selectedClass) graphicsSelectedClassId.value = graphicsState.selectedClass.id;
+    if (graphicsState.selectedPart) graphicsSelectedPartId.value = graphicsState.selectedPart.id;
+  },
+  { immediate: true }
+);
 
 watch([graphicsSelectedClassId, graphicsSelectedPartId], () => {
   ensureGraphicsSelection();
@@ -1257,17 +1507,22 @@ const quickDentTotals = computed(() => estimateDraft.quickDents.map((dent) => {
   const h = Number(dent.sizeWidthMm) || 0;
   const shape = dent.shape === 'circle' ? 'circle' : 'strip';
   const sizes = shape === 'circle' ? circleSizesWithArea : stripSizesWithArea;
-  const base = (w > 0 && h > 0) ? getBasePriceByMm(shape, w, h, sizes, userSettings.prices) : 0;
-  const sizeCodeForMatrix = getSizeCodeForMatrix(shape, w, h, sizes);
-  const total = base > 0 ? applyConditionsToBase(base, dent.conditions, initialData, sizeCodeForMatrix) : 0;
-  const breakdown = base > 0 ? buildBreakdown(base, dent.conditions, initialData, sizeCodeForMatrix) : [];
-  return { dent, sizeCode: dent.sizeCode, base, total, breakdown };
+  const ctx = { sizesWithArea: sizes, prices: userSettings.prices, initialData, roundStep: 100 };
+  const result = calcDentViaAdapter(
+    { shape, widthMm: w, heightMm: h, conditions: dent.conditions, panelElement: dent.panelElement },
+    ctx
+  );
+  return { dent, sizeCode: result.sizeCode, base: result.base, total: result.total, breakdown: result.breakdown };
 }));
 
 const quickLineItems = computed(() => {
   const list = quickDentTotals.value.filter((d) => d.total > 0).sort((a, b) => b.total - a.total);
+  const roundStep = userSettings.priceRoundStep;
   return list.map((item, idx) => {
-    const applied = idx === 0 ? item.total : roundPrice(item.total * 0.5);
+    const rawApplied = idx === 0 ? item.total : item.total * 0.5;
+    const applied = roundStep > 0
+      ? applyPriceRoundingCeil(rawApplied, roundStep)
+      : Math.round(rawApplied);
     return { ...item, appliedTotal: applied, discount: idx > 0 };
   });
 });
@@ -1278,12 +1533,23 @@ const quickTotal = computed(() => {
   return roundPrice(sum);
 });
 
+/** Нормализованные вмятины для расчёта (устраняет расхождения Quick vs Detail). */
+const graphicsDentsForPricing = computed(() => {
+  const ctx = {
+    circleSizes: graphicsCircleSizes.value,
+    stripSizes: graphicsStripSizes.value,
+    prices: userSettings.prices,
+    initialData
+  };
+  return normalizeGraphicsDentsForPricing(graphicsState.dents || [], ctx);
+});
+
 /** База от вмятин: сумма базовых цен (каждая вмятина отдельно). Единый источник: priceCalc.calcBasePriceFromDents. */
-const graphicsBasePrice = computed(() => calcBasePriceFromDents(graphicsState.dents));
+const graphicsBasePrice = computed(() => calcBasePriceFromDents(graphicsDentsForPricing.value));
 
 /** Итоговая цена в Графике: каждая вмятина отдельно, затем сумма. Единый источник: priceCalc.calcTotalPrice. */
 const graphicsPrice = computed(() =>
-  calcTotalPrice(graphicsState.dents, form, initialData, 100)
+  calcTotalPrice(graphicsDentsForPricing.value, form, initialData, 100)
 );
 
 const totalPrice = computed(() => {
@@ -1291,6 +1557,26 @@ const totalPrice = computed(() => {
   if (calcMode.value === 'standard') return quickTotal.value;
   if (calcMode.value === 'graphics') return graphicsPrice.value;
   return 0;
+});
+
+/** Display total with optional rounding (presentation layer). */
+const displayTotal = computed(() =>
+  applyPriceRoundingCeil(totalPrice.value, userSettings.priceRoundStep)
+);
+
+/** Estimated repair time in hours, updates in real-time from total price and hourly rate. */
+const estimatedRepairTime = computed(() => {
+  const total = displayTotal.value;
+  const rate = userSettings.hourlyRate > 0 ? userSettings.hourlyRate : 4000;
+  if (total <= 0 || rate <= 0) return '—';
+  const hours = total / rate;
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return `${minutes} мин`;
+  }
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return m > 0 ? `${h} ч ${m} мин` : `${h} ч`;
 });
 
 const quickBreakdownItems = computed(() => {
@@ -1309,7 +1595,7 @@ const quickStep2Valid = computed(() => {
     d.conditions?.riskCode &&
     d.conditions?.materialCode &&
     d.conditions?.carClassCode &&
-    d.conditions?.disassemblyCode
+    (d.conditions?.disassemblyCodes?.length ?? 0) > 0
   );
 });
 
@@ -1324,6 +1610,16 @@ const getQuickDentLabel = (dent) => (dent.shape === 'circle' ? 'Круг/Ова�
 
 // Helpers
 const formatCurrency = (v) => new Intl.NumberFormat('ru-RU').format(v);
+const formatRoundedPrice = (raw) =>
+  formatCurrency(applyPriceRoundingCeil(raw, userSettings.priceRoundStep));
+const formatSizeDisplay = (lengthMm, widthMm) => {
+  const l = Number(lengthMm) || 0;
+  const w = Number(widthMm) || 0;
+  if (userSettings.sizeUnit === 'cm') {
+    return `${(l / 10).toFixed(1)}×${(w / 10).toFixed(1)} см`;
+  }
+  return `${l.toFixed(1)}×${w.toFixed(1)} мм`;
+};
 const formatDateTime = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -1332,18 +1628,13 @@ const formatDateTime = (iso) => {
 };
 
 if (import.meta.env?.DEV) {
-  const compareQuickAndDetailForSameInput = (shape, widthMm, heightMm, conditions) => {
+  window.__comparePricing = (shape, widthMm, heightMm, conditions) => {
     const sizes = shape === 'circle' ? circleSizesWithArea : stripSizesWithArea;
-    const base = getBasePriceByMm(shape, widthMm, heightMm, sizes, userSettings.prices);
-    const sizeCodeForMatrix = getSizeCodeForMatrix(shape, widthMm, heightMm, sizes);
-    const quickTotal = applyConditionsToBase(base, conditions, initialData, sizeCodeForMatrix);
-    const detailTotal = applyConditionsToBase(base, conditions, initialData, sizeCodeForMatrix);
-    if (quickTotal !== detailTotal) {
-      console.warn('[Pricing mismatch]', { shape, widthMm, heightMm, base, sizeCodeForMatrix, quickTotal, detailTotal });
-    }
+    const ctx = { sizesWithArea: sizes, prices: userSettings.prices, initialData, roundStep: 100 };
+    const r = calcDentViaAdapter({ shape, widthMm, heightMm, conditions }, ctx);
+    console.log('[pricingAdapter] Same input => single result:', r.total, '₽', r.breakdown);
+    return r.total;
   };
-  // Example usage in console:
-  // compareQuickAndDetailForSameInput('circle', 120, 300, form);
 }
 
 watch([quickBreakdownItems, calcMode], () => {
@@ -1432,6 +1723,8 @@ function resetDraftState() {
   form.materialCode = null;
   form.carClassCode = null;
   form.disassemblyCode = null;
+  form.paintMaterialCode = null;
+  form.soundInsulationCode = null;
 
   estimateDraft.clientName = '';
   estimateDraft.clientCompany = '';
@@ -1446,7 +1739,7 @@ function resetDraftState() {
   estimateDraft.comment = '';
   estimateDraft.breakdown = [];
   estimateDraft.quickDents = [];
-  quickStep.value = 1;
+  quickStep.value = userSettings.showClientQuick ? 1 : 2;
 
   graphicsState.dents = [];
   graphicsState.selectedClass = null;
@@ -1471,20 +1764,29 @@ function buildEstimatePayload(mode) {
     riskCode: form.riskCode,
     materialCode: form.materialCode,
     carClassCode: form.carClassCode,
-    disassemblyCode: form.disassemblyCode
+    disassemblyCode: form.disassemblyCode,
+    paintMaterialCode: form.paintMaterialCode,
+    soundInsulationCode: form.soundInsulationCode
   };
   const firstQuick = estimateDraft.quickDents?.[0];
   const quickElement = firstQuick?.panelElement ? `${firstQuick.panelSide || 'left'}:${firstQuick.panelElement}` : null;
   const element = quickElement || graphicsState.selectedPart?.name || null;
   const vehicleClass = graphicsState.selectedClass?.name || null;
   if (mode === 'detail') {
-    const dentItems = (graphicsState.dents || []).map((d) => ({
-      id: d.id,
-      type: d.type,
-      bboxMm: d.bboxMm,
-      areaMm2: d.areaMm2,
-      conditions: conditions
-    }));
+    const normDents = graphicsDentsForPricing.value;
+    const dentItems = (graphicsState.dents || []).map((d, i) => {
+      const norm = normDents[i];
+      const bbox = d.bboxMm || {};
+      const { widthMm: w, heightMm: h } = normalizeDimensions(bbox.width, bbox.height);
+      return {
+        id: d.id,
+        type: d.type,
+        bboxMm: { width: w, height: h },
+        areaMm2: d.areaMm2,
+        sizeCode: norm?.sizeCode ?? d.sizeCode,
+        conditions
+      };
+    });
     return {
       mode: 'detail',
       client,
@@ -1492,22 +1794,23 @@ function buildEstimatePayload(mode) {
       element,
       dents: { count: dentItems.length, items: dentItems },
       breakdown: estimateDraft.breakdown || [],
-      total: totalPrice.value,
+      total: displayTotal.value,
+      rawTotal: totalPrice.value,
       comment: estimateDraft.comment || ''
     };
   }
-  const dentItems = (estimateDraft.quickDents || []).map((d) => ({
-    id: d.id,
-    type: d.shape,
-    sizeCode: d.sizeCode,
-    bboxMm: {
-      width: Number(d.sizeLengthMm) || 0,
-      height: Number(d.sizeWidthMm) || 0
-    },
-    panelSide: d.panelSide || 'left',
-    panelElement: d.panelElement || null,
-    conditions: d.conditions
-  }));
+  const dentItems = (estimateDraft.quickDents || []).map((d) => {
+    const { widthMm: w, heightMm: h } = normalizeDimensions(d.sizeLengthMm, d.sizeWidthMm);
+    return {
+      id: d.id,
+      type: d.shape,
+      sizeCode: quickDentTotals.value.find((t) => t.dent.id === d.id)?.sizeCode ?? d.sizeCode,
+      bboxMm: { width: w, height: h },
+      panelSide: d.panelSide || 'left',
+      panelElement: d.panelElement || null,
+      conditions: d.conditions
+    };
+  });
   return {
     mode: 'quick',
     client,
@@ -1515,7 +1818,8 @@ function buildEstimatePayload(mode) {
     element,
     dents: { count: dentItems.length, items: dentItems },
     breakdown: estimateDraft.breakdown || [],
-    total: quickTotal.value,
+    total: displayTotal.value,
+    rawTotal: totalPrice.value,
     comment: estimateDraft.comment || ''
   };
 }
@@ -1560,7 +1864,7 @@ const setMode = (mode) => {
     return;
   }
   calcMode.value = mode;
-  if (mode === 'standard') quickStep.value = 1;
+  if (mode === 'standard') quickStep.value = userSettings.showClientQuick ? 1 : 2;
   haptic('selection');
   if (mode === 'graphics') {
     if (window.Telegram?.WebApp?.expand) window.Telegram.WebApp.expand();
@@ -1570,7 +1874,9 @@ const setMode = (mode) => {
 
 const openMetricMenu = () => {
   if (calcMode.value === 'graphics') closeEditor();
-  currentSection.value = 'metric-menu';
+  currentSection.value = 'metric';
+  calcMode.value = '';
+  ensureInspectDateTime();
   haptic('selection');
 };
 
@@ -1605,15 +1911,19 @@ const switchSection = (section) => {
 
 const goQuickBack = () => {
   if (quickStep.value <= 1) {
-    openMetricMenu();
+    calcMode.value = '';
+    return;
+  }
+  if (quickStep.value === 2 && !userSettings.showClientQuick) {
+    calcMode.value = '';
     return;
   }
   quickStep.value -= 1;
 };
 
 const goQuickNext = () => {
-  if (quickStep.value === 1 && !clientDataValid.value) return;
-  if (quickStep.value === 2 && !quickStep2Valid.value) return;
+  if (quickStep.value === 1 && userSettings.showClientQuick && !clientDataValid.value) return;
+  if ((quickStep.value === 2 || (quickStep.value === 1 && !userSettings.showClientQuick)) && !quickStep2Valid.value) return;
   if (quickStep.value < 3) quickStep.value += 1;
 };
 
@@ -1630,9 +1940,18 @@ const saveSettings = () => {
   const dataToSave = {
     prices: userSettings.prices,
     masters: userSettings.masters,
-    clientRequired: userSettings.clientRequired
+    clientRequired: userSettings.clientRequired,
+    showClientQuick: userSettings.showClientQuick,
+    showClientDetail: userSettings.showClientDetail,
+    requirePhone: userSettings.requirePhone,
+    requireName: userSettings.requireName,
+    requireCarBrandModel: userSettings.requireCarBrandModel,
+    autoSaveHistory: userSettings.autoSaveHistory,
+    showInfoTooltips: userSettings.showInfoTooltips,
+    priceRoundStep: userSettings.priceRoundStep,
+    sizeUnit: userSettings.sizeUnit
   };
-  localStorage.setItem('dentRepairSettings_v5', JSON.stringify(dataToSave));
+  localStorage.setItem('dentRepairSettings_v6', JSON.stringify(dataToSave));
   const tg = window.Telegram?.WebApp;
   if (tg?.showPopup && tg?.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
     tg.showPopup({ title: 'Готово', message: 'Настройки сохранены', buttons: [{ type: 'ok' }] });
@@ -1646,6 +1965,15 @@ const resetDefaults = () => {
   if (confirm('Сбросить цены к стандартным?')) {
     Object.assign(userSettings.prices, buildDefaultPrices());
     userSettings.clientRequired = false;
+    userSettings.showClientQuick = true;
+    userSettings.showClientDetail = true;
+    userSettings.requirePhone = true;
+    userSettings.requireName = true;
+    userSettings.requireCarBrandModel = false;
+    userSettings.autoSaveHistory = false;
+    userSettings.showInfoTooltips = true;
+    userSettings.priceRoundStep = 0;
+    userSettings.sizeUnit = 'mm';
     saveSettings();
   }
 };
@@ -1688,7 +2016,7 @@ const closeEditor = () => {
 };
 
 // Telegram Main Button
-watch(totalPrice, (val) => {
+watch(displayTotal, (val) => {
   const btn = window.Telegram?.WebApp?.MainButton;
   if (!btn) return;
   if (calcMode.value === 'graphics') {
@@ -1707,12 +2035,43 @@ watch(selectedHistoryId, () => {
   isEditingHistory.value = false;
 });
 
+watch(
+  () => ({
+    showClientQuick: userSettings.showClientQuick,
+    showClientDetail: userSettings.showClientDetail,
+    clientRequired: userSettings.clientRequired,
+    requirePhone: userSettings.requirePhone,
+    requireName: userSettings.requireName,
+    requireCarBrandModel: userSettings.requireCarBrandModel,
+    autoSaveHistory: userSettings.autoSaveHistory,
+    showInfoTooltips: userSettings.showInfoTooltips,
+    priceRoundStep: userSettings.priceRoundStep,
+    sizeUnit: userSettings.sizeUnit
+  }),
+  (val) => {
+    const data = {
+      prices: userSettings.prices,
+      masters: userSettings.masters,
+      ...val
+    };
+    localStorage.setItem('dentRepairSettings_v6', JSON.stringify(data));
+  },
+  { deep: true }
+);
+
 watch(quickStep, (step) => {
-  if (step === 2 && estimateDraft.quickDents.length === 0) {
+  const onDentsStep = step === 2 || (step === 1 && !userSettings.showClientQuick);
+  if (onDentsStep && estimateDraft.quickDents.length === 0) {
     addQuickDent();
   }
-  if (step === 2 && estimateDraft.quickDents.length > 0) {
+  if (onDentsStep && estimateDraft.quickDents.length > 0) {
     estimateDraft.quickDents.forEach((dent) => normalizeQuickDentPanel(dent));
+  }
+});
+
+watch(quickStep, (step, prev) => {
+  if (userSettings.autoSaveHistory && calcMode.value === 'standard' && step === 3 && prev === 2 && quickTotal.value > 0 && !isSavingHistory.value) {
+    nextTick(() => saveCurrentEstimate('quick'));
   }
 });
 
@@ -1769,6 +2128,74 @@ onBeforeUnmount(() => {
 .border-metric-green { border-color: #88e523; }
 .app-root {
   --app-footer-height: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+.app-root--gradient {
+  background: #000000;
+}
+.app-root--solid {
+  background: #000000;
+}
+
+/* Logo: seamless black background, no frames or borders */
+.home-logo-wrap {
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* no border, no box-shadow, no outline - seamless blend with page */
+}
+.home-logo {
+  display: block;
+}
+
+/* Home screen: pure black background */
+.home-screen { position: relative; overflow: hidden; background: #000000; }
+.home-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  max-width: 420px;
+  width: 100%;
+}
+.home-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 0.4s ease, transform 0.3s ease, border-color 0.3s ease, opacity 0.3s ease;
+}
+.home-btn:hover,
+.home-btn:focus {
+  animation: homeBtnHoverPulse 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-btn:hover,
+  .home-btn:focus {
+    animation: none;
+    box-shadow: 0 0 15px rgba(136, 229, 35, 0.3), 0 0 25px rgba(136, 229, 35, 0.1);
+  }
+}
+.home-btn:focus-visible {
+  outline: 2px solid rgba(136, 229, 35, 0.6);
+  outline-offset: 2px;
+}
+@keyframes homeBtnHoverPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(136, 229, 35, 0.25), 0 0 24px rgba(136, 229, 35, 0.08); }
+  50% { box-shadow: 0 0 18px rgba(136, 229, 35, 0.35), 0 0 32px rgba(136, 229, 35, 0.12); }
+}
+@media (max-width: 480px) {
+  .home-buttons-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 0.5rem;
+  }
+}
+@media (min-width: 768px) {
+  .home-buttons-grid {
+    gap: 1.25rem;
+    max-width: 380px;
+  }
 }
 /* A) Тёмный фон редактора: перебить любые bg-white/konva-bg (Konva bgRect — страховка в konvaEditor.js) */
 /* Матрица без отступов: padding 0, margin 0, width/height 100% */
@@ -1841,6 +2268,15 @@ body.graphics-fullscreen-active {
   z-index: 9999;
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.sheet-fade-enter-active,
+.sheet-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.sheet-fade-enter-from,
+.sheet-fade-leave-to {
+  opacity: 0;
 }
 </style>
 

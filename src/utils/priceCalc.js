@@ -39,6 +39,9 @@ function calculateDentPrice(dent, conditions, initialData) {
   const repCoeff = initialData.repairTypes.find((r) => r.code === conditions.repairCode)?.mult ?? 1.0;
   const matCoeff = initialData.materials.find((m) => m.code === conditions.materialCode)?.mult ?? 1.0;
   const carClassCoeff = initialData.carClasses.find((c) => c.code === conditions.carClassCode)?.mult ?? 1.0;
+  const paintCoeff = conditions.paintMaterialCode
+    ? (initialData.paintMaterials?.find((p) => p.code === conditions.paintMaterialCode)?.mult ?? 1.0)
+    : 1.0;
   const riskObj = initialData.risks.find((r) => r.code === conditions.riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
   const sizeCode = dent?.sizeCode ?? (dent?.type === 'circle' ? 'S2' : 'STRIP_DEFAULT');
@@ -50,6 +53,7 @@ function calculateDentPrice(dent, conditions, initialData) {
   price *= compCoeff;
   price *= matCoeff;
   price *= carClassCoeff;
+  price *= paintCoeff;
   return Math.max(0, price);
 }
 
@@ -68,20 +72,30 @@ export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) 
   const base = calcBasePriceFromDents(dents);
   if (base <= 0) return 0;
 
+  const hasDisassembly = typeof conditions.disassemblyCost === 'number' || conditions.disassemblyCode;
   const hasConditions =
     conditions &&
     conditions.repairCode &&
     conditions.riskCode &&
     conditions.materialCode &&
     conditions.carClassCode &&
-    conditions.disassemblyCode;
+    hasDisassembly;
   if (!hasConditions) {
     return Math.round(base / roundStep) * roundStep;
   }
 
   const dentsTotal = dents.reduce((sum, dent) => sum + calculateDentPrice(dent, conditions, initialData), 0);
-  const disCost = initialData.disassembly.find((d) => d.code === conditions.disassemblyCode)?.price ?? 0;
-  const total = dentsTotal + disCost;
+  let disCost = 0;
+  if (typeof conditions.disassemblyCost === 'number') {
+    disCost = conditions.disassemblyCost;
+  } else if (conditions.disassemblyCode) {
+    disCost = initialData.disassembly?.find((d) => d.code === conditions.disassemblyCode)?.price ?? 0;
+  }
+  let soundCost = 0;
+  if (conditions.soundInsulationCode) {
+    soundCost = initialData.soundInsulation?.find((s) => s.code === conditions.soundInsulationCode)?.price ?? 0;
+  }
+  const total = dentsTotal + disCost + soundCost;
   return Math.round(total / roundStep) * roundStep;
 }
 
@@ -99,23 +113,38 @@ export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) 
 export function applyConditionsToBase(basePrice, conditions, initialData, sizeCodeForMatrix = 'STRIP_DEFAULT', roundStep = 100) {
   if (!conditions || !initialData || basePrice <= 0) return 0;
   const { repairCode, riskCode, materialCode, carClassCode, disassemblyCode } = conditions;
-  if (!repairCode || !riskCode || !materialCode || !carClassCode || !disassemblyCode) return 0;
+  const hasDisassembly = disassemblyCode || typeof conditions.disassemblyCost === 'number';
+  if (!repairCode || !riskCode || !materialCode || !carClassCode || !hasDisassembly) return 0;
 
   const repCoeff = initialData.repairTypes.find((r) => r.code === repairCode)?.mult ?? 1.0;
   const matCoeff = initialData.materials.find((m) => m.code === materialCode)?.mult ?? 1.0;
   const carClassCoeff = initialData.carClasses.find((c) => c.code === carClassCode)?.mult ?? 1.0;
+  const paintCoeff = conditions.paintMaterialCode
+    ? (initialData.paintMaterials?.find((p) => p.code === conditions.paintMaterialCode)?.mult ?? 1.0)
+    : 1.0;
   const riskObj = initialData.risks.find((r) => r.code === riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
   const matrixRow = initialData.complexityMatrix?.[sizeCodeForMatrix] ?? initialData.complexityMatrix?.['STRIP_DEFAULT'] ?? { [kKey]: 1.0 };
   const compCoeff = matrixRow[kKey] ?? 1.0;
-  const disCost = initialData.disassembly.find((d) => d.code === disassemblyCode)?.price ?? 0;
+  let disCost = 0;
+  if (typeof conditions.disassemblyCost === 'number') {
+    disCost = conditions.disassemblyCost;
+  } else if (disassemblyCode) {
+    disCost = initialData.disassembly?.find((d) => d.code === disassemblyCode)?.price ?? 0;
+  }
+  let soundCost = 0;
+  if (conditions.soundInsulationCode) {
+    soundCost = initialData.soundInsulation?.find((s) => s.code === conditions.soundInsulationCode)?.price ?? 0;
+  }
 
   let price = basePrice;
   price *= repCoeff;
   price *= compCoeff;
   price *= matCoeff;
   price *= carClassCoeff;
+  price *= paintCoeff;
   price += disCost;
+  price += soundCost;
   return Math.round(Math.max(0, price) / roundStep) * roundStep;
 }
 
@@ -132,7 +161,8 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   if (!conditions || !initialData || basePrice <= 0) return items;
 
   const { repairCode, riskCode, materialCode, carClassCode, disassemblyCode } = conditions;
-  if (!repairCode || !riskCode || !materialCode || !carClassCode || !disassemblyCode) return items;
+  const hasDisassembly = disassemblyCode || typeof conditions.disassemblyCost === 'number';
+  if (!repairCode || !riskCode || !materialCode || !carClassCode || !hasDisassembly) return items;
 
   const riskObj = initialData.risks.find((r) => r.code === riskCode);
   const kKey = riskObj ? riskObj.matrixKey : 'K2';
@@ -144,15 +174,32 @@ export function buildBreakdown(basePrice, conditions, initialData, sizeCodeForMa
   const matMult = matObj?.mult ?? 1.0;
   const carClassObj = initialData.carClasses.find((c) => c.code === carClassCode);
   const carClassMult = carClassObj?.mult ?? 1.0;
-  const disObj = initialData.disassembly.find((d) => d.code === disassemblyCode);
-  const disCost = disObj?.price ?? 0;
+  let disCost = 0;
+  let disLabel = '';
+  if (typeof conditions.disassemblyCost === 'number') {
+    disCost = conditions.disassemblyCost;
+    disLabel = 'Арматурные работы';
+  } else {
+    const disObj = initialData.disassembly?.find((d) => d.code === disassemblyCode);
+    disCost = disObj?.price ?? 0;
+    disLabel = disObj?.name ?? 'Разборка';
+  }
 
   items.push({ name: 'Базовая стоимость', value: `${(Math.round(basePrice / 100) * 100).toLocaleString('ru-RU')} ₽` });
   if (repObj) items.push({ name: repObj.name, value: `×${repMult}` });
   if (matObj) items.push({ name: matObj.name, value: `×${matMult}` });
   if (riskObj) items.push({ name: riskObj.name, value: `×${compMult}` });
   if (carClassObj) items.push({ name: carClassObj.name, value: `×${carClassMult}` });
-  if (disCost > 0 && disObj) items.push({ name: disObj.name, value: `+${roundPrice(disCost).toLocaleString('ru-RU')} ₽` });
+  const paintObj = conditions.paintMaterialCode
+    ? initialData.paintMaterials?.find((p) => p.code === conditions.paintMaterialCode)
+    : null;
+  if (paintObj && paintObj.mult !== 1.0) items.push({ name: paintObj.name, value: `×${paintObj.mult}` });
+  if (disCost > 0) items.push({ name: disLabel, value: `+${roundPrice(disCost).toLocaleString('ru-RU')} ₽` });
+  const soundObj = conditions.soundInsulationCode
+    ? initialData.soundInsulation?.find((s) => s.code === conditions.soundInsulationCode)
+    : null;
+  const soundCost = soundObj?.price ?? 0;
+  if (soundCost > 0) items.push({ name: soundObj?.name ?? 'Шумоизоляция', value: `+${roundPrice(soundCost).toLocaleString('ru-RU')} ₽` });
 
   return items;
 }

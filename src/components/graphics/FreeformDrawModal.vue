@@ -15,7 +15,7 @@
           <button type="button" class="freeform-btn freeform-btn-ghost" @click="clearDrawing">Очистить</button>
           <div class="freeform-actions-right">
             <button type="button" class="freeform-btn freeform-btn-ghost" @click="emitCancel">Отмена</button>
-            <button type="button" class="freeform-btn freeform-btn-primary" @click="confirmDrawing">Готово</button>
+            <button type="button" data-testid="freeform-confirm" class="freeform-btn freeform-btn-primary" @click="confirmDrawing">Готово</button>
           </div>
         </div>
       </div>

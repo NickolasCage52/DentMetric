@@ -14,7 +14,7 @@
         </div>
         <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
           <span class="text-metric-green font-bold text-sm">Итог:</span>
-          <span class="text-metric-green font-bold text-lg">{{ formatPrice(totalPrice) }} ₽</span>
+          <span data-testid="total-price-graphics" class="text-metric-green font-bold text-lg">{{ formatPrice(totalPrice) }} ₽</span>
         </div>
       </div>
       <div class="summary-card rounded-xl bg-black/35 border border-white/10 p-4 space-y-2">
@@ -46,6 +46,7 @@
         </button>
       </div>
       <button
+        data-testid="btn-save-graphics"
         type="button"
         @click="$emit('save')"
         class="w-full py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"

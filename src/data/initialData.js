@@ -7,15 +7,24 @@ export const initialData = {
         { code: 'M1', name: 'Сталь', mult: 1.0 },
         { code: 'M2', name: 'Алюминий', mult: 1.3 }
     ],
+    paintMaterials: [
+        { code: 'P1', name: 'Глянец', desc: 'Стандартное глянцевое ЛКП', mult: 1.0 },
+        { code: 'P2', name: 'Матовая краска', desc: 'Матовая краска требует особой технологии покраски', mult: 1.25 },
+        { code: 'P3', name: 'Плёнка', desc: 'Виниловая плёнка или оклейка', mult: 1.25 }
+    ],
     carClasses: [
         { code: 'CLASS_STD', name: 'Стандарт', mult: 1.0 },
         { code: 'CLASS_PREM', name: 'Премиум / Новый', mult: 1.2 }
     ],
     risks: [
-        { code: 'RK1', name: 'Низкий', matrixKey: 'K1' },
-        { code: 'RK2', name: 'Средний', matrixKey: 'K2' },
-        { code: 'RK3', name: 'Высокий', matrixKey: 'K3' },
+        { code: 'RK1', name: 'Лёгкая', matrixKey: 'K1' },
+        { code: 'RK2', name: 'Средняя', matrixKey: 'K2' },
+        { code: 'RK3', name: 'Высокая', matrixKey: 'K3' },
         { code: 'RK4', name: 'Экстра', matrixKey: 'K4' }
+    ],
+    soundInsulation: [
+        { code: 'SI0', name: 'Нет', desc: 'Шумоизоляция не требуется', price: 0 },
+        { code: 'SI1', name: 'Да', desc: 'Шумоизоляция требуется', price: 2000 }
     ],
     disassembly: [
         { code: 'Z0', name: 'Без разборки', price: 0 },

@@ -46,7 +46,8 @@
     <button
       v-if="showReset"
       @click="$emit('reset')"
-      class="text-xs text-red-400 px-3 py-2 min-h-[44px] flex items-center hover:text-red-300 shrink-0 touch-manipulation"
+      class="text-xs font-medium text-red-400 px-4 py-2.5 min-h-[44px] rounded-lg border border-red-500/30 hover:bg-red-500/10 hover:text-red-300 shrink-0 touch-manipulation transition-colors"
+      aria-label="Сбросить всё"
     >
       Сброс
     </button>

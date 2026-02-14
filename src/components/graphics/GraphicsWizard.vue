@@ -67,7 +67,7 @@
     </div>
     <!-- Индикаторы этапов: фиксированная зона ниже матрицы -->
     <div class="graphics-progress-area">
-      <StepDots :current-step="wizardStep" :total-steps="5" />
+      <StepDots :current-step="detailLogicalStep" :total-steps="detailTotalSteps" />
     </div>
     <!-- Controls: z-index выше stage, чтобы селекты всегда были кликабельны -->
     <div
@@ -76,7 +76,7 @@
       :style="controlsAreaKeyboardStyle"
     >
       <Step0ClientPanel
-        v-if="wizardStep === 1"
+        v-if="wizardStep === 1 && props.showClientStep"
         :model="estimateDraft"
         :client-required="clientRequired"
         :can-next="clientValid"
@@ -84,7 +84,7 @@
         @back="goBack"
       />
       <Step1PlacementPanel
-        v-else-if="wizardStep === 2"
+        v-else-if="wizardStep === 2 || (wizardStep === 1 && !props.showClientStep)"
         :can-next="dents.length >= 1"
         @add-type="openSizeMenu"
         @add-freeform="openFreeformModal"
@@ -114,14 +114,14 @@
         :model="form"
         :initial-data="initialData"
         :base-price="roundPrice(basePrice)"
-        :total-price="totalPrice"
+        :total-price="displayTotal"
         @back="goBack"
         @calculate="() => goToStep(5)"
       />
       <Step4SummaryPanel
         v-else-if="wizardStep === 5"
         :breakdown="breakdown"
-        :total-price="totalPrice"
+        :total-price="displayTotal"
         :freeform-used="freeformUsed"
         :freeform-area-mm2="freeformAreaMm2"
         :history-saving="historySaving"
@@ -151,6 +151,7 @@
             <button
               v-for="s in (activeToolType === 'circle' ? circleSizes : stripSizes)"
               :key="s.code"
+              :data-testid="`size-option-${s.code}`"
               @click="confirmAddShape(s.code)"
               class="card-metallic p-3 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all hover:border-metric-green/50"
             >
@@ -211,9 +212,14 @@ import {
   setEditable,
   setHideGridOnMobile,
   setSelectedDentFreeStretch,
-  setSelectedDentShapeFixed
+  setSelectedDentShapeFixed,
+  convertSelectedDentToType,
+  setDisplayUnit
 } from '../../graphics/konvaEditor';
+import { classifyShapeByRatio } from '../../utils/shapeClassification';
 import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from '../../utils/priceCalc';
+import { normalizeGraphicsDentsForPricing } from '../../features/pricing/pricingAdapter';
+import { applyPriceRoundingCeil } from '../../utils/priceRounding';
 import StepHeader from './StepHeader.vue';
 import Step0ClientPanel from './Step0ClientPanel.vue';
 import Step1PlacementPanel from './Step1PlacementPanel.vue';
@@ -237,10 +243,16 @@ const props = defineProps({
   estimateDraft: { type: Object, required: true },
   historySaving: { type: Boolean, default: false },
   clientRequired: { type: Boolean, default: false },
-  clientValid: { type: Boolean, default: true }
+  clientValid: { type: Boolean, default: true },
+  showClientStep: { type: Boolean, default: true },
+  autoSave: { type: Boolean, default: false }
 });
 
 const wizardStep = ref(1);
+
+function initWizardStep() {
+  if (!props.showClientStep) wizardStep.value = 2;
+}
 const graphicsRoot = ref(null);
 const konvaContainer = ref(null);
 const controlsAreaRef = ref(null);
@@ -338,12 +350,26 @@ const sizeMenuPortalTarget = computed(() => {
   return typeof document !== 'undefined' ? document.body : null;
 });
 
-const basePrice = computed(() => calcBasePriceFromDents(dents.value));
+const detailTotalSteps = computed(() => props.showClientStep ? 5 : 4);
+const detailLogicalStep = computed(() => props.showClientStep ? wizardStep.value : Math.max(1, wizardStep.value - 1));
+const dentsForPricing = computed(() => {
+  const ctx = {
+    circleSizes: props.circleSizes,
+    stripSizes: props.stripSizes,
+    prices: props.userSettings.prices,
+    initialData: props.initialData
+  };
+  return normalizeGraphicsDentsForPricing(dents.value, ctx);
+});
+const basePrice = computed(() => calcBasePriceFromDents(dentsForPricing.value));
 const totalPrice = computed(() =>
-  calcTotalPrice(dents.value, props.form, props.initialData, 100)
+  calcTotalPrice(dentsForPricing.value, props.form, props.initialData, 100)
+);
+const displayTotal = computed(() =>
+  applyPriceRoundingCeil(totalPrice.value, props.userSettings?.priceRoundStep ?? 0)
 );
 const breakdown = computed(() => {
-  const sizeCode = dents.value?.[0]?.sizeCode ?? 'STRIP_DEFAULT';
+  const sizeCode = dentsForPricing.value?.[0]?.sizeCode ?? 'STRIP_DEFAULT';
   const items = buildBreakdown(basePrice.value, props.form, props.initialData, sizeCode);
   props.estimateDraft.breakdown = items;
   return items;
@@ -367,7 +393,7 @@ const stepHintText = computed(() => {
     case 2:
       return 'Выберите деталь. Добавьте вмятины и перетащите на место.';
     case 3:
-      return 'Размеры в мм. Форма: круг/овал или полоса/царапина.';
+      return 'Размер повреждения в мм. Геометрия: круг/овал или полоса/царапина.';
     default:
       return '';
   }
@@ -423,7 +449,13 @@ watch([sizeWidthMm, sizeHeightMm], () => {
       sizeApplyTimeout = null;
       return;
     }
+    const curType = cur?.type;
     setSelectedDentSizeMm(w, h);
+    if (curType && curType !== 'freeform') {
+      const classified = classifyShapeByRatio({ widthMm: w, heightMm: h });
+      const targetType = classified === 'stripe' ? 'strip' : 'circle';
+      if (curType !== targetType) convertSelectedDentToType(targetType);
+    }
     sizeEditByUser = false;
     sizeApplyTimeout = null;
   }, 150);
@@ -435,6 +467,12 @@ watch(dents, (val) => {
     goToStep(2);
   }
 }, { deep: true });
+
+watch(wizardStep, (step, prev) => {
+  if (props.autoSave && step === 5 && prev === 4 && totalPrice.value > 0 && !props.historySaving) {
+    nextTick(() => emit('save-history'));
+  }
+});
 
 /**
  * Кнопка "Назад" в шапке.
@@ -449,7 +487,8 @@ function goBack() {
       emit('close');
       break;
     case 2:
-      goToStep(1);
+      if (props.showClientStep) goToStep(1);
+      else emit('close');
       break;
     case 3:
       goToStep(2);
@@ -478,6 +517,7 @@ function goToStep(step) {
  * Состояние как при первом заходе в графический режим.
  */
 function resetAll() {
+  if (dents.value.length > 0 && !confirm('Сбросить все вмятины и начать заново?')) return;
   if (sizeApplyTimeout) {
     clearTimeout(sizeApplyTimeout);
     sizeApplyTimeout = null;
@@ -497,7 +537,9 @@ function resetAll() {
   props.form.materialCode = null;
   props.form.carClassCode = null;
   props.form.disassemblyCode = null;
-  goToStep(1);
+  props.form.paintMaterialCode = null;
+  props.form.soundInsulationCode = null;
+  initWizardStep();
   emit('dents-change', []);
 }
 
@@ -592,6 +634,7 @@ const initKonvaEditor = async () => {
   );
   /* Применить текущий шаг (draggable формы vs handle) после init */
   setEditable(wizardStep.value >= 2 && wizardStep.value <= 3, wizardStep.value);
+  setDisplayUnit(props.userSettings?.sizeUnit || 'mm');
   updateMobileGrid();
   /* Повторный fit после layout: контейнер мог иметь 0 размер при init */
   nextTick(() => setTimeout(() => scheduleFit('init-layout'), 150));
@@ -621,7 +664,7 @@ watch(
   { immediate: true }
 );
 
-watch(hintRef, (el) => {
+watch(() => hintRef.value, (el) => {
   if (hintObserver) {
     hintObserver.disconnect();
     hintObserver = null;
@@ -632,6 +675,13 @@ watch(hintRef, (el) => {
   }
   nextTick(() => updateMatrixSafeTop());
 });
+
+watch(
+  () => props.userSettings?.sizeUnit,
+  (unit) => {
+    if (unit) setDisplayUnit(unit);
+  }
+);
 
 watch(
   () => [props.selectedClassId, props.selectedPartId, props.selectedPart],
@@ -647,6 +697,7 @@ watch(
 );
 
 onMounted(() => {
+  initWizardStep();
   nextTick(() => setTimeout(initKonvaEditor, 100));
   updateMobileGrid();
   window.addEventListener('resize', updateMobileGrid);

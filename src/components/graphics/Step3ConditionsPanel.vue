@@ -3,38 +3,45 @@
     <div class="graphics-panel-content step3-params-wrap mx-0 space-y-2 flex-1 min-h-0 p-2">
       <div class="step3-hint rounded-lg bg-black/40 border border-white/10 px-2.5 py-1.5">
         <p class="text-[11px] font-medium leading-tight text-gray-200 step3-hint-text">
-          <span class="step3-hint-full">Технология, сложность, материал и класс авто — влияют на итог.</span>
+          <span class="step3-hint-full">Технология ремонта, сложность выполнения, материал панели и класс автомобиля влияют на итог.</span>
           <span class="step3-hint-short">Параметры влияют на итог.</span>
         </p>
       </div>
       <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Условия и коэффициенты</div>
       <div class="step3-fields-grid">
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Технология</label>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Технология ремонта</label>
           <select :value="model.repairCode" @change="update('repairCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите технологию</option>
             <option v-for="r in initialData.repairTypes" :key="r.code" :value="r.code">{{ r.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Сложность</label>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Сложность выполнения</label>
           <select :value="model.riskCode" @change="update('riskCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
-            <option :value="null" disabled>Выберите сложность</option>
+            <option :value="null" disabled>Выберите</option>
             <option v-for="risk in initialData.risks" :key="risk.code" :value="risk.code">{{ risk.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Материал</label>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Материал панели</label>
           <select :value="model.materialCode" @change="update('materialCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите материал</option>
             <option v-for="m in initialData.materials" :key="m.code" :value="m.code">{{ m.name }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Класс авто</label>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">Класс автомобиля</label>
           <select :value="model.carClassCode" @change="update('carClassCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите класс авто</option>
             <option v-for="c in initialData.carClasses" :key="c.code" :value="c.code">{{ c.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">МАТЕРИАЛ ЛКП</label>
+          <select :value="model.paintMaterialCode" @change="update('paintMaterialCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+            <option :value="null" disabled>Выберите</option>
+            <option v-for="p in initialData.paintMaterials" :key="p.code" :value="p.code">{{ p.name }}</option>
           </select>
         </div>
         <div>
@@ -42,6 +49,13 @@
           <select :value="model.disassemblyCode" @change="update('disassemblyCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
             <option :value="null" disabled>Выберите арматурные работы</option>
             <option v-for="d in initialData.disassembly" :key="d.code" :value="d.code">{{ d.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5 ml-1">ШУМОИЗОЛЯЦИЯ</label>
+          <select :value="model.soundInsulationCode" @change="update('soundInsulationCode', $event.target.value)" class="step3-select w-full bg-[#151515] border border-[#333] rounded-lg px-2.5 py-2 min-h-[40px] text-sm text-white focus:border-metric-green/50 outline-none touch-manipulation">
+            <option :value="null" disabled>Выберите</option>
+            <option v-for="s in initialData.soundInsulation" :key="s.code" :value="s.code">{{ s.name }}</option>
           </select>
         </div>
       </div>

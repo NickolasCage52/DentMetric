@@ -9,6 +9,7 @@
       <!-- Выбор типа вмятины -->
       <div class="grid grid-cols-3 gap-2">
         <button
+          data-testid="add-type-circle"
           @click="$emit('add-type', 'circle')"
           class="card-metallic p-3.5 min-h-[60px] rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation"
         >
@@ -29,6 +30,7 @@
           </div>
         </button>
         <button
+          data-testid="add-freeform"
           @click="$emit('add-freeform')"
           class="card-metallic p-3.5 min-h-[60px] rounded-xl flex items-center gap-3 active:scale-95 hover:border-metric-green/30 transition-all touch-manipulation"
         >
@@ -58,7 +60,7 @@
           class="flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 min-h-[44px]"
           :class="canNext ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
         >
-          <span>Продолжить → Размеры</span>
+          <span>Продолжить → Размер повреждения</span>
         </button>
       </div>
     </div>

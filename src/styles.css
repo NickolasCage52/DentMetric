@@ -1,12 +1,102 @@
-/* Global styles (legacy MVP) */
+/* ===== DentMetric Design System ===== */
+:root {
+  --metric-green: #88E523;
+  --metric-green-glow: rgba(136, 229, 35, 0.4);
+  --metric-green-glow-strong: rgba(136, 229, 35, 0.7);
+  --metric-black: #000000;
+  --metric-dark: #0a0a0a;
+  --metric-bg-dark: #121212;
+  --metric-bg-mid: #1a1a1a;
+  --metric-bg-card: #151515;
+  --metric-error: rgba(239, 68, 68, 0.9);
+  --metric-success: rgba(136, 229, 35, 0.9);
+}
+
+/* Part C: Background gradient animation */
+@keyframes backgroundPulse {
+  0% { background: linear-gradient(135deg, #000000 0%, #0d0d0d 50%, #0a1208 100%); }
+  100% { background: linear-gradient(135deg, #000000 0%, #121212 50%, #0c1509 100%); }
+}
+
+/* Part A: Pulse animation for key interactive elements */
+@keyframes pulse {
+  0% { box-shadow: 0 0 20px 0 var(--metric-green-glow); }
+  50% { box-shadow: 0 0 35px 5px var(--metric-green-glow-strong); }
+  100% { box-shadow: 0 0 20px 0 var(--metric-green-glow); }
+}
+
+/* Global styles */
+#app {
+  min-height: 100vh;
+}
+
 body {
-  background-color: #000000;
+  background: #000;
   color: #ffffff;
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
   margin: 0;
   min-height: 100vh;
-  font-family: SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+  font-family: Montserrat, Roboto, SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Part A: Pulse class for home cards (respect reduced-motion) */
+.pulse-animation {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-animation {
+    animation: none;
+    box-shadow: 0 0 20px 0 var(--metric-green-glow);
+  }
+}
+
+/* Part A: Glow effect on hover for interactive elements */
+.btn-glow,
+.card-metallic.btn-glow,
+button.card-metallic,
+.cta-primary,
+.home-btn {
+  transition: all 0.3s ease-in-out;
+}
+.btn-glow:hover,
+.card-metallic.btn-glow:hover,
+button.card-metallic:hover,
+.cta-primary:hover:not(:disabled),
+.home-btn:hover {
+  box-shadow: 0 0 15px rgba(136, 229, 35, 0.4), 0 0 25px rgba(136, 229, 35, 0.15);
+}
+.btn-glow:active,
+.card-metallic.btn-glow:active,
+button.card-metallic:active,
+.cta-primary:active:not(:disabled) {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* Part D: Toast/notification styles */
+.toast-success {
+  background: rgba(17, 17, 17, 0.95) !important;
+  color: var(--metric-green) !important;
+  border: 1px solid rgba(136, 229, 35, 0.5) !important;
+  box-shadow: 0 0 20px rgba(136, 229, 35, 0.2), 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+.toast-error {
+  background: var(--metric-error) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3), 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 10px);
 }
 
 .pb-24 {
@@ -57,13 +147,21 @@ select:invalid {
   color: #718096;
 }
 
-/* Metallic card (used in template) */
+/* Part B: Metallic card with improved spacing */
 .card-metallic {
   background: linear-gradient(180deg, #2b2b2b 0%, #121212 100%);
-  border: 1px solid #333;
-  border-top-color: #404040;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
+
+/* Part B: Typography - headings bold, body regular */
+h1, h2, h3 { font-weight: 700; }
+h1 { font-size: clamp(1.5rem, 4vw, 2.25rem); }
+h2 { font-size: clamp(1.25rem, 3vw, 1.5rem); }
+h3 { font-size: clamp(1rem, 2.5vw, 1.25rem); }
+.text-muted { color: #9ca3af; }
+.text-muted:hover { color: #d1d5db; }
 
 .konva-bg {
   background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),

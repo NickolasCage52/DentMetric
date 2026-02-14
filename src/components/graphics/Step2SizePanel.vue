@@ -5,7 +5,7 @@
         <!-- Форма вмятины: фиксированная высота, не меняется при выборе вмятины -->
         <div class="step2-block step2-form-block rounded-lg bg-black/35 border border-white/10 p-2">
           <div class="step2-form-head">
-            <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest">Форма</div>
+            <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest">Геометрия повреждения</div>
             <label
               v-if="showFreeStretch"
               class="step2-checkbox"
@@ -24,14 +24,17 @@
             <template v-if="selectedDentSize">
               <div
                 v-if="selectedDentSize.type === 'freeform'"
-                class="flex gap-0.5 p-0.5 rounded-lg bg-white/5"
+                class="flex flex-col gap-0.5"
               >
-                <button
-                  type="button"
-                  class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium bg-metric-green text-black"
-                >
-                  Произвольная форма
-                </button>
+                <div class="flex gap-0.5 p-0.5 rounded-lg bg-white/5">
+                  <button
+                    type="button"
+                    class="px-2.5 py-1 min-h-[32px] rounded text-[10px] font-medium bg-metric-green text-black"
+                  >
+                    Произвольная форма
+                  </button>
+                </div>
+                <span v-if="freeformBboxHint" class="text-[9px] text-gray-500">По габаритам: {{ freeformBboxHint }}</span>
               </div>
               <div
                 v-else-if="selectedDentSize.type === 'circle'"
@@ -88,9 +91,9 @@
             </button>
           </div>
         </div>
-        <!-- Размеры (мм) -->
+        <!-- Размер повреждения -->
         <div ref="sizesPanel" class="step2-block step2-sizes-block rounded-lg bg-black/35 border border-white/10 p-2">
-          <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размеры (мм)</div>
+          <div class="text-[10px] uppercase font-bold text-metric-green tracking-widest mb-1.5">Размер повреждения (мм)</div>
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[10px] text-gray-500 mb-0.5">
@@ -134,7 +137,7 @@
           </div>
         </div>
       </div>
-    <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Размеры должны быть больше 0</p>
+    <p v-if="!canNext" class="text-[10px] text-gray-500 text-center">Размер повреждения должен быть больше 0</p>
     </div>
     <div class="graphics-action-bar wizard-step-controls space-y-2">
       <div class="flex items-center gap-2 w-full">
@@ -161,6 +164,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { classifyShapeByRatio } from '../../utils/shapeClassification';
 
 const props = defineProps({
   selectedDentSize: { type: Object, default: null },
@@ -201,6 +205,14 @@ const showFreeStretch = computed(() => {
 const inputsDisabled = computed(() => {
   if (!props.selectedDentSize) return true;
   return false;
+});
+const freeformBboxHint = computed(() => {
+  if (props.selectedDentSize?.type !== 'freeform') return '';
+  const w = Number(props.sizeWidthMm) || 0;
+  const h = Number(props.sizeHeightMm) || 0;
+  if (w <= 0 || h <= 0) return '';
+  const classified = classifyShapeByRatio({ widthMm: w, heightMm: h });
+  return classified === 'stripe' ? 'Полоса' : classified === 'round' ? 'Круг' : 'Овал';
 });
 
 function sanitizeInput(val) {
