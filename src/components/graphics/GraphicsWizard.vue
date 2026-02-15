@@ -363,7 +363,7 @@ const dentsForPricing = computed(() => {
 });
 const basePrice = computed(() => calcBasePriceFromDents(dentsForPricing.value));
 const totalPrice = computed(() =>
-  calcTotalPrice(dentsForPricing.value, props.form, props.initialData, 100)
+  calcTotalPrice(dentsForPricing.value, props.form, props.initialData, props.userSettings?.priceRoundStep ?? 0)
 );
 const displayTotal = computed(() =>
   applyPriceRoundingCeil(totalPrice.value, props.userSettings?.priceRoundStep ?? 0)

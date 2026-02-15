@@ -73,39 +73,40 @@
             <img src="/dm-small.png" alt="DentMetric" class="h-8 w-auto object-contain drop-shadow-2xl" onerror="this.style.display='none'">
           </div>
           <p class="text-[10px] font-bold uppercase text-metric-green tracking-widest text-center mb-6">Выбор режима расчёта</p>
-          <div class="grid grid-cols-1 gap-3 max-w-sm mx-auto w-full">
+          <div class="metric-menu-grid">
             <button
               data-testid="metric-standard"
               @click="selectMetricMode('standard')"
-              class="card-metallic rounded-2xl p-5 flex items-center gap-4 border border-metric-green/40 hover:border-metric-green/60 hover:shadow-neon transition-all"
+              class="home-btn home-btn-primary card-metallic btn-glow pulse-animation rounded-2xl p-5 flex flex-col items-center justify-center gap-2 border border-metric-green/40 shadow-neon min-h-[110px] w-full"
             >
-              <span class="text-2xl">⚡</span>
-              <div class="text-left">
-                <div class="text-sm font-bold">БЫСТРЫЙ</div>
-                <div class="text-[10px] text-gray-500">Короткий расчёт</div>
-              </div>
+              <svg class="home-btn-icon w-8 h-8 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span class="text-sm font-bold uppercase tracking-wider">Быстрый</span>
+              <span class="text-[10px] text-gray-500">Короткий расчёт</span>
             </button>
             <button
               data-testid="metric-graphics"
               @click="selectMetricMode('graphics')"
-              class="card-metallic rounded-2xl p-5 flex items-center gap-4 border border-white/10 hover:border-metric-green/40 hover:shadow-neon transition-all"
+              class="home-btn home-btn-primary card-metallic btn-glow pulse-animation rounded-2xl p-5 flex flex-col items-center justify-center gap-2 border border-metric-green/40 shadow-neon min-h-[110px] w-full"
             >
-              <span class="text-2xl">🎨</span>
-              <div class="text-left">
-                <div class="text-sm font-bold">ДЕТАЛИЗАЦИЯ</div>
-                <div class="text-[10px] text-gray-500">Графический режим</div>
-              </div>
+              <svg class="home-btn-icon w-8 h-8 text-metric-green shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+              <span class="text-sm font-bold uppercase tracking-wider">Детализация</span>
+              <span class="text-[10px] text-gray-500">Графический режим</span>
             </button>
             <button
               @click="selectMetricMode('time')"
-              class="card-metallic rounded-2xl p-5 flex items-center gap-4 border border-white/10 opacity-70"
+              class="home-btn card-metallic btn-glow rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-75 min-h-[110px] w-full border border-white/10 hover:border-metric-green/30 hover:opacity-100"
             >
-              <span class="text-2xl">⏱️</span>
-              <div class="text-left">
-                <div class="text-sm font-bold">ГРАД 🔒</div>
-                <div class="text-[10px] text-gray-500">В разработке</div>
-              </div>
+              <svg class="home-btn-icon w-8 h-8 text-metric-green/90 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-sm font-bold uppercase tracking-wider">Град</span>
+              <span class="text-[10px] text-gray-500">В разработке 🔒</span>
             </button>
+            <div class="metric-menu-empty" aria-hidden="true"></div>
           </div>
         </div>
       </div>
@@ -117,7 +118,7 @@
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
+      <div class="flex-1 overflow-y-auto p-4 pt-0 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
         <!-- Standard mode -->
         <div v-if="calcMode === 'standard'" class="flex flex-col min-h-full">
           <div data-testid="step-dots" class="flex items-center justify-center pb-2">
@@ -200,7 +201,7 @@
                         @change="onQuickDentElementChange(dent)"
                         :class="['w-full rounded-xl px-4 py-3 text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors', dent.panelElement ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
-                        <option :value="null" disabled>Выберите элемент</option>
+                        <option :value="null" disabled>Select Element</option>
                         <option v-for="part in (dent.panelSide === 'right' ? quickPartsRight : quickPartsLeft)" :key="part" :value="part">{{ part }}</option>
                       </select>
                       <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
@@ -270,6 +271,7 @@
                         data-testid="dent-size-length"
                         v-model.number="dent.sizeLengthMm"
                         @input="syncQuickDentSizeFromMm(dent)"
+                        @blur="syncQuickDentSizeFromMm(dent)"
                         @focus="scrollFieldIntoView"
                         type="number"
                         min="0.1"
@@ -284,6 +286,7 @@
                         data-testid="dent-size-width"
                         v-model.number="dent.sizeWidthMm"
                         @input="syncQuickDentSizeFromMm(dent)"
+                        @blur="syncQuickDentSizeFromMm(dent)"
                         @focus="scrollFieldIntoView"
                         type="number"
                         min="0.1"
@@ -318,7 +321,7 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность выполнения</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">EXECUTION COMPLEXITY</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.riskCode"
@@ -406,7 +409,7 @@
                     </div>
                   </div>
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">ШУМОИЗОЛЯЦИЯ</label>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Noise Insulation</label>
                     <div class="relative">
                       <select
                         v-model="dent.conditions.soundInsulationCode"
@@ -441,25 +444,25 @@
             </div>
 
             <div v-else-if="quickStep === 3" class="space-y-4">
-              <div class="card-metallic rounded-2xl p-5 space-y-2" v-if="quickLineItems.length">
-                <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Вмятины</div>
-                <div v-for="(item, idx) in quickLineItems" :key="item.dent.id" class="border-b border-white/10 pb-2 mb-2 last:mb-0 last:pb-0 last:border-0">
-                  <div class="flex justify-between text-[11px]">
+              <div class="card-metallic rounded-2xl p-5 space-y-3" v-if="quickLineItems.length">
+                <div class="text-xs font-bold text-metric-green uppercase tracking-widest">Вмятины</div>
+                <div v-for="(item, idx) in quickLineItems" :key="item.dent.id" class="border-b border-white/10 pb-3 mb-3 last:mb-0 last:pb-0 last:border-0">
+                  <div class="flex justify-between text-sm">
                     <span class="text-gray-400">Вмятина {{ idx + 1 }} · {{ getQuickDentLabel(item.dent) }}</span>
-                    <span class="text-white font-medium">{{ formatRoundedPrice(item.appliedTotal) }} ₽</span>
+                    <span class="text-white font-semibold text-base">{{ formatRoundedPrice(item.appliedTotal) }} ₽</span>
                   </div>
-                  <div class="text-[10px] text-gray-500">
-                    <span class="text-base font-semibold">Размер повреждения: {{ formatSizeDisplay(item.dent.sizeLengthMm, item.dent.sizeWidthMm) }}</span>
-                    <span v-if="item.discount">· -50% доп. вмятина</span>
+                  <div class="text-sm text-gray-500">
+                    <span class="text-lg font-semibold text-gray-300">Размер повреждения: {{ formatSizeDisplay(item.dent.sizeLengthMm, item.dent.sizeWidthMm) }}</span>
+                    <span v-if="item.discount" class="text-sm"> · -50% доп. вмятина</span>
                   </div>
                 </div>
-                <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
-                  <span class="text-metric-green font-bold text-sm">Итог:</span>
-                  <span data-testid="total-price" class="text-metric-green font-bold text-lg">{{ formatCurrency(displayTotal) }} ₽</span>
+                <div class="border-t border-white/10 pt-3 mt-3 flex justify-between items-baseline">
+                  <span class="text-metric-green font-bold text-base">Итог:</span>
+                  <span data-testid="total-price" class="text-metric-green font-bold text-2xl">{{ formatCurrency(displayTotal) }} ₽</span>
                 </div>
-                <div class="border-t border-white/10 pt-2 mt-2 flex justify-between items-center">
-                  <span class="text-gray-400 text-sm">ВРЕМЯ РЕМОНТА:</span>
-                  <span class="text-white font-medium">{{ estimatedRepairTime }}</span>
+                <div class="border-t border-white/10 pt-3 mt-3 flex justify-between items-center">
+                  <span class="text-gray-400 text-base">ВРЕМЯ РЕМОНТА:</span>
+                  <span class="text-white font-semibold text-lg">{{ estimatedRepairTime }}</span>
                 </div>
               </div>
 
@@ -469,18 +472,18 @@
                   :key="dentItem.dent.id"
                   class="card-metallic rounded-2xl p-5 space-y-2"
                 >
-                  <div class="text-[10px] font-bold text-metric-green uppercase tracking-widest">Расчёт стоимости · Вмятина {{ idx + 1 }}</div>
-                  <div v-for="(line, lineIdx) in dentItem.breakdown" :key="lineIdx" class="flex justify-between text-[11px]">
+                  <div class="text-xs font-bold text-metric-green uppercase tracking-widest">Расчёт стоимости · Вмятина {{ idx + 1 }}</div>
+                  <div v-for="(line, lineIdx) in dentItem.breakdown" :key="lineIdx" class="flex justify-between text-sm">
                     <span class="text-gray-400">{{ line.name }}:</span>
-                    <span class="text-white font-medium">{{ line.value }}</span>
+                    <span class="text-white font-medium text-base">{{ line.value }}</span>
                   </div>
-                  <div class="border-t border-white/10 pt-2 mt-2 flex justify-between text-[11px]">
+                  <div class="border-t border-white/10 pt-2 mt-2 flex justify-between text-sm">
                     <span class="text-gray-400">Итог по вмятине:</span>
-                    <span class="text-white font-medium">{{ formatRoundedPrice(dentItem.total) }} ₽</span>
+                    <span class="text-white font-semibold text-base">{{ formatRoundedPrice(dentItem.total) }} ₽</span>
                   </div>
-                  <div v-if="dentItem.discount" class="flex justify-between text-[11px]">
+                  <div v-if="dentItem.discount" class="flex justify-between text-sm">
                     <span class="text-gray-400">Итог с 50%:</span>
-                    <span class="text-white font-medium">{{ formatRoundedPrice(dentItem.appliedTotal) }} ₽</span>
+                    <span class="text-white font-semibold text-base">{{ formatRoundedPrice(dentItem.appliedTotal) }} ₽</span>
                   </div>
                 </div>
               </div>
@@ -498,7 +501,7 @@
             </div>
           </div>
 
-          <div class="sticky bottom-0 mt-auto px-4 pt-2 pb-2 bg-black border-t border-white/10 shrink-0">
+          <div class="quick-nav-bar fixed bottom-0 left-0 right-0 max-w-md mx-auto px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] bg-black border-t border-white/10 shrink-0 z-10">
             <div v-if="calcMode === 'standard'" class="flex justify-end mb-1">
               <button
                 type="button"
@@ -508,11 +511,11 @@
                 СБРОС
               </button>
             </div>
-            <div v-if="quickStep < 3" class="flex gap-2">
+            <div v-if="quickStep < 3" class="quick-nav-buttons flex">
               <button
                 type="button"
                 @click="goQuickBack"
-                class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 rounded-xl min-h-[44px]"
+                class="quick-nav-btn quick-nav-btn-back flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 min-h-[44px]"
               >
                 Назад
               </button>
@@ -521,17 +524,17 @@
                 type="button"
                 @click="goQuickNext"
                 :disabled="(quickStep === 1 && userSettings.showClientQuick && !clientDataValid) || ((quickStep === 2 || (quickStep === 1 && !userSettings.showClientQuick)) && !quickStep2Valid)"
-                class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                class="quick-nav-btn quick-nav-btn-next flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Вперёд
               </button>
             </div>
             <div v-else class="space-y-2">
-              <div class="flex gap-2">
+              <div class="quick-nav-buttons flex">
                 <button
                   type="button"
                   @click="goQuickBack"
-                  class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 rounded-xl min-h-[44px]"
+                  class="quick-nav-btn quick-nav-btn-back flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 min-h-[44px]"
                 >
                   Назад
                 </button>
@@ -539,7 +542,7 @@
                   data-testid="btn-save-estimate"
                   type="button"
                   @click="saveCurrentEstimate('quick')"
-                  class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 rounded-xl transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="quick-nav-btn quick-nav-btn-next flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="isSavingHistory || !quickStep3Ready"
                 >
                   {{ isSavingHistory ? 'Сохранение...' : 'Сохранить в историю' }}
@@ -1138,7 +1141,7 @@ import { getArmaturnayaWorksForElement, getArmaturnayaTotalPrice } from './data/
 import { CAR_PARTS } from './data/carParts';
 import { getPartsByClass } from './data/partsCatalog';
 import { circleSizesMm, stripSizesMm, circleSizesWithArea, stripSizesWithArea } from './data/dentSizes';
-import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown, roundPrice } from './utils/priceCalc';
+import { calcBasePriceFromDents, calcTotalPrice, buildBreakdown } from './utils/priceCalc';
 import { calculateDentPrice as calcDentViaAdapter, normalizeGraphicsDentsForPricing, normalizeDimensions } from './features/pricing/pricingAdapter';
 import { applyPriceRoundingCeil, PRICE_ROUND_OPTIONS } from './utils/priceRounding';
 import { classifyShapeByRatio } from './utils/shapeClassification';
@@ -1507,7 +1510,7 @@ const quickDentTotals = computed(() => estimateDraft.quickDents.map((dent) => {
   const h = Number(dent.sizeWidthMm) || 0;
   const shape = dent.shape === 'circle' ? 'circle' : 'strip';
   const sizes = shape === 'circle' ? circleSizesWithArea : stripSizesWithArea;
-  const ctx = { sizesWithArea: sizes, prices: userSettings.prices, initialData, roundStep: 100 };
+  const ctx = { sizesWithArea: sizes, prices: userSettings.prices, initialData, roundStep: userSettings.priceRoundStep ?? 0 };
   const result = calcDentViaAdapter(
     { shape, widthMm: w, heightMm: h, conditions: dent.conditions, panelElement: dent.panelElement },
     ctx
@@ -1529,8 +1532,7 @@ const quickLineItems = computed(() => {
 
 const quickTotal = computed(() => {
   if (quickLineItems.value.length === 0) return 0;
-  const sum = quickLineItems.value.reduce((acc, item, idx) => acc + (idx === 0 ? item.total : item.total * 0.5), 0);
-  return roundPrice(sum);
+  return quickLineItems.value.reduce((acc, item, idx) => acc + (idx === 0 ? item.total : item.total * 0.5), 0);
 });
 
 /** Нормализованные вмятины для расчёта (устраняет расхождения Quick vs Detail). */
@@ -1549,7 +1551,7 @@ const graphicsBasePrice = computed(() => calcBasePriceFromDents(graphicsDentsFor
 
 /** Итоговая цена в Графике: каждая вмятина отдельно, затем сумма. Единый источник: priceCalc.calcTotalPrice. */
 const graphicsPrice = computed(() =>
-  calcTotalPrice(graphicsDentsForPricing.value, form, initialData, 100)
+  calcTotalPrice(graphicsDentsForPricing.value, form, initialData, userSettings.priceRoundStep ?? 0)
 );
 
 const totalPrice = computed(() => {
@@ -2150,53 +2152,134 @@ onBeforeUnmount(() => {
 
 /* Home screen: pure black background */
 .home-screen { position: relative; overflow: hidden; background: #000000; }
+
+/* 2×2 grid: square cards with spacing, as in reference design */
 .home-buttons-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto);
   gap: 1rem;
-  max-width: 420px;
   width: 100%;
+  max-width: min(92vw, 380px);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
 }
-.home-btn {
+
+/* Shared menu card style: main screen + metric mode picker (dark charcoal, rounded, square) — single source of truth */
+.menu-card-btn {
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  background-color: #2C2C2C;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: box-shadow 0.4s ease, transform 0.3s ease, border-color 0.3s ease, opacity 0.3s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
-.home-btn:hover,
-.home-btn:focus {
-  animation: homeBtnHoverPulse 2s ease-in-out infinite;
+.menu-card-btn--active {
+  border: 2px solid #88e523;
+  box-shadow: 0 0 18px rgba(136, 229, 35, 0.3), 0 0 32px rgba(136, 229, 35, 0.1);
+}
+.menu-card-btn--active:hover,
+.menu-card-btn--active:focus {
+  border-color: #88e523;
+  box-shadow: 0 0 22px rgba(136, 229, 35, 0.4), 0 0 40px rgba(136, 229, 35, 0.15);
+}
+.menu-card-btn--inactive {
+  border: 1px solid rgba(60, 60, 60, 0.9);
+}
+.menu-card-btn--inactive:hover,
+.menu-card-btn--inactive:focus {
+  border-color: rgba(255, 255, 255, 0.12);
 }
 @media (prefers-reduced-motion: reduce) {
-  .home-btn:hover,
-  .home-btn:focus {
-    animation: none;
-    box-shadow: 0 0 15px rgba(136, 229, 35, 0.3), 0 0 25px rgba(136, 229, 35, 0.1);
+  .menu-card-btn--active:hover,
+  .menu-card-btn--active:focus {
+    box-shadow: 0 0 18px rgba(136, 229, 35, 0.3), 0 0 32px rgba(136, 229, 35, 0.1);
   }
 }
-.home-btn:focus-visible {
+.menu-card-btn:focus-visible {
   outline: 2px solid rgba(136, 229, 35, 0.6);
   outline-offset: 2px;
 }
-@keyframes homeBtnHoverPulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(136, 229, 35, 0.25), 0 0 24px rgba(136, 229, 35, 0.08); }
-  50% { box-shadow: 0 0 18px rgba(136, 229, 35, 0.35), 0 0 32px rgba(136, 229, 35, 0.12); }
+.menu-card-btn-icon--active { color: #88e523; }
+.menu-card-btn-icon--inactive { color: rgba(255, 255, 255, 0.55); }
+.menu-card-btn--active .menu-card-btn-label,
+.menu-card-btn--active .menu-card-btn-sublabel { color: #88e523; }
+.menu-card-btn--inactive .menu-card-btn-label,
+.menu-card-btn--inactive .menu-card-btn-sublabel { color: rgba(255, 255, 255, 0.7); }
+.menu-card-btn-sublabel .menu-card-lock { color: #C9A227; }
+.menu-card-btn-label { line-height: 1.2; }
+.menu-card-btn-sublabel { line-height: 1.25; }
+
+/* Metric mode picker: same 2×2 grid and card style */
+.metric-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 1.25rem;
+  max-width: min(92vw, 380px);
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
-@media (max-width: 480px) {
-  .home-buttons-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 0 0.5rem;
-  }
+.metric-menu-empty {
+  aspect-ratio: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+@media (min-width: 480px) {
+  .home-buttons-grid { max-width: min(90vw, 360px); gap: 1.25rem; }
+  .metric-menu-grid { max-width: min(90vw, 360px); gap: 1.25rem; }
 }
 @media (min-width: 768px) {
-  .home-buttons-grid {
-    gap: 1.25rem;
-    max-width: 380px;
+  .home-buttons-grid { max-width: 380px; }
+  .metric-menu-grid { max-width: 380px; }
+}
+
+/* Quick Calculation: Back/Next bar — mobile: no gap, attached; desktop: gap and separate rounding */
+.quick-nav-bar {
+  margin-bottom: 0;
+}
+.quick-nav-buttons {
+  gap: 0;
+  min-width: 0;
+}
+.quick-nav-btn-back {
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 0.75rem;
+  border-bottom-left-radius: 0.75rem;
+}
+.quick-nav-btn-next {
+  border-left-width: 1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+}
+@media (min-width: 641px) {
+  .quick-nav-buttons {
+    gap: 0.5rem;
+  }
+  .quick-nav-btn-back {
+    border-right-width: 1px;
+    border-top-right-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+  }
+  .quick-nav-btn-next {
+    border-left-width: 1px;
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
   }
 }
+
 /* A) Тёмный фон редактора: перебить любые bg-white/konva-bg (Konva bgRect — страховка в konvaEditor.js) */
 /* Матрица без отступов: padding 0, margin 0, width/height 100% */
 .canvas-editor-wrap,

@@ -156,7 +156,7 @@ function updateDentDimLabel(dentNode, widthMm, heightMm) {
   if (!label) {
     label = new Konva.Text({
       text,
-      fontSize: 10,
+      fontSize: 14,
       fontFamily: 'sans-serif',
       fill: '#ffffff',
       shadowColor: '#000',
@@ -181,7 +181,7 @@ function updateDentDimLabel(dentNode, widthMm, heightMm) {
   label.offsetX(label.width() / 2);
   label.offsetY(label.height() / 2);
   const sizePx = Math.min(rect.width, rect.height);
-  const fontSize = Math.max(6, Math.min(12, sizePx / 6));
+  const fontSize = Math.max(11, Math.min(22, Math.round(sizePx / 4.5)));
   label.fontSize(fontSize);
   label.visible(true);
   const layer = dentNode.getLayer ? dentNode.getLayer() : (dentNode.getParent?.()?.getLayer?.());
@@ -211,7 +211,7 @@ function selectNode(node) {
   const showTransformer = canShowTransformerForNode(node);
   tr.nodes(showTransformer ? [node] : []);
   if (meta?.type === 'freeform') {
-    tr.rotateEnabled(false);
+    tr.rotateEnabled(true);
     if (meta?.isShapeFixed) tr.keepRatio(true);
     else tr.keepRatio(!meta?.isFreeStretchEnabled);
   } else {

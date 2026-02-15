@@ -15,7 +15,9 @@ test.describe('Detail flow', () => {
     await page.getByTestId('add-type-circle').click();
     await page.getByTestId('size-option-S6').click();
 
-    await page.getByRole('button', { name: /Продолжить.*Размер/i }).click();
+    const continueToSizeBtn = page.getByRole('button', { name: /Продолжить.*Размер/i });
+    await expect(continueToSizeBtn).toBeEnabled({ timeout: 10000 });
+    await continueToSizeBtn.click();
 
     await page.getByRole('button', { name: /Продолжить.*Условия/i }).click();
 

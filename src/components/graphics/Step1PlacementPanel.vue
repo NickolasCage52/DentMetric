@@ -57,7 +57,7 @@
           @click="$emit('next')"
           :disabled="!canNext"
           :title="canNext ? '' : 'Добавьте хотя бы одну вмятину'"
-          class="flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 min-h-[44px]"
+          class="flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 min-h-[40px]"
           :class="canNext ? 'bg-metric-green text-black shadow-[0_0_15px_rgba(136,229,35,0.4)] hover:opacity-95 active:opacity-90' : 'bg-white/10 text-gray-500 cursor-not-allowed'"
         >
           <span>Продолжить → Размер повреждения</span>

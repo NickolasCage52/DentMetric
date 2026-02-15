@@ -8,23 +8,23 @@ export const initialData = {
         { code: 'M2', name: 'Алюминий', mult: 1.3 }
     ],
     paintMaterials: [
-        { code: 'P1', name: 'Глянец', desc: 'Стандартное глянцевое ЛКП', mult: 1.0 },
-        { code: 'P2', name: 'Матовая краска', desc: 'Матовая краска требует особой технологии покраски', mult: 1.25 },
-        { code: 'P3', name: 'Плёнка', desc: 'Виниловая плёнка или оклейка', mult: 1.25 }
+        { code: 'P1', name: 'Gloss', desc: 'Standard gloss LCP', mult: 1.0 },
+        { code: 'P2', name: 'Matte Paint', desc: 'Matte paint requires specific painting technology', mult: 1.25 },
+        { code: 'P3', name: 'Film', desc: 'Vinyl film or wrap', mult: 1.25 }
     ],
     carClasses: [
         { code: 'CLASS_STD', name: 'Стандарт', mult: 1.0 },
         { code: 'CLASS_PREM', name: 'Премиум / Новый', mult: 1.2 }
     ],
     risks: [
-        { code: 'RK1', name: 'Лёгкая', matrixKey: 'K1' },
-        { code: 'RK2', name: 'Средняя', matrixKey: 'K2' },
-        { code: 'RK3', name: 'Высокая', matrixKey: 'K3' },
-        { code: 'RK4', name: 'Экстра', matrixKey: 'K4' }
+        { code: 'RK1', name: 'Easy (smooth dent)', matrixKey: 'K1' },
+        { code: 'RK2', name: 'Medium (standard dent)', matrixKey: 'K2' },
+        { code: 'RK3', name: 'High (sharp dent with crease)', matrixKey: 'K3' },
+        { code: 'RK4', name: 'Extra (sharp dent with hard-to-reach area)', matrixKey: 'K4' }
     ],
     soundInsulation: [
-        { code: 'SI0', name: 'Нет', desc: 'Шумоизоляция не требуется', price: 0 },
-        { code: 'SI1', name: 'Да', desc: 'Шумоизоляция требуется', price: 2000 }
+        { code: 'SI0', name: 'No', desc: 'Noise insulation not required', price: 0 },
+        { code: 'SI1', name: 'Yes', desc: 'Noise insulation required (+2000 RUB)', price: 2000 }
     ],
     disassembly: [
         { code: 'Z0', name: 'Без разборки', price: 0 },

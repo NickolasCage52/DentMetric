@@ -27,3 +27,8 @@ dist-ssr
 # build output
 dist/
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+

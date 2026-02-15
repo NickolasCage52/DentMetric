@@ -67,7 +67,7 @@ function calculateDentPrice(dent, conditions, initialData) {
  * @param {number} [roundStep=100]
  * @returns {number} итоговая цена
  */
-export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) {
+export function calcTotalPrice(dents, conditions, initialData, roundStep = 0) {
   if (!dents || !Array.isArray(dents) || dents.length === 0) return 0;
   const base = calcBasePriceFromDents(dents);
   if (base <= 0) return 0;
@@ -81,6 +81,7 @@ export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) 
     conditions.carClassCode &&
     hasDisassembly;
   if (!hasConditions) {
+    if (!roundStep || roundStep <= 0) return base;
     return Math.round(base / roundStep) * roundStep;
   }
 
@@ -96,6 +97,7 @@ export function calcTotalPrice(dents, conditions, initialData, roundStep = 100) 
     soundCost = initialData.soundInsulation?.find((s) => s.code === conditions.soundInsulationCode)?.price ?? 0;
   }
   const total = dentsTotal + disCost + soundCost;
+  if (!roundStep || roundStep <= 0) return Math.max(0, total);
   return Math.round(total / roundStep) * roundStep;
 }
 
@@ -145,7 +147,9 @@ export function applyConditionsToBase(basePrice, conditions, initialData, sizeCo
   price *= paintCoeff;
   price += disCost;
   price += soundCost;
-  return Math.round(Math.max(0, price) / roundStep) * roundStep;
+  const final = Math.max(0, price);
+  if (!roundStep || roundStep <= 0) return final;
+  return Math.round(final / roundStep) * roundStep;
 }
 
 /**

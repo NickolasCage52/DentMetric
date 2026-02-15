@@ -64,7 +64,7 @@ export function getSizeCodeForConditions(shape, widthMm, heightMm, sizesWithArea
  */
 export function calculateDentPrice(input, context) {
   const { shape, widthMm, heightMm, conditions, panelElement } = input;
-  const { sizesWithArea, prices, initialData, roundStep = 100 } = context;
+  const { sizesWithArea, prices, initialData, roundStep = 0 } = context;
   const conditionsWithCost = { ...conditions };
   if (conditions.disassemblyCodes && Array.isArray(conditions.disassemblyCodes)) {
     conditionsWithCost.disassemblyCost = getArmaturnayaTotalPrice(

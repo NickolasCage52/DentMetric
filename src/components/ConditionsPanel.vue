@@ -23,7 +23,7 @@
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Сложность выполнения</label>
+              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">EXECUTION COMPLEXITY</label>
               <select :value="model.riskCode" @change="(e) => update('riskCode', e.target.value)" class="conditions-select-compact w-full bg-[#151515] border border-[#333] rounded-lg px-3 py-2.5 text-sm text-white focus:border-metric-green/50 outline-none disabled:opacity-60">
                 <option :value="null" disabled selected>Выберите</option>
                 <option v-for="risk in initialData.risks" :key="risk.code" :value="risk.code">{{ risk.name }}</option>
@@ -76,7 +76,7 @@
       <div class="card-metallic rounded-2xl p-5 space-y-4">
         <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Условия</div>
         <div>
-          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность выполнения</label>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">EXECUTION COMPLEXITY</label>
           <div class="relative">
             <select
               :value="model.riskCode"
