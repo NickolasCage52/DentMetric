@@ -118,7 +118,7 @@
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 pt-0 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
+      <div class="flex-1 overflow-y-auto p-4 pt-0 pb-[calc(13rem+var(--app-footer-height,64px)+env(safe-area-inset-bottom,0px))]" :class="{ 'overflow-hidden h-0': calcMode === 'graphics' }">
         <!-- Standard mode -->
         <div v-if="calcMode === 'standard'" class="flex flex-col min-h-full">
           <div data-testid="step-dots" class="flex items-center justify-center pb-2">
@@ -201,7 +201,7 @@
                         @change="onQuickDentElementChange(dent)"
                         :class="['w-full rounded-xl px-4 py-3 text-base font-medium shadow-inner focus:border-metric-green/50 focus:ring-1 focus:ring-metric-green/50 outline-none appearance-none transition-colors', dent.panelElement ? 'bg-[#1a1a1a] border border-metric-green/40 text-white' : 'bg-[#151515] border border-[#333] text-gray-400']"
                       >
-                        <option :value="null" disabled>Select Element</option>
+                        <option :value="null" disabled>Выберите элемент</option>
                         <option v-for="part in (dent.panelSide === 'right' ? quickPartsRight : quickPartsLeft)" :key="part" :value="part">{{ part }}</option>
                       </select>
                       <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
@@ -321,7 +321,7 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">EXECUTION COMPLEXITY</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Сложность выполнения</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.riskCode"
@@ -353,7 +353,7 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">МАТЕРИАЛ ЛКП</label>
+                      <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Материал ЛКП</label>
                       <div class="relative">
                         <select
                           v-model="dent.conditions.paintMaterialCode"
@@ -409,7 +409,7 @@
                     </div>
                   </div>
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Noise Insulation</label>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Шумоизоляция</label>
                     <div class="relative">
                       <select
                         v-model="dent.conditions.soundInsulationCode"
@@ -500,64 +500,6 @@
               </div>
             </div>
           </div>
-
-          <div class="quick-nav-bar fixed bottom-0 left-0 right-0 max-w-md mx-auto px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] bg-black border-t border-white/10 shrink-0 z-10">
-            <div v-if="calcMode === 'standard'" class="flex justify-end mb-1">
-              <button
-                type="button"
-                @click="resetDraftState"
-                class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                СБРОС
-              </button>
-            </div>
-            <div v-if="quickStep < 3" class="quick-nav-buttons flex">
-              <button
-                type="button"
-                @click="goQuickBack"
-                class="quick-nav-btn quick-nav-btn-back flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 min-h-[44px]"
-              >
-                Назад
-              </button>
-              <button
-                data-testid="btn-go-next"
-                type="button"
-                @click="goQuickNext"
-                :disabled="(quickStep === 1 && userSettings.showClientQuick && !clientDataValid) || ((quickStep === 2 || (quickStep === 1 && !userSettings.showClientQuick)) && !quickStep2Valid)"
-                class="quick-nav-btn quick-nav-btn-next flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Вперёд
-              </button>
-            </div>
-            <div v-else class="space-y-2">
-              <div class="quick-nav-buttons flex">
-                <button
-                  type="button"
-                  @click="goQuickBack"
-                  class="quick-nav-btn quick-nav-btn-back flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 min-h-[44px]"
-                >
-                  Назад
-                </button>
-                <button
-                  data-testid="btn-save-estimate"
-                  type="button"
-                  @click="saveCurrentEstimate('quick')"
-                  class="quick-nav-btn quick-nav-btn-next flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-                  :disabled="isSavingHistory || !quickStep3Ready"
-                >
-                  {{ isSavingHistory ? 'Сохранение...' : 'Сохранить в историю' }}
-                </button>
-              </div>
-              <button
-                type="button"
-                @click="showLockedStub('Раздел в разработке 🔒')"
-                class="cta-primary w-full py-3 text-xs font-bold uppercase tracking-widest text-black bg-metric-green rounded-xl active:opacity-90 shadow-[0_0_15px_rgba(136,229,35,0.4)]"
-                :disabled="!quickStep3Ready"
-              >
-                Записать на ремонт
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- Time mode (locked) -->
@@ -585,13 +527,76 @@
         :history-saving="isSavingHistory"
           :client-required="userSettings.clientRequired"
           :client-valid="clientDataValid"
-          :show-client-step="userSettings.showClientDetail"
+          :show-client-step="true"
           :auto-save="userSettings.autoSaveHistory"
         @home="goHome"
           @close="closeEditor"
           @dents-change="(d) => graphicsState.dents = d"
         @save-history="saveCurrentEstimate('detail')"
         />
+      </div>
+
+      <!-- Панель Назад/Вперёд быстрого расчёта — вне скролла, всегда видна внизу -->
+      <div
+        v-if="calcMode === 'standard'"
+        class="quick-nav-bar fixed left-0 right-0 max-w-md mx-auto px-4 pt-2 pb-3 bg-black border-t border-white/10 shrink-0 z-[210]"
+        style="bottom: var(--app-footer-height, calc(64px + env(safe-area-inset-bottom, 0px)));"
+      >
+        <div class="flex justify-end mb-1">
+          <button
+            type="button"
+            @click="resetDraftState"
+            class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            СБРОС
+          </button>
+        </div>
+        <div v-if="quickStep < 3" class="quick-nav-buttons flex">
+          <button
+            type="button"
+            @click="goQuickBack"
+            class="quick-nav-btn quick-nav-btn-back flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 min-h-[44px]"
+          >
+            Назад
+          </button>
+          <button
+            data-testid="btn-go-next"
+            type="button"
+            @click="goQuickNext"
+            :disabled="(quickStep === 1 && userSettings.showClientQuick && !clientDataValid) || ((quickStep === 2 || (quickStep === 1 && !userSettings.showClientQuick)) && !quickStep2Valid)"
+            class="quick-nav-btn quick-nav-btn-next flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Вперёд
+          </button>
+        </div>
+        <div v-else class="space-y-2">
+          <div class="quick-nav-buttons flex">
+            <button
+              type="button"
+              @click="goQuickBack"
+              class="quick-nav-btn quick-nav-btn-back flex-1 py-3 text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 min-h-[44px]"
+            >
+              Назад
+            </button>
+            <button
+              data-testid="btn-save-estimate"
+              type="button"
+              @click="saveCurrentEstimate('quick')"
+              class="quick-nav-btn quick-nav-btn-next flex-1 py-3 text-xs font-bold uppercase tracking-widest text-metric-green border border-metric-green/40 transition-all hover:bg-metric-green/10 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isSavingHistory || !quickStep3Ready"
+            >
+              {{ isSavingHistory ? 'Сохранение...' : 'Сохранить в историю' }}
+            </button>
+          </div>
+          <button
+            type="button"
+            @click="showLockedStub('Раздел в разработке 🔒')"
+            class="cta-primary w-full py-3 text-xs font-bold uppercase tracking-widest text-black bg-metric-green rounded-xl active:opacity-90 shadow-[0_0_15px_rgba(136,229,35,0.4)]"
+            :disabled="!quickStep3Ready"
+          >
+            Записать на ремонт
+          </button>
+        </div>
       </div>
       </template>
     </div>
@@ -2012,7 +2017,8 @@ function getSizeCodeFromMm(shape, lengthMm, widthMm) {
 
 // Graphics
 const closeEditor = () => {
-  calcMode.value = 'standard';
+  calcMode.value = '';
+  currentSection.value = 'home';
   graphicsState.dents = [];
   haptic('selection');
 };

@@ -115,6 +115,7 @@
         :initial-data="initialData"
         :base-price="roundPrice(basePrice)"
         :total-price="displayTotal"
+        :show-info-tooltips="userSettings?.showInfoTooltips !== false"
         @back="goBack"
         @calculate="() => goToStep(5)"
       />
@@ -908,8 +909,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.graphics-step-1 .graphics-controls-area,
-.graphics-step-4 .graphics-controls-area {
+.graphics-step-1 .graphics-controls-area {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
@@ -917,12 +917,61 @@ onBeforeUnmount(() => {
   border-top: none;
 }
 
-.graphics-step-1 :deep(.graphics-panel-content),
-.graphics-step-4 :deep(.graphics-panel-content) {
+/* Этап 4 (условия и коэффициенты): контент по высоте без пустого чёрного полотна, кнопки вплотную к контенту и к меню */
+.graphics-step-4 .graphics-controls-area {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0;
+}
+.graphics-step-4 :deep(.step3-panel) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  justify-content: flex-start;
+  /* Критично: без min-height:0 flex-ребёнок не сожмётся и скролл не появится */
+}
+/* Область контента — занимает всё место до кнопок, скролл внутри; min-height:0 критично для flex+scroll */
+.graphics-step-4 :deep(.step3-params-wrap) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+}
+.graphics-step-4 :deep(.step3-scroll-wrap) {
+  flex: 0 0 auto;
+  padding-bottom: 1.25rem;
+}
+.graphics-step-4 :deep(.graphics-action-bar) {
+  flex-shrink: 0;
+  margin-top: 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.25rem;
+  background: transparent;
+}
+
+.graphics-step-1 :deep(.graphics-panel-content) {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
   overflow: visible;
+}
+/* Step 4: panel content = step3-params-wrap, overflow-y:scroll нужен для скролла — не перезаписываем overflow */
+.graphics-step-4 :deep(.graphics-panel-content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 
